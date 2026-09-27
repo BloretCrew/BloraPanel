@@ -1,0 +1,25 @@
+/* Wallpaper belongs to the colour theme, never to the material switch. */
+:root[data-palette="sand"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/themes/sand.svg');
+}
+:root[data-palette="sage"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/themes/sage.svg');
+}
+:root[data-palette="iris"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/themes/iris.svg');
+}
+:root[data-palette="rose"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/themes/rose.svg');
+}
+:root[data-palette="sand"][data-theme="dark"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/themes/sand-dark.svg');
+}
+:root[data-palette="sage"][data-theme="dark"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/themes/sage-dark.svg');
+}
+:root[data-palette="iris"][data-theme="dark"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/themes/iris-dark.svg');
+}
+:root[data-palette="rose"][data-theme="dark"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/themes/rose-dark.svg');
+}

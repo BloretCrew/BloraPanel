@@ -1,0 +1,47 @@
+/* App content uses tonal separation instead of outlines on every row. */
+:root[data-theme="dark"] :is(.instance-card,.node-card,.task-card,.market-card,.application.docker-app .docker-object) {
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .application .notice {
+  border-color: color-mix(in srgb,var(--outline-variant) 65%,transparent);
+}
+
+:root[data-theme="dark"] .application .notice:is(.warning,.error) {
+  border-color: color-mix(in srgb,currentColor 23%,transparent);
+}
+
+:root[data-theme="dark"] .resource-sidebar .sidebar-item.selected small,
+:root[data-theme="dark"] .file-row.selected :is(button,span+span),
+:root[data-theme="dark"] .user-card.selected :is(.user-select,.user-select small) {
+  color: var(--on-primary-container);
+}
+
+:root[data-theme="dark"] .node-card .capabilities,
+:root[data-theme="dark"] .task-card pre,
+:root[data-theme="dark"] :is(.docker-detail,.task-result,.config-comparison) {
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border: 1px solid color-mix(in srgb,var(--outline-variant) 65%,transparent);
+  border-radius: var(--shape-md);
+}
+
+/* Inverse surfaces become light in dark mode; command output should remain a
+   dark, quiet reading plane beside the terminal rather than a white flash. */
+:root[data-theme="dark"] :is(.console-log-viewport,.application .docker-log) {
+  background: var(--surface-lowest);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+}
+
+:root[data-theme="dark"] .terminal-container {
+  background: var(--surface-lowest);
+}
+
+:root[data-theme="dark"] .console-log-line > span {
+  color: var(--on-surface-variant);
+}
+
+:root[data-theme="dark"] :is(.console-log-viewport,.application .docker-log,.task-result,.docker-detail) {
+  scrollbar-color: var(--outline) var(--surface-lowest);
+}

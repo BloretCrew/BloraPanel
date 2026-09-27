@@ -1,0 +1,31 @@
+import {readFileSync} from 'node:fs'
+import {randomUUID} from 'node:crypto'
+import {test,expect,type Page} from '@playwright/test'
+import {realLogin} from './login'
+const fixture=JSON.parse(readFileSync(process.env.BLORA_E2E_CREDENTIALS!,'utf8')) as {admin:{name:string;password:string};member:{name:string;password:string};instanceIds:string[]}
+async function headers(page:Page){return{'X-CSRF-Token':(await(await page.request.get('/api/v1/session')).json()).csrfToken,'Idempotency-Key':randomUUID()}}
+async function instance(page:Page){return(await(await page.request.get(`/api/v1/instances/${fixture.instanceIds[0]}`)).json()).instance}
+async function task(page:Page,id:string){await expect.poll(async()=>(await(await page.request.get(`/api/v1/tasks/${id}`)).json()).task.state,{timeout:30000}).toBe('SUCCEEDED')}
+test('actual instance settings preserve config revision and independent configure permission',async({page,browser})=>{
+  await realLogin(page,fixture.admin);const original=await instance(page),id=original.instanceId,patches:string[]=[];page.on('request',request=>{if(request.method()==='PATCH'&&request.url().endsWith(`/instances/${id}`))patches.push(request.postData()!)})
+  const memberContext=await browser.newContext({ignoreHTTPSErrors:true}),member=await memberContext.newPage()
+  try{
+    await realLogin(member,fixture.member);expect((await member.request.patch(`/api/v1/instances/${id}`,{headers:await headers(member),data:{name:'denied',revision:original.configRevision}})).status()).toBe(403)
+    await page.locator('[data-app="blora.instances"]').click();await page.getByRole('button',{name:original.name,exact:true}).click();await page.locator('.resource-nav').getByRole('button',{name:'设置',exact:true}).click();await page.getByRole('textbox',{name:'实例名称',exact:true}).fill(original.name+' · 设置验收');await page.getByRole('textbox',{name:'分组',exact:true}).fill('browser-config');await page.getByRole('textbox',{name:'标签（逗号分隔）',exact:true}).fill('中文, browser');await page.getByRole('checkbox',{name:'同时修改运行配置',exact:true}).check();await page.getByRole('textbox',{name:'正常停止输入',exact:true}).fill('quit\n');await page.getByRole('spinbutton',{name:'正常停止期限（秒）',exact:true}).fill('25');await page.getByRole('button',{name:'核对配置变更',exact:true}).click();await page.reload();expect(patches).toEqual([])
+    await page.getByRole('button',{name:'确认保存配置',exact:true}).click();await expect(page.getByRole('status')).toContainText('配置已保存');const saved=await instance(page);expect(saved.configRevision).toBe(original.configRevision+1);expect(saved.config.stopInput).toBe('quit\n');expect(saved.tags).toEqual(['中文','browser']);expect(saved.state).toBe('STOPPED')
+    const start=await page.request.post(`/api/v1/instances/${id}/actions`,{headers:await headers(page),data:{action:'start'}});expect(start.status()).toBe(202);await task(page,(await start.json()).task.taskId);const running=await instance(page);expect(running.state).toBe('RUNNING')
+    const rejected=await page.request.patch(`/api/v1/instances/${id}`,{headers:await headers(page),data:{revision:running.configRevision,config:{...running.config,command:['/bin/false']}}});expect(rejected.status()).toBe(409);expect((await instance(page)).configRevision).toBe(saved.configRevision)
+  }finally{await memberContext.close();const stop=await page.request.post(`/api/v1/instances/${id}/actions`,{headers:await headers(page),data:{action:'stop'}});if(stop.status()===202)await task(page,(await stop.json()).task.taskId);const current=await instance(page);const restored=await page.request.patch(`/api/v1/instances/${id}`,{headers:await headers(page),data:{revision:current.configRevision,name:original.name,group:original.group,tags:original.tags,config:original.config}});expect(restored.status()).toBe(200)}
+})
+
+test('actual editor save-as writes its own file and server reload preserves undo after refresh',async({page})=>{
+  await realLogin(page,fixture.admin);const resource=await instance(page),base=`/api/v1/instances/${resource.instanceId}/files`,path=`browser-copy-${randomUUID()}.txt`,target=path+'.copy'
+  async function write(path:string,text:string,version:string){const response=await page.request.put(`${base}/content`,{headers:await headers(page),data:{path,text,version}});expect(response.status()).toBe(202);await task(page,(await response.json()).task.taskId)}
+  async function content(path:string){const response=await page.request.get(`${base}/content?path=${encodeURIComponent(path)}`);return response.ok()?await response.json():undefined}
+  await write(path,'原始文件','missing');await page.locator('[data-app="blora.instances"]').click();await page.getByRole('button',{name:resource.name,exact:true}).click();await page.getByRole('button',{name:'文件',exact:true}).click();await page.getByRole('button',{name:'在文件管理器打开',exact:true}).click();await page.getByRole('textbox',{name:'搜索目录文件'}).fill(path);await page.getByRole('button',{name:path,exact:true}).click();await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await page.keyboard.press('Control+End');await page.keyboard.insertText('，未保存后另存')
+  await page.getByRole('button',{name:'另存为…',exact:true}).click();await expect(page.getByRole('textbox',{name:'另存目标路径'})).toHaveValue(target);await page.reload();await page.getByRole('button',{name:'确认另存正文',exact:true}).click();await expect.poll(async()=>(await content(target))?.text,{timeout:30000}).toBe('原始文件，未保存后另存');expect((await content(path)).text).toBe('原始文件');await expect(page.locator('.app-window.focused').getByRole('button',{name:'保存到服务器',exact:true})).toBeEnabled()
+  await write(target,'服务器外部正文',(await content(target)).version);await page.locator('.app-window.focused').getByRole('button',{name:'重新读取…',exact:true}).click()
+  // Confirm the server read has produced the protected form before reloading.
+  await expect(page.getByRole('dialog',{name:'重新读取服务器正文'})).toBeVisible()
+  await page.reload();await page.getByRole('button',{name:'采用服务器正文（可撤销）',exact:true}).click();await expect(page.locator('.app-window.focused .view-lines')).toContainText('服务器外部正文');await page.reload();await page.locator('.app-window.focused').getByRole('button',{name:'↶ 撤销',exact:true}).click();await expect(page.locator('.app-window.focused .view-lines')).toContainText('未保存后另存');expect((await content(target)).text).toBe('服务器外部正文')
+})

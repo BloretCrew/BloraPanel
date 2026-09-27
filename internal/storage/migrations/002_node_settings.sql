@@ -1,0 +1,1 @@
+ALTER TABLE nodes ADD COLUMN settings_revision INTEGER NOT NULL DEFAULT 1;

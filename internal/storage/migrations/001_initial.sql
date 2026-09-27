@@ -1,0 +1,46 @@
+CREATE TABLE IF NOT EXISTS users (
+ id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, password_hash BLOB NOT NULL,
+ admin INTEGER NOT NULL DEFAULT 0, disabled INTEGER NOT NULL DEFAULT 0, revision INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS grants (
+ user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ kind TEXT NOT NULL, resource_id TEXT NOT NULL, action TEXT NOT NULL,
+ PRIMARY KEY(user_id,kind,resource_id,action)
+);
+CREATE TABLE IF NOT EXISTS sessions (
+ token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ csrf TEXT NOT NULL, expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS nodes (
+ id TEXT PRIMARY KEY, name TEXT NOT NULL, public_key BLOB NOT NULL,
+ generation INTEGER NOT NULL DEFAULT 0, revoked INTEGER NOT NULL DEFAULT 0,
+ maintenance INTEGER NOT NULL DEFAULT 0, quota INTEGER NOT NULL DEFAULT 20,
+ document BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS enrollments (
+ token_hash TEXT PRIMARY KEY, name TEXT NOT NULL, expires_at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS instances (
+ id TEXT PRIMARY KEY, node_id TEXT NOT NULL REFERENCES nodes(id), document BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS tasks (
+ id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, request_id TEXT NOT NULL,
+ resource_key TEXT NOT NULL, digest TEXT NOT NULL, state TEXT NOT NULL,
+ revision INTEGER NOT NULL, document BLOB NOT NULL,
+ UNIQUE(actor_id,request_id)
+);
+CREATE INDEX IF NOT EXISTS tasks_resource_state ON tasks(resource_key,state);
+CREATE TABLE IF NOT EXISTS task_events (
+ sequence INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL REFERENCES tasks(id),
+ revision INTEGER NOT NULL, recorded_at INTEGER NOT NULL, document BLOB NOT NULL,
+ UNIQUE(task_id,revision)
+);
+CREATE TABLE IF NOT EXISTS records (
+ namespace TEXT NOT NULL, id TEXT NOT NULL, revision INTEGER NOT NULL, document BLOB NOT NULL,
+ PRIMARY KEY(namespace,id)
+);
+CREATE TABLE IF NOT EXISTS audit (
+ sequence INTEGER PRIMARY KEY AUTOINCREMENT, actor_id TEXT NOT NULL,
+ resource_key TEXT NOT NULL, action TEXT NOT NULL, request_id TEXT NOT NULL,
+ result TEXT NOT NULL, recorded_at INTEGER NOT NULL
+);

@@ -1,0 +1,40 @@
+{
+  "samples": 60528,
+  "p95": 46.5,
+  "max": 945.6999998092651,
+  "frames": 207818,
+  "longFrames": 100,
+  "heapBytes": 84959066,
+  "apiRttP95": 61.19999980926514,
+  "maxUnacknowledgedBytes": 87291,
+  "graphics": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "terminalRenderers": [
+    "default",
+    "default"
+  ],
+  "terminalBytesPerSecond": [
+    114032.85948611864,
+    113994.26150639688
+  ],
+  "sampleSeconds": 3604.256,
+  "stateAfter": "RUNNING",
+  "soak": {
+    "seconds": 3600,
+    "outputDelaySeconds": 0.01,
+    "completedTransfers": 220,
+    "activeTransferSamples": 2518,
+    "maxTransferRestartMs": 496,
+    "heapSamples": 2517,
+    "heapMin": 34758199,
+    "heapMax": 107783880,
+    "heapDelta": 73025681
+  },
+  "windows": 8,
+  "directoryEntries": 10000,
+  "transferBytes": 16777216,
+  "transferSeconds": 3622.127,
+  "browser": "151.0.7922.71",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+  "logicalCPUs": 12,
+  "hostMemoryBytes": 50500485120
+}

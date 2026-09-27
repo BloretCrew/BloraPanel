@@ -1,0 +1,172 @@
+/* Colour palette and wallpaper are independent of translucent material.
+   Geometry, spacing, type scales and shape tokens remain unchanged. */
+:root[data-palette="ice"]:not([data-theme="dark"]) {
+  --primary: #3f6db1;
+  --on-primary: #ffffff;
+  --primary-container: #e0eafa;
+  --on-primary-container: #315681;
+  --secondary: #697d96;
+  --secondary-container: #edf2f9;
+  --on-secondary-container: #435975;
+  --tertiary: #8a72ac;
+  --tertiary-container: #efe9f7;
+  --on-tertiary-container: #645178;
+  --surface: #fcfdff;
+  --surface-lowest: #ffffff;
+  --surface-low: #f5f8fc;
+  --surface-container: #edf2f8;
+  --surface-high: #e8eef6;
+  --surface-highest: #e0e8f2;
+  --on-surface: #2d3a4e;
+  --on-surface-variant: #5d6f86;
+  --outline: #91a0b3;
+  --outline-variant: #dce5ef;
+  --error: #ac535e;
+  --error-container: #fbe9eb;
+  --warning: #89692d;
+  --warning-container: #fbf1da;
+  --success: #387668;
+  --success-container: #e2f3ed;
+  --inverse-surface: #344156;
+  --inverse-on-surface: #f4f8ff;
+  --state-hover: #4876b710;
+  --state-pressed: #4876b71c;
+  --focus-ring: #527fbd;
+  --window-shadow: 0 10px 30px #4c6b8a16, 0 2px 6px #4c6b8a09;
+  --window-shadow-focus: 0 20px 56px #45658024, 0 3px 10px #45658010;
+  --menu-shadow: 0 14px 38px #4c6b8a1c, 0 2px 6px #4c6b8a09;
+  --scrim: #364f6b22;
+  --desktop-background: #e7eef5;
+  --brand-secondary: #93b2d9;
+}
+
+:root[data-palette="ice"][data-theme="dark"] {
+  --primary: #aecbfa;
+  --on-primary: #143c70;
+  --primary-container: #294d80;
+  --on-primary-container: #d7e5ff;
+  --secondary: #bcc9de;
+  --secondary-container: #3a4a63;
+  --on-secondary-container: #dce6f9;
+  --tertiary: #d2b9ef;
+  --tertiary-container: #56476c;
+  --on-tertiary-container: #f0dcff;
+  --surface: #111b29;
+  --surface-lowest: #0b1420;
+  --surface-low: #172334;
+  --surface-container: #202e41;
+  --surface-high: #2b3b50;
+  --surface-highest: #35465e;
+  --on-surface: #e3eaf5;
+  --on-surface-variant: #c1cbd9;
+  --outline: #91a0b4;
+  --outline-variant: #42536a;
+  --error: #ffc2c7;
+  --error-container: #5d2f3b;
+  --warning: #f1d392;
+  --warning-container: #534625;
+  --success: #b3e2ce;
+  --success-container: #284b42;
+  --inverse-surface: #e3eaf5;
+  --inverse-on-surface: #29394d;
+  --state-hover: #aecbfa1c;
+  --state-pressed: #aecbfa2b;
+  --focus-ring: #aecbfa;
+  --window-shadow: 0 8px 28px #00000055;
+  --window-shadow-focus: 0 12px 36px #00000070;
+  --menu-shadow: 0 6px 20px #00000066;
+  --scrim: #00000066;
+  --desktop-background: #111d2b;
+  --brand-secondary: #6e91bf;
+}
+
+:root[data-palette="ice"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./ice-wallpaper.svg');
+}
+:root[data-palette="ice"][data-theme="dark"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./ice-wallpaper-dark.svg');
+}
+:root[data-palette="ice"][data-wallpaper]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: var(--review-wallpaper);
+}
+:root[data-palette="ice"][data-wallpaper][data-theme="dark"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#11171ce6, #11171ce6), var(--review-wallpaper);
+}
+
+/* Material effects use the active palette's tonal surfaces. Turning them off
+   leaves all palette tokens, wallpapers and application artwork untouched. */
+:root[data-translucency="on"] {
+  --glass-face: color-mix(in srgb, var(--surface) 79%, transparent);
+  --glass-window: color-mix(in srgb, var(--surface-container) 83%, transparent);
+  --glass-menu: color-mix(in srgb, var(--surface) 91%, transparent);
+  --glass-sidebar: color-mix(in srgb, var(--surface-container) 78%, transparent);
+  --glass-edge: color-mix(in srgb, var(--surface-lowest) 75%, transparent);
+  --glass-reflection: color-mix(in srgb, var(--surface-lowest) 65%, transparent);
+  --dock-surface: color-mix(in srgb, var(--surface) 43%, transparent);
+  --dock-edge: var(--glass-edge);
+  --dock-backdrop-filter: blur(22px) saturate(1.1);
+  --dock-shadow: drop-shadow(0 7px 15px color-mix(in srgb, var(--primary) 12%, transparent));
+}
+:root[data-theme="dark"][data-translucency="on"] {
+  --glass-face: color-mix(in srgb, var(--surface-low) 84%, transparent);
+  --glass-window: color-mix(in srgb, var(--surface-container) 88%, transparent);
+  --glass-menu: color-mix(in srgb, var(--surface-container) 92%, transparent);
+  --glass-sidebar: color-mix(in srgb, var(--surface-low) 84%, transparent);
+  --glass-edge: color-mix(in srgb, var(--on-surface) 17%, transparent);
+  --glass-reflection: color-mix(in srgb, var(--on-surface) 11%, transparent);
+  --dock-surface: color-mix(in srgb, var(--surface-container) 75%, transparent);
+  --dock-backdrop-filter: blur(22px) saturate(1.06);
+  --dock-shadow: drop-shadow(0 8px 20px #050d1450);
+}
+:root[data-translucency="on"] .topbar {
+  background: var(--glass-face);
+  border-color: var(--glass-edge);
+  backdrop-filter: blur(24px) saturate(1.08);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--primary) 5%, transparent), inset 0 1px 0 var(--glass-reflection);
+}
+:root[data-translucency="on"] .workspace-switch {
+  background: color-mix(in srgb, var(--secondary-container) 62%, transparent);
+  box-shadow: inset 0 1px 0 var(--glass-reflection);
+}
+:root[data-translucency="on"] .account-trigger {
+  background: color-mix(in srgb, var(--primary-container) 74%, transparent);
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-reflection);
+}
+:root[data-translucency="on"] :is(.launcher,.account-popover,.workspace-menu,.context-menu,.window-picker,.notification-panel,.shortcut-rename-dialog) {
+  background: var(--glass-menu);
+  border-color: var(--glass-edge);
+  backdrop-filter: blur(28px) saturate(1.06);
+  box-shadow: var(--menu-shadow), inset 0 1px 0 var(--glass-reflection);
+}
+:root[data-translucency="on"] :is(.account-popover,.notification-panel) {
+  background: color-mix(in srgb, var(--surface) 97%, transparent);
+}
+:root[data-theme="dark"][data-translucency="on"] :is(.account-popover,.notification-panel) {
+  background: color-mix(in srgb, var(--surface-container) 97%, transparent);
+}
+:root[data-translucency="on"] .app-window {
+  background: var(--glass-window);
+  border-color: var(--glass-edge);
+  backdrop-filter: blur(24px) saturate(1.05);
+}
+:root[data-translucency="on"] .app-window.focused {
+  border-color: color-mix(in srgb, var(--glass-edge) 80%, var(--outline-variant));
+}
+:root[data-translucency="on"] :is(.window-titlebar,.view-tabs,.window-body) {
+  background: transparent;
+}
+:root[data-translucency="on"] .window-titlebar {
+  box-shadow: inset 0 1px 0 var(--glass-reflection);
+}
+:root[data-translucency="on"] .window-controls button {
+  background: color-mix(in srgb, var(--surface-lowest) 43%, transparent);
+  border-color: var(--glass-edge);
+}
+:root[data-translucency="on"] .view-tab.selected {
+  background: color-mix(in srgb, var(--surface-lowest) 70%, transparent);
+  border-color: var(--glass-edge);
+}
+:root[data-translucency="on"] .resource-sidebar {
+  background: var(--glass-sidebar);
+}

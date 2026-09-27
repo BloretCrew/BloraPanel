@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="base" x2=".6" y2="1"><stop stop-color="#f4f3ef"/><stop offset="1" stop-color="#deded9"/></linearGradient>
+    <linearGradient id="rib" x2="1" y2="0"><stop stop-color="#bec5c3" stop-opacity=".09"/><stop offset=".6" stop-color="#ffffff" stop-opacity=".22"/><stop offset="1" stop-color="#bec5c3" stop-opacity=".04"/></linearGradient>
+    <pattern id="lines" width="14" height="1000" patternUnits="userSpaceOnUse"><path fill="url(#rib)" d="M0 0h14v1000H0z"/></pattern>
+    <radialGradient id="light" cx=".72" cy=".35" r=".65"><stop stop-color="#fcfbf7" stop-opacity=".9"/><stop offset="1" stop-color="#f4f3ef" stop-opacity="0"/></radialGradient>
+    <clipPath id="curve"><path d="M-20-20H465C559 134 561 316 402 453S148 664 209 845L285 1020H-20Z"/></clipPath>
+  </defs>
+  <path fill="url(#base)" d="M0 0h1600v1000H0z"/>
+  <path d="M-20-20H465C559 134 561 316 402 453S148 664 209 845L285 1020H-20Z" fill="#e0e3df"/>
+  <path fill="url(#lines)" d="M0 0h1600v1000H0z" clip-path="url(#curve)"/>
+  <path fill="url(#light)" d="M0 0h1600v1000H0z"/>
+</svg>

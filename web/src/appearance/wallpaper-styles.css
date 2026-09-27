@@ -1,0 +1,95 @@
+/* Optional wallpaper artwork stays independent of the colour and material
+   controls. The default `palette` choice keeps the existing theme wallpaper. */
+:root[data-wallpaper-choice="atmosphere"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/explorations/atmosphere.svg');
+}
+:root[data-wallpaper-choice="planes"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/explorations/planes.svg');
+}
+:root[data-wallpaper-choice="topography"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/explorations/topography.svg');
+}
+:root[data-wallpaper-choice="b-grid"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/explorations/b-grid.svg');
+}
+:root[data-wallpaper-choice="b-monolith"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/explorations/b-monolith.svg');
+}
+:root[data-wallpaper-choice="b-horizon"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/explorations/b-horizon.svg');
+}
+
+:root[data-theme="dark"][data-wallpaper-choice="atmosphere"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#141c30b8,#141c30b8),url('./wallpapers/explorations/atmosphere.svg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="planes"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#17232bbf,#17232bbf),url('./wallpapers/explorations/planes.svg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="topography"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#13252aba,#13252aba),url('./wallpapers/explorations/topography.svg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="b-grid"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#1b2330c2,#1b2330c2),url('./wallpapers/explorations/b-grid.svg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="b-monolith"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#192333b8,#192333b8),url('./wallpapers/explorations/b-monolith.svg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="b-horizon"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#162331ad,#162331ad),url('./wallpapers/explorations/b-horizon.svg');
+}
+
+/* These choices change the visual medium as well as composition. The photo is
+   a locally adapted public-domain National Park Service image; see
+   wallpapers/media/PHOTO_SOURCE.md for its source and processing details. */
+:root[data-wallpaper-choice="photo"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/media/photo.jpg');
+}
+:root[data-wallpaper-choice="poster"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/media/poster.svg');
+}
+:root[data-wallpaper-choice="nocturne"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/media/nocturne.svg');
+}
+:root[data-wallpaper-choice="ink"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/media/ink.svg');
+}
+:root[data-wallpaper-choice="material"]:not([data-theme="dark"]) :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/media/material.svg');
+}
+
+:root[data-theme="dark"][data-wallpaper-choice="photo"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#142434c0,#142434c0),url('./wallpapers/media/photo.jpg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="poster"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#1b1923c9,#1b1923c9),url('./wallpapers/media/poster.svg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="nocturne"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('./wallpapers/media/nocturne.svg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="ink"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#1c2228bd,#1c2228bd),url('./wallpapers/media/ink.svg');
+}
+:root[data-theme="dark"][data-wallpaper-choice="material"] :is(.desktop,.login-screen,.loading) {
+  background-image: linear-gradient(#171d29be,#171d29be),url('./wallpapers/media/material.svg');
+}
+
+/* A real photograph contains both pale dunes and dark mountains. Give labels
+   a local backing instead of washing out the whole image. */
+:root[data-wallpaper-choice="photo"] .desktop-icon>span:last-child,
+:root[data-wallpaper-choice="photo"] .resource-shortcut>span:nth-child(2) {
+  color:var(--on-surface);
+  background:color-mix(in srgb,var(--surface) 84%,transparent);
+  border:1px solid color-mix(in srgb,var(--surface-lowest) 80%,transparent);
+  border-radius:7px;
+  padding:2px 5px;
+  backdrop-filter:blur(6px);
+}
+:root[data-wallpaper-choice="nocturne"] .desktop-icon {
+  color:#f7f9ff;
+  text-shadow:0 1px 3px #020815d9;
+}
+:root[data-wallpaper-choice="nocturne"] .desktop-icon:hover,
+:root[data-wallpaper-choice="nocturne"] .desktop-icon:focus {
+  color:#f7f9ff;
+  background:#ffffff21;
+}

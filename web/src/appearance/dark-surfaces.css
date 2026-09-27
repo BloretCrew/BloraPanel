@@ -1,0 +1,194 @@
+/* Keep the six palettes in their accents, not in every square centimetre of
+   the dark workspace. A neutral surface stack lets app artwork read clearly. */
+:root[data-theme="dark"][data-palette],
+:root[data-theme="dark"]:not([data-palette]) {
+  --surface: #161a1f;
+  --surface-lowest: #111418;
+  --surface-low: #1c2127;
+  --surface-container: #22282e;
+  --surface-high: #2b3239;
+  --surface-highest: #363e46;
+  --on-surface: #f1f3f5;
+  --on-surface-variant: #bdc5cd;
+  --outline: #84909b;
+  --outline-variant: #47515b;
+  --secondary: #c9d0d7;
+  --secondary-container: #343c44;
+  --on-secondary-container: #e4e8ec;
+  --primary-container: color-mix(in srgb, var(--primary) 19%, #242a31);
+  --inverse-surface: #e7eaed;
+  --inverse-on-surface: #252b31;
+  --window-shadow: 0 8px 28px #00000030;
+  --window-shadow-focus: 0 14px 40px #00000042;
+  --menu-shadow: 0 8px 24px #00000036;
+  --scrim: #00000091;
+  --desktop-background: #171c22;
+}
+
+:root[data-theme="dark"][data-palette="mineral"][data-wallpaper-choice="palette"] :is(.desktop,.login-screen,.loading),
+:root[data-theme="dark"]:not([data-palette])[data-wallpaper-choice="palette"] :is(.desktop,.login-screen,.loading) {
+  background-image: url('/wallpaper-dark.svg');
+}
+
+/* Let the wallpaper's larger shapes pass through floating dark material while
+   keeping dense window content sheltered from bright backgrounds. */
+:root[data-theme="dark"][data-translucency="on"] {
+  --glass-face: color-mix(in srgb, var(--surface-low) 80%, transparent);
+  --glass-window: color-mix(in srgb, var(--surface-container) 89%, transparent);
+  --glass-menu: color-mix(in srgb, var(--surface-container) 80%, transparent);
+  --glass-sidebar: color-mix(in srgb, var(--surface-low) 86%, transparent);
+  --glass-edge: color-mix(in srgb, var(--on-surface) 13%, transparent);
+  --glass-reflection: color-mix(in srgb, var(--on-surface) 3%, transparent);
+  --window-shadow: 0 8px 24px #00000025;
+  --window-shadow-focus: 0 12px 32px #00000032;
+  --menu-shadow: 0 8px 22px #00000024;
+}
+
+/* Borders and controls still follow the selected palette's accent. */
+:root[data-theme="dark"] {
+  --dark-hairline: color-mix(in srgb, var(--on-surface) 12%, transparent);
+  --dark-hairline-soft: color-mix(in srgb, var(--on-surface) 8%, transparent);
+  --dark-shell-edge: color-mix(in srgb, var(--surface-lowest) 32%, transparent);
+  --dark-window-edge: var(--dark-shell-edge);
+  --dark-window-edge-focus: color-mix(in srgb, var(--surface-lowest) 42%, transparent);
+  --dark-control-edge: color-mix(in srgb, var(--on-surface) 10%, transparent);
+  --dock-surface: var(--surface-low);
+  --dock-edge: var(--dark-shell-edge);
+  --dock-backdrop-filter: none;
+  --dock-shadow: drop-shadow(0 6px 14px #00000028);
+}
+
+:root[data-theme="dark"][data-translucency="on"] {
+  --dock-surface: color-mix(in srgb, var(--surface-container) 78%, transparent);
+  --dock-edge: var(--dark-shell-edge);
+  --dock-backdrop-filter: blur(18px) saturate(1.02);
+  --dock-shadow: drop-shadow(0 6px 15px #00000020);
+}
+
+:root[data-theme="dark"][data-translucency="on"] .topbar {
+  backdrop-filter: blur(18px) saturate(1.03);
+  box-shadow: 0 4px 14px #0000001c, inset 0 1px 0 var(--glass-reflection);
+}
+
+:root[data-theme="dark"][data-translucency="on"]
+  :is(.launcher,.account-popover,.workspace-menu,.context-menu,.window-picker,.notification-panel,.shortcut-rename-dialog) {
+  backdrop-filter: blur(18px) saturate(1.03);
+}
+
+:root[data-theme="dark"][data-translucency="on"] :is(.account-popover,.notification-panel) {
+  background: color-mix(in srgb, var(--surface-container) 86%, transparent);
+}
+
+:root[data-theme="dark"][data-translucency="on"] .app-window {
+  backdrop-filter: blur(20px) saturate(1.03);
+}
+
+:root[data-theme="dark"] .topbar {
+  border-color: var(--dark-hairline-soft);
+}
+
+:root[data-theme="dark"] :is(.launcher, .account-popover, .workspace-menu,
+  .context-menu, .tab-menu, .window-picker, .notification-panel,
+  .shortcut-rename-dialog, .in-window-dialog, .login-card) {
+  border-color: var(--dark-shell-edge);
+}
+
+:root[data-theme="dark"] .launcher footer {
+  border-top-color: var(--dark-shell-edge);
+}
+
+:root[data-theme="dark"] .app-window {
+  border-color: var(--dark-window-edge);
+}
+
+:root[data-theme="dark"] .app-window.focused {
+  border-color: var(--dark-window-edge-focus);
+}
+
+/* The instance content reaches the window's bottom edge. Its own rounded
+   bottom corner exposed a crescent of the shell beside the sidebar footnote. */
+:root[data-theme="dark"] .instances-browser > .resource-main {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+
+:root[data-theme="dark"] .view-tabs {
+  border-bottom-color: var(--dark-hairline-soft);
+}
+
+:root[data-theme="dark"] .window-controls button {
+  background: var(--surface-high);
+  border-color: var(--dark-hairline-soft);
+}
+
+:root[data-theme="dark"] .window-controls button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: var(--dark-control-edge);
+  background: var(--surface-high);
+  color: var(--on-surface);
+}
+
+:root[data-theme="dark"] :is(.in-window-dialog, .workspace-menu, .shortcut-rename-dialog)
+  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  background: var(--surface-highest);
+}
+
+:root[data-theme="dark"] :is(input, textarea)::placeholder {
+  color: var(--on-surface-variant);
+  opacity: .78;
+}
+
+:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--on-surface) 22%, transparent);
+}
+
+:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+  border-color: var(--primary);
+}
+
+:root[data-theme="dark"] select option {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+:root[data-theme="dark"] button:disabled {
+  opacity: .62;
+}
+
+:root[data-theme="dark"] :is(input,select,textarea):disabled {
+  opacity: .6;
+}
+
+:root[data-theme="dark"] :is(.resource-table th, .instance-list-header) {
+  color: var(--on-surface-variant);
+  border-bottom-color: var(--dark-hairline-soft);
+}
+
+:root[data-theme="dark"] .resource-table td {
+  border-bottom-color: var(--dark-hairline-soft);
+}
+
+/* Keep desktop captions readable even when a user chooses a bright wallpaper
+   while the interface itself is dark. */
+:root[data-theme="dark"]:not([data-wallpaper-choice="palette"]) .desktop-icon > span:nth-child(2) {
+  color: var(--on-surface);
+  background: color-mix(in srgb, var(--surface-lowest) 91%, transparent);
+  border: 1px solid var(--dark-hairline-soft);
+  border-radius: var(--shape-sm);
+  padding: 2px 6px;
+}
+
+:root[data-theme="dark"]:not([data-wallpaper-choice="palette"]) .desktop-icon .shortcut-resource-status {
+  color: var(--on-surface-variant);
+  background: color-mix(in srgb, var(--surface-lowest) 91%, transparent);
+  border-radius: var(--shape-xs);
+  padding: 1px 4px;
+}
+
+:root[data-theme="dark"] ::selection {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}

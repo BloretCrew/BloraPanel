@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#b6c6c4" stroke-width="1"/>
+      <circle cx="0" cy="0" r="1.8" fill="#9bafad"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" x2="1">
+      <stop stop-color="#fff"/>
+      <stop offset=".76" stop-color="#fff"/>
+      <stop offset="1" stop-color="#000"/>
+    </linearGradient>
+    <mask id="gridFade"><path fill="url(#fade)" d="M0 0h1390v1000H0z"/></mask>
+  </defs>
+  <path fill="#f1f4f1" d="M0 0h1600v1000H0z"/>
+  <path fill="#eef2ee" d="M0 0h860v1000H0z"/>
+  <path fill="url(#grid)" opacity=".65" mask="url(#gridFade)" d="M0 0h1390v1000H0z"/>
+  <path d="M128 128h704v704H128z" fill="#f7f8f4" stroke="#d3deda" stroke-width="2"/>
+  <path d="M192 192h576v576H192z" fill="#e5ede9"/>
+  <path d="M192 192h576v192H192z" fill="#d9e4df"/>
+  <path d="M192 384h320v384H192z" fill="#bacfca"/>
+  <path d="M512 384h256v256H512z" fill="#708f91"/>
+  <path d="M512 640h256v128H512z" fill="#ceb89c"/>
+  <path d="M192 384h576M512 384v384M512 640h256" fill="none" stroke="#f7f8f4" stroke-width="6"/>
+  <path d="M938 192h192m-192 64h320m-320 64h256M938 384h128m-128 64h256" fill="none" stroke="#9fb7b2" stroke-opacity=".58" stroke-width="2"/>
+  <path d="M938 576h320M938 704h320M938 832h320M938 576v256m128-256v256m128-256v256m64-256v256" fill="none" stroke="#b6c9c5" stroke-opacity=".5" stroke-width="2"/>
+  <path fill="#729393" d="M1059 697h14v14h-14z"/>
+  <path fill="#c7a786" d="M1187 569h14v14h-14z"/>
+</svg>

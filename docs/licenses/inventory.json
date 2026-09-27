@@ -1,0 +1,1359 @@
+{
+  "formatVersion": 1,
+  "packages": [
+    {
+      "files": [
+        {
+          "name": "LICENSE.txt",
+          "sha256": "cc0975a5f6305145bdd7b41ce9479632fdac3870e6ac4281f28017f18c767c4e"
+        }
+      ],
+      "name": "github.com/coder/websocket",
+      "origin": "https://pkg.go.dev/github.com/coder/websocket@v1.8.14",
+      "version": "v1.8.14"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "a2a1cea59d9c2d71908082f516f86bb560abf857646ecf69d70c121ead14aef4"
+        }
+      ],
+      "name": "github.com/creack/pty",
+      "origin": "https://pkg.go.dev/github.com/creack/pty@v1.1.24",
+      "version": "v1.1.24"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "a973b4498c13eb74baa2a8e5c351426a6826f2fcdd909916dbe53ee2e755fd71"
+        }
+      ],
+      "name": "github.com/dustin/go-humanize",
+      "origin": "https://pkg.go.dev/github.com/dustin/go-humanize@v1.0.1",
+      "version": "v1.0.1"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d"
+        }
+      ],
+      "name": "github.com/google/uuid",
+      "origin": "https://pkg.go.dev/github.com/google/uuid@v1.6.0",
+      "version": "v1.6.0"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "08eab1118c80885fa1fa6a6dd7303f65a379fcb3733e063d20d1bbc2c76e6fa1"
+        }
+      ],
+      "name": "github.com/mattn/go-isatty",
+      "origin": "https://pkg.go.dev/github.com/mattn/go-isatty@v0.0.20",
+      "version": "v0.0.20"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "38ae43959daf953a393a585b2988672cb65a5a541aca0d0be5e72595a0a16883"
+        }
+      ],
+      "name": "github.com/ncruces/go-strftime",
+      "origin": "https://pkg.go.dev/github.com/ncruces/go-strftime@v1.0.0",
+      "version": "v1.0.0"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "dd26a7abddd02e2d0aba97805b31f248ef7835d9e10da289b22e3b8ab78b324d"
+        }
+      ],
+      "name": "github.com/remyoudompheng/bigfft",
+      "origin": "https://pkg.go.dev/github.com/remyoudompheng/bigfft@v0.0.0-20230129092748-24d4a6f8daec",
+      "version": "v0.0.0-20230129092748-24d4a6f8daec"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "8f650581478707182f3306d9a86676d4e03e2d4edc868344378cf4d6fe6c927a"
+        }
+      ],
+      "name": "github.com/robfig/cron/v3",
+      "origin": "https://pkg.go.dev/github.com/robfig/cron/v3@v3.0.1",
+      "version": "v3.0.1"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "c46f033d017a5af71a1de0105ec56c41bd47f81a0bbdf779fffe316336dc7c1f"
+        },
+        {
+          "name": "NOTICE",
+          "sha256": "e6f0c5c151a3ff1eba8f5930a31ec084ca6d7adda43c8675ab81f7d36af50b4f"
+        }
+      ],
+      "name": "github.com/tetratelabs/wazero",
+      "origin": "https://pkg.go.dev/github.com/tetratelabs/wazero@v1.12.0",
+      "version": "v1.12.0"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        }
+      ],
+      "name": "golang.org/x/crypto",
+      "origin": "https://pkg.go.dev/golang.org/x/crypto@v0.47.0",
+      "version": "v0.47.0"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        }
+      ],
+      "name": "golang.org/x/exp",
+      "origin": "https://pkg.go.dev/golang.org/x/exp@v0.0.0-20251023183803-a4bb9ffd2546",
+      "version": "v0.0.0-20251023183803-a4bb9ffd2546"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        }
+      ],
+      "name": "golang.org/x/sys",
+      "origin": "https://pkg.go.dev/golang.org/x/sys@v0.44.0",
+      "version": "v0.44.0"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "4835612df0098ca95f8e7d9e3bffcb02358d435dbb38057c844c99d7f725eb20"
+        }
+      ],
+      "name": "google.golang.org/protobuf",
+      "origin": "https://pkg.go.dev/google.golang.org/protobuf@v1.36.11",
+      "version": "v1.36.11"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "95ff867eb55a56935fa7492406cfa953fb7c13ca73f4c0a86ae05756b4605600"
+        },
+        {
+          "name": "LICENSE-3RD-PARTY.md",
+          "sha256": "f597097efe3d97021f89170746bd3a0fb9a8b6fb26b82043ed68a4e0283bee6c"
+        }
+      ],
+      "name": "modernc.org/libc",
+      "origin": "https://pkg.go.dev/modernc.org/libc@v1.67.6",
+      "version": "v1.67.6"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "bfa9bf72a72ca009fd62a8f84fca3dca67e51d93af96352723646599898b6cf5"
+        }
+      ],
+      "name": "modernc.org/mathutil",
+      "origin": "https://pkg.go.dev/modernc.org/mathutil@v1.7.1",
+      "version": "v1.7.1"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "59895e669f48f168b6b858358f6005779cdf40a265f7828813061b56af67b496"
+        },
+        {
+          "name": "LICENSE-GO",
+          "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067"
+        },
+        {
+          "name": "LICENSE-LOGO",
+          "sha256": "5ae5bee3072a841376451b48d8cfcec7188e10543926d5870828d36c8a750dc5"
+        },
+        {
+          "name": "LICENSE-MMAP-GO",
+          "sha256": "c2eba69f20d05414538c3a5df7694dde392e065ff70882e1625e90f5d6659fff"
+        }
+      ],
+      "name": "modernc.org/memory",
+      "origin": "https://pkg.go.dev/modernc.org/memory@v1.11.0",
+      "version": "v1.11.0"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "c6fe05491a60ae13bcd223088d2705e36dede24e5587226231d2459ada5c4822"
+        },
+        {
+          "name": "SQLITE-LICENSE",
+          "sha256": "8438c9c89b849131ead81d5435cb97fcf052df5b0b286dda8a2d4c29e6cb3fd0"
+        }
+      ],
+      "name": "modernc.org/sqlite",
+      "origin": "https://pkg.go.dev/modernc.org/sqlite@v1.46.1",
+      "version": "v1.46.1"
+    },
+    {
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "name": "PATENTS",
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        }
+      ],
+      "name": "Go toolchain and standard library",
+      "origin": "https://go.googlesource.com/go/+/refs/tags/go1.25.9/",
+      "version": "go1.25.9"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+        }
+      ],
+      "name": "@babel/helper-string-parser",
+      "origin": "https://registry.npmjs.org/@babel/helper-string-parser/-/helper-string-parser-7.29.7.tgz",
+      "version": "7.29.7"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+        }
+      ],
+      "name": "@babel/helper-validator-identifier",
+      "origin": "https://registry.npmjs.org/@babel/helper-validator-identifier/-/helper-validator-identifier-7.29.7.tgz",
+      "version": "7.29.7"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "2e97627cb278aa7556fb9e8817368302301a595b6c7582512b8d74c57b773652"
+        }
+      ],
+      "name": "@babel/parser",
+      "origin": "https://registry.npmjs.org/@babel/parser/-/parser-7.29.8.tgz",
+      "version": "7.29.8"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+        }
+      ],
+      "name": "@babel/types",
+      "origin": "https://registry.npmjs.org/@babel/types/-/types-7.29.8.tgz",
+      "version": "7.29.8"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "769d154fbde32a915af110b1123650bc79f4cbe675acc66e005265bf069c6c6c"
+        }
+      ],
+      "name": "@jridgewell/gen-mapping",
+      "origin": "https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz",
+      "version": "0.3.13"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "769d154fbde32a915af110b1123650bc79f4cbe675acc66e005265bf069c6c6c"
+        }
+      ],
+      "name": "@jridgewell/remapping",
+      "origin": "https://registry.npmjs.org/@jridgewell/remapping/-/remapping-2.3.5.tgz",
+      "version": "2.3.5"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "b8778b155bfde5a28b023a558753c0fa058a52bb9de35c343c250be1bbcdedab"
+        }
+      ],
+      "name": "@jridgewell/resolve-uri",
+      "origin": "https://registry.npmjs.org/@jridgewell/resolve-uri/-/resolve-uri-3.1.2.tgz",
+      "version": "3.1.2"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "769d154fbde32a915af110b1123650bc79f4cbe675acc66e005265bf069c6c6c"
+        }
+      ],
+      "name": "@jridgewell/sourcemap-codec",
+      "origin": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.6.0.tgz",
+      "version": "1.6.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "769d154fbde32a915af110b1123650bc79f4cbe675acc66e005265bf069c6c6c"
+        }
+      ],
+      "name": "@jridgewell/trace-mapping",
+      "origin": "https://registry.npmjs.org/@jridgewell/trace-mapping/-/trace-mapping-0.3.31.tgz",
+      "version": "0.3.31"
+    },
+    {
+      "declaredLicense": "ISC",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
+        }
+      ],
+      "name": "@lucide/vue",
+      "origin": "https://registry.npmjs.org/@lucide/vue/-/vue-1.47.0.tgz",
+      "version": "1.47.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+        }
+      ],
+      "name": "@noble/hashes",
+      "origin": "https://registry.npmjs.org/@noble/hashes/-/hashes-2.4.0.tgz",
+      "version": "2.4.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "95ced5ecf1133fbf41d409b5555c86c344f83f3b019926057ddbc07cfdcc27b3"
+        }
+      ],
+      "name": "@oxc-project/types",
+      "origin": "https://registry.npmjs.org/@oxc-project/types/-/types-0.148.0.tgz",
+      "version": "0.148.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734"
+        },
+        {
+          "name": "THIRD-PARTY-LICENSE",
+          "sha256": "a877291d800ed43692f3f9ae09d8e01cc6f7293ad39d43896059c188ffbb8b7c"
+        }
+      ],
+      "name": "@rolldown/binding-linux-x64-gnu",
+      "origin": "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.2.7.tgz (shared license and third-party notices from matching rolldown package)",
+      "version": "1.2.7"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "e1919b3b98b8bf6c1b99fcc60a0ed46027c97ac947432e1278446c9606f50161"
+        }
+      ],
+      "name": "@rolldown/pluginutils",
+      "origin": "https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz",
+      "version": "1.0.1"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985"
+        }
+      ],
+      "name": "@tailwindcss/node",
+      "origin": "https://registry.npmjs.org/@tailwindcss/node/-/node-4.3.3.tgz",
+      "version": "4.3.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985"
+        }
+      ],
+      "name": "@tailwindcss/oxide",
+      "origin": "https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.3.3.tgz",
+      "version": "4.3.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985"
+        }
+      ],
+      "name": "@tailwindcss/oxide-linux-x64-gnu",
+      "origin": "https://registry.npmjs.org/@tailwindcss/oxide-linux-x64-gnu/-/oxide-linux-x64-gnu-4.3.3.tgz",
+      "version": "4.3.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985"
+        }
+      ],
+      "name": "@tailwindcss/vite",
+      "origin": "https://registry.npmjs.org/@tailwindcss/vite/-/vite-4.3.3.tgz",
+      "version": "4.3.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "9db3f8ddd7031ab264b99bec49c221155d0c8649b53dd4aa007f2041d36cdf5f"
+        }
+      ],
+      "name": "@tanstack/match-sorter-utils",
+      "origin": "https://registry.npmjs.org/@tanstack/match-sorter-utils/-/match-sorter-utils-8.19.4.tgz",
+      "version": "8.19.4"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "a405ee70c632bb938acb7ac5f210e814409b3760ea9d2329d8ed8ffcfd11a0e7"
+        }
+      ],
+      "name": "@tanstack/query-core",
+      "origin": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.102.8.tgz",
+      "version": "5.102.8"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "a405ee70c632bb938acb7ac5f210e814409b3760ea9d2329d8ed8ffcfd11a0e7"
+        }
+      ],
+      "name": "@tanstack/vue-query",
+      "origin": "https://registry.npmjs.org/@tanstack/vue-query/-/vue-query-5.102.8.tgz",
+      "version": "5.102.8"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "vue-devtools-6.6.4-LICENSE.txt",
+          "sha256": "abd586fb7019a06aec2f1e0d75c849b225f3fc5f4e4fa1d1e261a72570089c14"
+        }
+      ],
+      "name": "@vue/devtools-api",
+      "origin": "https://github.com/vuejs/vue-devtools/blob/v6.6.4/LICENSE",
+      "version": "6.6.4"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "25b0ff5a880f9304341ba3ea38842972351256f5fe1dded3395ba1b464a8ca4e"
+        }
+      ],
+      "name": "vue-demi",
+      "origin": "https://registry.npmjs.org/vue-demi/-/vue-demi-0.14.10.tgz",
+      "version": "0.14.10"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ],
+      "name": "@types/node",
+      "origin": "https://registry.npmjs.org/@types/node/-/node-24.13.3.tgz",
+      "version": "24.13.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ],
+      "name": "@types/trusted-types",
+      "origin": "https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz",
+      "version": "2.0.7"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ],
+      "name": "@types/web-bluetooth",
+      "origin": "https://registry.npmjs.org/@types/web-bluetooth/-/web-bluetooth-0.0.21.tgz",
+      "version": "0.0.21"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/compiler-core",
+      "origin": "https://registry.npmjs.org/@vue/compiler-core/-/compiler-core-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/compiler-dom",
+      "origin": "https://registry.npmjs.org/@vue/compiler-dom/-/compiler-dom-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/compiler-sfc",
+      "origin": "https://registry.npmjs.org/@vue/compiler-sfc/-/compiler-sfc-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/compiler-ssr",
+      "origin": "https://registry.npmjs.org/@vue/compiler-ssr/-/compiler-ssr-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c"
+        }
+      ],
+      "name": "@vue/devtools-api",
+      "origin": "https://registry.npmjs.org/@vue/devtools-api/-/devtools-api-8.2.1.tgz",
+      "version": "8.2.1"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c"
+        }
+      ],
+      "name": "@vue/devtools-kit",
+      "origin": "https://registry.npmjs.org/@vue/devtools-kit/-/devtools-kit-8.2.1.tgz",
+      "version": "8.2.1"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c"
+        }
+      ],
+      "name": "@vue/devtools-shared",
+      "origin": "https://registry.npmjs.org/@vue/devtools-shared/-/devtools-shared-8.2.1.tgz",
+      "version": "8.2.1"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/reactivity",
+      "origin": "https://registry.npmjs.org/@vue/reactivity/-/reactivity-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/runtime-core",
+      "origin": "https://registry.npmjs.org/@vue/runtime-core/-/runtime-core-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/runtime-dom",
+      "origin": "https://registry.npmjs.org/@vue/runtime-dom/-/runtime-dom-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/server-renderer",
+      "origin": "https://registry.npmjs.org/@vue/server-renderer/-/server-renderer-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "@vue/shared",
+      "origin": "https://registry.npmjs.org/@vue/shared/-/shared-3.5.42.tgz",
+      "version": "3.5.42"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "0f844b1160603552a01662ac2999c14e5fb4df487e65619b9ed4406e43eb3c0b"
+        }
+      ],
+      "name": "@vueuse/core",
+      "origin": "https://registry.npmjs.org/@vueuse/core/-/core-14.4.0.tgz",
+      "version": "14.4.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "0f844b1160603552a01662ac2999c14e5fb4df487e65619b9ed4406e43eb3c0b"
+        }
+      ],
+      "name": "@vueuse/metadata",
+      "origin": "https://registry.npmjs.org/@vueuse/metadata/-/metadata-14.4.0.tgz",
+      "version": "14.4.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "0f844b1160603552a01662ac2999c14e5fb4df487e65619b9ed4406e43eb3c0b"
+        }
+      ],
+      "name": "@vueuse/shared",
+      "origin": "https://registry.npmjs.org/@vueuse/shared/-/shared-14.4.0.tgz",
+      "version": "14.4.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "e256f01188af527e4d06d21d06fbf785ae9c50d4b328bf03cbe0ba7f0aa4228f"
+        }
+      ],
+      "name": "@xterm/addon-fit",
+      "origin": "https://registry.npmjs.org/@xterm/addon-fit/-/addon-fit-0.11.0.tgz",
+      "version": "0.11.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd"
+        }
+      ],
+      "name": "@xterm/addon-serialize",
+      "origin": "https://github.com/xtermjs/xterm.js/blob/f447274f430fd22513f6adbf9862d19524471c04/LICENSE",
+      "version": "0.14.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "21b975c39532001d431dc3b2c29fbff691d83f370833a66b54698bda290fde0e"
+        }
+      ],
+      "name": "@xterm/addon-webgl",
+      "origin": "https://registry.npmjs.org/@xterm/addon-webgl/-/addon-webgl-0.19.0.tgz",
+      "version": "0.19.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd"
+        }
+      ],
+      "name": "@xterm/headless",
+      "origin": "https://github.com/xtermjs/xterm.js/blob/f447274f430fd22513f6adbf9862d19524471c04/LICENSE",
+      "version": "6.0.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd"
+        }
+      ],
+      "name": "@xterm/xterm",
+      "origin": "https://registry.npmjs.org/@xterm/xterm/-/xterm-6.0.0.tgz",
+      "version": "6.0.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "67cd5e903c1f908edfa27c25606fa806ce629d9a8ddb7d83019d9fd1f83f7fde"
+        }
+      ],
+      "name": "birpc",
+      "origin": "https://registry.npmjs.org/birpc/-/birpc-2.9.0.tgz",
+      "version": "2.9.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "11d55bd4541c75ee7879547ac49089c489163dae49551389713c3d026cab383e"
+        }
+      ],
+      "name": "csstype",
+      "origin": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
+      "version": "3.2.3"
+    },
+    {
+      "declaredLicense": "Apache-2.0",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+        }
+      ],
+      "name": "detect-libc",
+      "origin": "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz",
+      "version": "2.1.2"
+    },
+    {
+      "declaredLicense": "(MPL-2.0 OR Apache-2.0)",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "name": "LICENSE-MPL",
+          "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+        }
+      ],
+      "name": "dompurify",
+      "origin": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.15.tgz",
+      "version": "3.4.15"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "9068a8782d2fb4c6e432cfa25334efa56f722822180570802bf86e71b6003b1e"
+        }
+      ],
+      "name": "enhanced-resolve",
+      "origin": "https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.24.5.tgz",
+      "version": "5.24.5"
+    },
+    {
+      "declaredLicense": "BSD-2-Clause",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "cb992345949ccd6e8394b2cd6c465f7b897c864f845937dbf64e8997f389e164"
+        }
+      ],
+      "name": "entities",
+      "origin": "https://registry.npmjs.org/entities/-/entities-7.0.1.tgz",
+      "version": "7.0.1"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "8a6dcbabe7179f9c8489c08a7d874d0f1e093ae7449e03756ccf87cb9d0e296e"
+        }
+      ],
+      "name": "estree-walker",
+      "origin": "https://registry.npmjs.org/estree-walker/-/estree-walker-2.0.2.tgz",
+      "version": "2.0.2"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "9a39f2aadab11a3697edd668ff2d8ad885b649737b7ab4d3bf12b34e5ada0c86"
+        }
+      ],
+      "name": "fdir",
+      "origin": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
+      "version": "6.5.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE.md",
+          "sha256": "5ff46083b88563822b0560dd6221ab89d2f74bc97a52d4c97a75020fd62c6f32"
+        }
+      ],
+      "name": "framer-motion",
+      "origin": "https://registry.npmjs.org/framer-motion/-/framer-motion-13.2.0.tgz",
+      "version": "13.2.0"
+    },
+    {
+      "declaredLicense": "ISC",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "f65c5d9f22a317b2a10803bd1868461ce6499c2ed7217bc80c0cc772a748789c"
+        }
+      ],
+      "name": "graceful-fs",
+      "origin": "https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz",
+      "version": "4.2.11"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "770141e45620e8996621a0fe9c867042508f5f4b1382a2f8b3d7b576e3d01b22"
+        }
+      ],
+      "name": "hey-listen",
+      "origin": "https://registry.npmjs.org/hey-listen/-/hey-listen-1.0.8.tgz",
+      "version": "1.0.8"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE.md",
+          "sha256": "3555f8c47cbff86d199d5a5033afd5ef9560e0095927296af670a886b8b1988d"
+        }
+      ],
+      "name": "hookable",
+      "origin": "https://registry.npmjs.org/hookable/-/hookable-5.5.3.tgz",
+      "version": "5.5.3"
+    },
+    {
+      "declaredLicense": "ISC",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "873a2f333fda393ec3464f4579209b019d98e97c3bf498b10e85f630162fd708"
+        }
+      ],
+      "name": "idb",
+      "origin": "https://registry.npmjs.org/idb/-/idb-8.0.3.tgz",
+      "version": "8.0.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "46231df5a7733c3f52f11b71f3df61813007745b62b09031acfb45fb42d75082"
+        }
+      ],
+      "name": "jiti",
+      "origin": "https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz",
+      "version": "2.7.0"
+    },
+    {
+      "declaredLicense": "MPL-2.0",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e"
+        }
+      ],
+      "name": "lightningcss",
+      "origin": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.32.0.tgz",
+      "version": "1.32.0"
+    },
+    {
+      "declaredLicense": "MPL-2.0",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e"
+        }
+      ],
+      "name": "lightningcss-linux-x64-gnu",
+      "origin": "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.32.0.tgz",
+      "version": "1.32.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1cbe51b907662f6cb1492b16c359384a595180bf0e4d101603ed525e75c4e484"
+        }
+      ],
+      "name": "magic-string",
+      "origin": "https://registry.npmjs.org/magic-string/-/magic-string-0.30.21.tgz",
+      "version": "0.30.21"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE.md",
+          "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c"
+        }
+      ],
+      "name": "marked",
+      "origin": "https://registry.npmjs.org/marked/-/marked-14.0.0.tgz",
+      "version": "14.0.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "33e4ff1a06ef62ba21788ea162564ee8165269a24a9ce6ef301837447eab0ac6"
+        },
+        {
+          "name": "ThirdPartyNotices.txt",
+          "sha256": "790537262fc78a764e121e6b92b959bcd3f5c310b47d9d9b9e92e17fe0af5336"
+        }
+      ],
+      "name": "monaco-editor",
+      "origin": "https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.56.0.tgz",
+      "version": "0.56.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE.md",
+          "sha256": "1bf0dc3f7727723e5a032ed12164a47cf92c05204cb1a3485f123c24e2833ed1"
+        }
+      ],
+      "name": "motion-dom",
+      "origin": "https://registry.npmjs.org/motion-dom/-/motion-dom-13.2.0.tgz",
+      "version": "13.2.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE.md",
+          "sha256": "1bf0dc3f7727723e5a032ed12164a47cf92c05204cb1a3485f123c24e2833ed1"
+        }
+      ],
+      "name": "motion-utils",
+      "origin": "https://registry.npmjs.org/motion-utils/-/motion-utils-13.0.0.tgz",
+      "version": "13.0.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "cd2d7f6dc6b1c3820d8b1493d732f40f36d5487a502790ee9c5218d06fd3edd6"
+        }
+      ],
+      "name": "motion-v",
+      "origin": "https://registry.npmjs.org/motion-v/-/motion-v-2.4.2.tgz",
+      "version": "2.4.2"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "da4db1480d9beea3483a2eda5c53b22238d0827d57da162b48f122e04d2d9987"
+        }
+      ],
+      "name": "nanoid",
+      "origin": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.18.tgz",
+      "version": "3.3.18"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "acf17aff719bfab70f6bec3a93f1ba82ce9fe27ab74f83c0f2e1efb1273fa220"
+        }
+      ],
+      "name": "nostics",
+      "origin": "https://registry.npmjs.org/nostics/-/nostics-1.2.0.tgz",
+      "version": "1.2.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "46231df5a7733c3f52f11b71f3df61813007745b62b09031acfb45fb42d75082"
+        }
+      ],
+      "name": "perfect-debounce",
+      "origin": "https://registry.npmjs.org/perfect-debounce/-/perfect-debounce-2.1.0.tgz",
+      "version": "2.1.0"
+    },
+    {
+      "declaredLicense": "ISC",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "6582629e2979466878f6014313dcc2f3756c9616148682227ce3063dde310750"
+        }
+      ],
+      "name": "picocolors",
+      "origin": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+      "version": "1.1.1"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "d0cd141b0c322fded5dfad1d4645bb2fedfc05b7321fe1009469638190d59ef9"
+        }
+      ],
+      "name": "picomatch",
+      "origin": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.7.tgz",
+      "version": "4.0.7"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "91a2845c4db44e7497b514b98634a674c737986ad0db81599307cf733bf850b2"
+        }
+      ],
+      "name": "pinia",
+      "origin": "https://registry.npmjs.org/pinia/-/pinia-4.0.3.tgz",
+      "version": "4.0.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "5be1f3465bba68a626777f984878814aaf35e7ef8e9fd314d469bcf887050fb8"
+        }
+      ],
+      "name": "postcss",
+      "origin": "https://registry.npmjs.org/postcss/-/postcss-8.5.28.tgz",
+      "version": "8.5.28"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "d1a4d73a0c668a735b4a74e2858396a39cb3110ca14c9baff8136ab1b5a479ee"
+        }
+      ],
+      "name": "remove-accents",
+      "origin": "https://registry.npmjs.org/remove-accents/-/remove-accents-0.5.0.tgz",
+      "version": "0.5.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734"
+        },
+        {
+          "name": "THIRD-PARTY-LICENSE",
+          "sha256": "a877291d800ed43692f3f9ae09d8e01cc6f7293ad39d43896059c188ffbb8b7c"
+        }
+      ],
+      "name": "rolldown",
+      "origin": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.7.tgz",
+      "version": "1.2.7"
+    },
+    {
+      "declaredLicense": "BSD-3-Clause",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "6cb0631f71c7749763fd3dd1d5bee52dd1070ec17f2edc1710079ad070bd2fbd"
+        }
+      ],
+      "name": "source-map-js",
+      "origin": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+      "version": "1.2.1"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985"
+        }
+      ],
+      "name": "tailwindcss",
+      "origin": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.3.tgz",
+      "version": "4.3.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "824ef6c33ae5ecbbab65d37f2b37da2bfc81d76cf7676ec0f59d00a0a38bdb75"
+        }
+      ],
+      "name": "tapable",
+      "origin": "https://registry.npmjs.org/tapable/-/tapable-2.3.3.tgz",
+      "version": "2.3.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "22c68811e174cbbfb3813d4135918df4f540959c14d872e601d9abe83d3cde8f"
+        }
+      ],
+      "name": "tinyglobby",
+      "origin": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.17.tgz",
+      "version": "0.2.17"
+    },
+    {
+      "declaredLicense": "0BSD",
+      "files": [
+        {
+          "name": "CopyrightNotice.txt",
+          "sha256": "da16ddb65f8ca390998fb99223d0112498b56b45784d00afd77ff8ce1ac4de8b"
+        },
+        {
+          "name": "LICENSE.txt",
+          "sha256": "210b19e543130388c68654b7497e967119ce17145f66ab7d85688fbd70f08751"
+        }
+      ],
+      "name": "tslib",
+      "origin": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
+      "version": "2.8.1"
+    },
+    {
+      "declaredLicense": "Apache-2.0",
+      "files": [
+        {
+          "name": "LICENSE.txt",
+          "sha256": "a7d00bfd54525bc694b6e32f64c7ebcf5e6b7ae3657be5cc12767bce74654a47"
+        },
+        {
+          "name": "ThirdPartyNoticeText.txt",
+          "sha256": "1af3c68039c57e539422da82a4faada506ce6d0ea6f90e0b699d02dbcdb7a90c"
+        }
+      ],
+      "name": "typescript",
+      "origin": "https://registry.npmjs.org/typescript/-/typescript-6.0.3.tgz",
+      "version": "6.0.3"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27"
+        }
+      ],
+      "name": "undici-types",
+      "origin": "https://registry.npmjs.org/undici-types/-/undici-types-7.18.2.tgz",
+      "version": "7.18.2"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE.md",
+          "sha256": "387dd7baa307083401a27c58c362c30832f5ba1dba84f10cc22c33401523f45c"
+        }
+      ],
+      "name": "vite",
+      "origin": "https://registry.npmjs.org/vite/-/vite-8.2.2.tgz",
+      "version": "8.2.2"
+    },
+    {
+      "declaredLicense": "MPL-2.0",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e"
+        }
+      ],
+      "name": "lightningcss",
+      "origin": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.33.0.tgz",
+      "version": "1.33.0"
+    },
+    {
+      "declaredLicense": "MPL-2.0",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e"
+        }
+      ],
+      "name": "lightningcss-linux-x64-gnu",
+      "origin": "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.33.0.tgz",
+      "version": "1.33.0"
+    },
+    {
+      "declaredLicense": "MIT",
+      "files": [
+        {
+          "name": "LICENSE",
+          "sha256": "1bb85cc9b13b81ef41c81c51866172fc345e0503c86726a6755b796590b70175"
+        }
+      ],
+      "name": "vue",
+      "origin": "https://registry.npmjs.org/vue/-/vue-3.5.42.tgz",
+      "version": "3.5.42"
+    }
+  ],
+  "uninstalledOptionalPackages": [
+    "node_modules/@rolldown/binding-android-arm-eabi",
+    "node_modules/@rolldown/binding-android-arm64",
+    "node_modules/@rolldown/binding-darwin-arm64",
+    "node_modules/@rolldown/binding-darwin-x64",
+    "node_modules/@rolldown/binding-freebsd-x64",
+    "node_modules/@rolldown/binding-linux-arm-gnueabihf",
+    "node_modules/@rolldown/binding-linux-arm64-gnu",
+    "node_modules/@rolldown/binding-linux-arm64-musl",
+    "node_modules/@rolldown/binding-linux-ppc64-gnu",
+    "node_modules/@rolldown/binding-linux-s390x-gnu",
+    "node_modules/@rolldown/binding-linux-x64-musl",
+    "node_modules/@rolldown/binding-openharmony-arm64",
+    "node_modules/@rolldown/binding-win32-arm64-msvc",
+    "node_modules/@rolldown/binding-win32-x64-msvc",
+    "node_modules/@tailwindcss/oxide-android-arm64",
+    "node_modules/@tailwindcss/oxide-darwin-arm64",
+    "node_modules/@tailwindcss/oxide-darwin-x64",
+    "node_modules/@tailwindcss/oxide-freebsd-x64",
+    "node_modules/@tailwindcss/oxide-linux-arm-gnueabihf",
+    "node_modules/@tailwindcss/oxide-linux-arm64-gnu",
+    "node_modules/@tailwindcss/oxide-linux-arm64-musl",
+    "node_modules/@tailwindcss/oxide-linux-x64-musl",
+    "node_modules/@tailwindcss/oxide-wasm32-wasi",
+    "node_modules/@tailwindcss/oxide-win32-arm64-msvc",
+    "node_modules/@tailwindcss/oxide-win32-x64-msvc",
+    "node_modules/fsevents",
+    "node_modules/lightningcss-android-arm64",
+    "node_modules/lightningcss-darwin-arm64",
+    "node_modules/lightningcss-darwin-x64",
+    "node_modules/lightningcss-freebsd-x64",
+    "node_modules/lightningcss-linux-arm-gnueabihf",
+    "node_modules/lightningcss-linux-arm64-gnu",
+    "node_modules/lightningcss-linux-arm64-musl",
+    "node_modules/lightningcss-linux-x64-musl",
+    "node_modules/lightningcss-win32-arm64-msvc",
+    "node_modules/lightningcss-win32-x64-msvc",
+    "node_modules/vite/node_modules/lightningcss-android-arm64",
+    "node_modules/vite/node_modules/lightningcss-darwin-arm64",
+    "node_modules/vite/node_modules/lightningcss-darwin-x64",
+    "node_modules/vite/node_modules/lightningcss-freebsd-x64",
+    "node_modules/vite/node_modules/lightningcss-linux-arm-gnueabihf",
+    "node_modules/vite/node_modules/lightningcss-linux-arm64-gnu",
+    "node_modules/vite/node_modules/lightningcss-linux-arm64-musl",
+    "node_modules/vite/node_modules/lightningcss-linux-x64-musl",
+    "node_modules/vite/node_modules/lightningcss-win32-arm64-msvc",
+    "node_modules/vite/node_modules/lightningcss-win32-x64-msvc"
+  ]
+}

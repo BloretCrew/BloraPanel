@@ -1,0 +1,47 @@
+{
+  "name": "@blora/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "overrides": {
+    "monaco-editor": {
+      "dompurify": "3.4.15"
+    }
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "check": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:real": "playwright test --config playwright.real.config.ts"
+  },
+  "dependencies": {
+    "@lucide/vue": "1.47.0",
+    "@noble/hashes": "2.4.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/vue-query": "5.102.8",
+    "@vueuse/core": "14.4.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-serialize": "0.14.0",
+    "@xterm/addon-webgl": "0.19.0",
+    "@xterm/headless": "6.0.0",
+    "@xterm/xterm": "6.0.0",
+    "idb": "8.0.3",
+    "monaco-editor": "0.56.0",
+    "motion-v": "2.4.2",
+    "pinia": "4.0.3",
+    "tailwindcss": "4.3.3",
+    "vue": "3.5.42"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.13.3",
+    "@vitejs/plugin-vue": "6.0.8",
+    "fake-indexeddb": "6.2.5",
+    "typescript": "6.0.3",
+    "vite": "8.2.2",
+    "vitest": "5.0.0",
+    "vue-tsc": "3.3.11"
+  }
+}

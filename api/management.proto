@@ -1,0 +1,44 @@
+syntax = "proto3";
+package blora.management.v1;
+option go_package = "blora.dev/panel/internal/protocol";
+
+// One physical, authenticated WSS connection carries one Channel only.
+enum Channel {
+  CHANNEL_UNSPECIFIED = 0;
+  CHANNEL_CONTROL = 1;
+  CHANNEL_INTERACTIVE = 2;
+  CHANNEL_BULK = 3;
+}
+enum MessageType {
+  MESSAGE_UNSPECIFIED = 0;
+  OPEN = 1;
+  OPEN_ACK = 2;
+  DATA = 3;
+  CREDIT = 4;
+  ACK = 5;
+  RESIZE = 6;
+  CLOSE = 7;
+  RESET = 8;
+  ERROR = 9;
+  RESUME = 10;
+  PING = 11;
+  PONG = 12;
+  TASK_EVENT = 13;
+  SNAPSHOT = 14;
+}
+message Envelope {
+  uint32 protocol_version = 1;
+  uint64 generation = 2;
+  Channel channel = 3;
+  string request_id = 4;
+  string run_id = 5;
+  string stream_id = 6;
+  MessageType type = 7;
+  // DATA sequence is the exclusive byte end offset, separately per direction.
+  // ACK sequence is the cumulative byte offset actually consumed.
+  // TASK_EVENT sequence is the resource revision, never a byte offset.
+  uint64 sequence = 8;
+  bytes payload = 9;
+  // ACK replenishes exactly sequence - previous ACK, never socket-write bytes.
+  uint64 credit = 10;
+}

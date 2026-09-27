@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="paper" cx=".18" cy=".13" r="1.05"><stop stop-color="#faf8f3"/><stop offset=".63" stop-color="#e8e3db"/><stop offset="1" stop-color="#d5d2c9"/></radialGradient>
+    <radialGradient id="sand" cx=".08" cy=".9" r=".7"><stop stop-color="#d9cbbd" stop-opacity=".65"/><stop offset="1" stop-color="#e6e2dc" stop-opacity="0"/></radialGradient>
+    <radialGradient id="sage" cx=".9" cy=".38" r=".65"><stop stop-color="#c8d2cc" stop-opacity=".36"/><stop offset="1" stop-color="#d7ddd7" stop-opacity="0"/></radialGradient>
+    <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".82" numOctaves="3" seed="17" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+  </defs>
+  <path fill="url(#paper)" d="M0 0h1600v1000H0z"/><path fill="url(#sand)" d="M0 0h1600v1000H0z"/><path fill="url(#sage)" d="M0 0h1600v1000H0z"/>
+  <path filter="url(#grain)" opacity=".025" d="M0 0h1600v1000H0z"/>
+</svg>

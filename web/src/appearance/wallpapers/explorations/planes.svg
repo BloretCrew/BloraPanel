@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <!-- Orthogonal architectural planes with a calm right edge. -->
+  <defs>
+    <linearGradient id="ambient" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ecf0ec"/>
+      <stop offset="1" stop-color="#e6ebe9"/>
+    </linearGradient>
+    <linearGradient id="stone" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#f8f8f2"/>
+      <stop offset="1" stop-color="#e8ece8"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#ambient)" d="M0 0h1600v1000H0z"/>
+  <path fill="#c5d3d0" d="M0 0h353v1000H0z"/>
+  <path fill="#e0e7e3" d="M353 0h447v1000H353z"/>
+  <path fill="#a9beb9" d="M0 0h224v1000H0z"/>
+  <path fill="#94aaa4" d="M34 199h149v421H34z"/>
+  <path fill="#bfd0c8" d="M43 208h131v403H43z"/>
+  <path d="M108 208v403M43 470h131" fill="none" stroke="#eaf2eb" stroke-opacity=".45" stroke-width="2"/>
+  <path fill="#f8f7f0" d="M224 0h222v1000H224z"/>
+  <path fill="url(#stone)" d="M446 0h272v795H446z"/>
+  <path fill="#b7c8c3" d="M718 0h57v1000h-57z"/>
+  <path fill="#d1ddd8" d="M775 0h74v1000h-74z"/>
+  <path d="M0 760h718v240H0z" fill="#d8e0d9"/>
+  <path d="M0 760h718v10H0z" fill="#9eb4ad" fill-opacity=".38"/>
+  <path d="M224 0v760M446 0v760M718 0v795" fill="none" stroke="#ffffff" stroke-opacity=".64" stroke-width="2"/>
+  <path d="M849 0h3v1000h-3z" fill="#f8faf7" fill-opacity=".82"/>
+  <path d="M58 134h102v3H58zm0 25h68v3H58z" fill="#d7e7e2" fill-opacity=".84"/>
+  <path d="M0 760h718" fill="none" stroke="#ffffff" stroke-opacity=".72" stroke-width="2"/>
+</svg>

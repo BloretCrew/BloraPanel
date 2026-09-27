@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="studio" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#e8e8e3"/><stop offset=".69" stop-color="#e0e1dc"/><stop offset="1" stop-color="#d5d8d3"/>
+    </linearGradient>
+    <linearGradient id="table" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#e9e8e0"/><stop offset="1" stop-color="#d8d8d0"/>
+    </linearGradient>
+    <linearGradient id="amber-face" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#b19b77" stop-opacity=".65"/>
+      <stop offset=".12" stop-color="#d5c4a0" stop-opacity=".44"/>
+      <stop offset=".57" stop-color="#d5be98" stop-opacity=".57"/>
+      <stop offset=".94" stop-color="#94856d" stop-opacity=".64"/>
+      <stop offset="1" stop-color="#f8f3e3" stop-opacity=".85"/>
+    </linearGradient>
+    <linearGradient id="glass-face" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#4b777e" stop-opacity=".61"/>
+      <stop offset=".08" stop-color="#c9dddd" stop-opacity=".38"/>
+      <stop offset=".32" stop-color="#99b7ba" stop-opacity=".32"/>
+      <stop offset=".67" stop-color="#668e96" stop-opacity=".39"/>
+      <stop offset=".91" stop-color="#aecbd0" stop-opacity=".31"/>
+      <stop offset="1" stop-color="#2f555e" stop-opacity=".77"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#f8f9f3" stop-opacity=".5"/>
+      <stop offset=".4" stop-color="#fffefa" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#6c9398" stop-opacity=".52"/>
+    </linearGradient>
+    <linearGradient id="flute-rib" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#315a63" stop-opacity=".19"/>
+      <stop offset=".11" stop-color="#f8fff9" stop-opacity=".23"/>
+      <stop offset=".34" stop-color="#e5f6f2" stop-opacity=".04"/>
+      <stop offset=".62" stop-color="#fffefa" stop-opacity=".22"/>
+      <stop offset=".84" stop-color="#46717a" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#315a63" stop-opacity=".2"/>
+    </linearGradient>
+    <pattern id="flutes" width="57" height="1000" patternUnits="userSpaceOnUse">
+      <path fill="url(#flute-rib)" d="M0 0h57v1000H0z"/>
+    </pattern>
+    <filter id="surface-noise" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".38" numOctaves="2" seed="14" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <filter id="soft-shadow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="27"/>
+    </filter>
+    <filter id="frost" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="17"/>
+    </filter>
+    <clipPath id="glass-clip">
+      <path d="M319 103c15-17 36-27 60-28l477-30c34-2 61 22 63 57l42 691c3 36-21 63-56 65l-469 29c-33 2-60-21-62-55L300 162c-2-23 4-43 19-59Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- A quiet studio surface, with a real horizontal horizon rather than a graphic sweep. -->
+  <path fill="url(#studio)" d="M0 0h1600v1000H0z"/>
+  <path d="M0 742h1600v258H0z" fill="url(#table)"/>
+  <path d="M0 742h1600" stroke="#f8f8f2" stroke-opacity=".84" stroke-width="2"/>
+  <path fill="#f7f7f2" filter="url(#surface-noise)" opacity=".055" d="M0 0h1600v1000H0z"/>
+
+  <!-- Low, diffuse shadows ground the objects on the tabletop. -->
+  <path d="M178 839c330-73 672-73 940 21 82 29 96 79 28 101-254 85-785 32-1018-35-92-26-66-62 50-87Z" fill="#59676a" fill-opacity=".33" filter="url(#soft-shadow)"/>
+  <path d="M120 846c207-32 507-18 625 25 72 26 48 46-24 62-190 43-478 11-625-35-75-24-49-41 24-52Z" fill="#88785e" fill-opacity=".22" filter="url(#soft-shadow)"/>
+
+  <!-- Rear sheet: a warm, thick piece of translucent cast resin. -->
+  <path d="M-81-51 342-75 413 807c4 35-17 61-49 66L41 919c-33 5-63-18-67-52Z" fill="#6d634f" fill-opacity=".39"/>
+  <path d="M-101-64 315-89 389 790c3 38-17 63-52 68L18 900c-36 5-62-17-66-55Z" fill="url(#amber-face)" stroke="#f1e6d0" stroke-opacity=".65" stroke-width="3"/>
+  <path d="M-52 831c7 44 33 72 70 69l319-42c27-4 49-23 52-50l23 15c4 35-17 62-50 67L36 936c-35 5-64-16-70-55Z" fill="#786d56" fill-opacity=".46"/>
+  <path d="M314-88 389 790c3 38-17 63-52 68" fill="none" stroke="#fcf6e8" stroke-opacity=".7" stroke-width="8"/>
+  <path d="M338-91 413 790c4 46-22 78-53 82" fill="none" stroke="#72634e" stroke-opacity=".29" stroke-width="13"/>
+  <path d="M-17-52 48 884" fill="none" stroke="#f6e8c9" stroke-opacity=".2" stroke-width="30" filter="url(#frost)"/>
+
+  <!-- Color is seen *through* the central glass, with blur and offset at its edge. -->
+  <g clip-path="url(#glass-clip)" filter="url(#frost)" opacity=".78">
+    <path d="M365 59 566 43l63 843-187 19Z" fill="#789ca0" fill-opacity=".52"/>
+    <path d="M596 53 760 44l87 787-145 56Z" fill="#dccead" fill-opacity=".46"/>
+    <path d="M767 51 931 43l43 802-95 41Z" fill="#406e78" fill-opacity=".43"/>
+    <path d="M330 496 935 430l35 157-614 84Z" fill="#d6e4df" fill-opacity=".38"/>
+  </g>
+
+  <!-- Central cast-glass slab; its face is subdued and its physical thickness visible. -->
+  <path d="M339 119c16-17 37-26 60-27l471-29c43-3 73 26 77 68l40 671c3 45-24 75-67 78l-452 27c-43 3-74-25-77-68L319 178c-3-24 4-44 20-59Z" fill="#3a6068" fill-opacity=".42"/>
+  <path d="M319 103c15-17 36-27 60-28l477-30c34-2 61 22 63 57l42 691c3 36-21 63-56 65l-469 29c-33 2-60-21-62-55L300 162c-2-23 4-43 19-59Z" fill="url(#glass-face)" stroke="url(#edge)" stroke-width="4"/>
+  <path d="M319 103c15-17 36-27 60-28l477-30c34-2 61 22 63 57l42 691c3 36-21 63-56 65l-469 29c-33 2-60-21-62-55L300 162c-2-23 4-43 19-59Z" fill="url(#flutes)"/>
+  <path d="M856 45c35-2 61 22 63 57l42 691c3 36-21 63-56 65l-469 29 32 20 452-27c43-3 70-33 67-78l-40-671c-4-42-34-71-77-68Z" fill="#315f69" fill-opacity=".42"/>
+  <path d="M376 77 855 47" stroke="#fffefa" stroke-opacity=".82" stroke-width="5"/>
+  <path d="M300 163 374 833c3 34 29 57 62 55" fill="none" stroke="#eff9f3" stroke-opacity=".66" stroke-width="7"/>
+  <path d="M917 103 960 792c2 33-19 62-55 66" fill="none" stroke="#e7f3ec" stroke-opacity=".38" stroke-width="10"/>
+  <path d="M371 774c175-72 336-102 574-99" fill="none" stroke="#e1f3eb" stroke-opacity=".12" stroke-width="80" filter="url(#frost)"/>
+
+  <!-- Fine cast-glass waviness and interrupted internal reflection, never a broad painted glare. -->
+  <g clip-path="url(#glass-clip)">
+    <path d="M518 40c-34 210-28 424 10 836" stroke="#f8fff7" stroke-opacity=".13" stroke-width="27" fill="none" filter="url(#frost)"/>
+    <path d="M655 40c17 250 37 490 18 842" stroke="#274c57" stroke-opacity=".1" stroke-width="18" fill="none" filter="url(#frost)"/>
+    <path d="M748 37c-8 185 26 416 35 840" stroke="#e5f6ed" stroke-opacity=".15" stroke-width="13" fill="none" filter="url(#frost)"/>
+    <path d="M305 714c224-54 415-44 654-75" stroke="#f5fff3" stroke-opacity=".12" stroke-width="48" fill="none" filter="url(#frost)"/>
+    <path d="M310 142h650v740H310z" fill="#eff9f4" filter="url(#surface-noise)" opacity=".14"/>
+  </g>
+
+  <!-- The right side intentionally stays quiet behind app labels. -->
+  <path fill="#edf0eb" fill-opacity=".43" d="M1190 0h410v1000h-410z"/>
+</svg>

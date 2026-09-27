@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <filter id="paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".82" numOctaves="3" seed="17" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <filter id="ink-edge" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".018 .052" numOctaves="3" seed="9" result="rough"/>
+      <feDisplacementMap in="SourceGraphic" in2="rough" scale="24" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="ink-wash" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="12" result="soft"/>
+      <feTurbulence type="fractalNoise" baseFrequency=".008 .026" numOctaves="3" seed="3" result="grain"/>
+      <feDisplacementMap in="soft" in2="grain" scale="46" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <linearGradient id="wash" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#28373a" stop-opacity=".39"/>
+      <stop offset=".52" stop-color="#3c4646" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#737574" stop-opacity=".04"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Warm uncoated stock. The visible fiber/noise is part of the art, not a UI overlay. -->
+  <path fill="#ede8dd" d="M0 0h1600v1000H0z"/>
+  <path fill="#f3efe6" d="M0 0h1600v1000H0z" filter="url(#paper)" opacity=".13"/>
+  <path fill="#f2ede3" fill-opacity=".45" d="M1140 0h460v1000h-460z"/>
+
+  <!-- Ink soaked into the paper under the dry brush. -->
+  <g filter="url(#ink-wash)">
+    <path d="M393 201c170-112 386-108 563 38 114 93 155 241 125 379-40 183-176 277-348 304-166 26-378-53-457-186C159 542 214 312 393 201Z" fill="url(#wash)"/>
+    <path d="M390 325c153-122 371-157 510-59 81 58 108 141 95 227-26 173-166 251-336 238-189-15-343-145-312-297 9-44 22-78 43-109Z" fill="#64706e" fill-opacity=".08"/>
+    <path d="M-75 795c216-111 401-117 546-47 103 51 236 56 403-11l87 142c-224 111-359 85-501 26-126-53-286-38-535 55Z" fill="#303b3b" fill-opacity=".18"/>
+  </g>
+
+  <!-- The incomplete, uneven circle has multiple deposits and lift-off marks. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#ink-edge)">
+    <path d="M975 300c-67-92-193-147-337-143-158 4-304 77-378 199-81 135-59 311 54 410 122 109 317 132 482 58 142-64 233-189 249-318" stroke="#273438" stroke-opacity=".88" stroke-width="42"/>
+    <path d="M955 277c-91-108-259-145-414-100-136 39-240 133-278 249-55 168 20 324 163 391" stroke="#1e2c31" stroke-opacity=".5" stroke-width="20"/>
+    <path d="M345 735c113 111 312 139 484 62 131-59 218-169 230-272" stroke="#121d21" stroke-opacity=".69" stroke-width="15"/>
+    <path d="M920 245c89 63 133 148 147 238" stroke="#4c5655" stroke-opacity=".31" stroke-width="12"/>
+    <path d="M1003 598c-17 98-95 179-183 215" stroke="#87908c" stroke-opacity=".32" stroke-width="9"/>
+  </g>
+
+  <!-- Dry bristle gaps, not a machine-perfect stroke. -->
+  <g fill="none" stroke="#e9e6dc" stroke-linecap="round" opacity=".62">
+    <path d="M350 243c58-43 125-69 206-77" stroke-width="2"/>
+    <path d="M302 296c-28 48-47 83-58 126" stroke-width="3"/>
+    <path d="M230 478c-8 71 14 137 37 174" stroke-width="2"/>
+    <path d="M432 813c48 29 102 38 157 45" stroke-width="3"/>
+    <path d="M629 859c86-3 161-24 221-53" stroke-width="2"/>
+    <path d="M887 774c64-43 104-92 128-151" stroke-width="2"/>
+    <path d="M983 333c40 52 61 104 65 155" stroke-width="2"/>
+  </g>
+
+  <!-- Small flecks stay around the brush, leaving the application column calm. -->
+  <g fill="#293538">
+    <path d="M184 299c7-5 20-3 23 7 1 8-8 14-16 12-10-2-15-12-7-19Z" opacity=".53"/>
+    <path d="M171 386c5-4 12-1 12 5-1 7-9 10-14 6-4-4-3-8 2-11Z" opacity=".41"/>
+    <path d="M254 174c5-3 11-1 13 5 1 6-6 11-12 9-6-2-7-10-1-14Z" opacity=".36"/>
+    <path d="M1041 284c6-5 18-4 23 2 8 11-4 22-15 18-10-2-16-13-8-20Z" opacity=".45"/>
+    <path d="M1098 399c8-6 16 0 15 8-2 7-11 10-16 5-4-4-3-9 1-13Z" opacity=".42"/>
+    <path d="M1089 721c9-8 20-3 19 8-1 11-16 13-21 5-3-6-3-9 2-13Z" opacity=".43"/>
+    <path d="M286 856c8-8 20-6 24 5 3 10-10 18-19 12-7-4-10-11-5-17Z" opacity=".32"/>
+    <circle cx="224" cy="252" r="3" opacity=".45"/><circle cx="1104" cy="487" r="3" opacity=".47"/>
+    <circle cx="171" cy="709" r="4" opacity=".25"/><circle cx="331" cy="887" r="2" opacity=".46"/>
+  </g>
+</svg>

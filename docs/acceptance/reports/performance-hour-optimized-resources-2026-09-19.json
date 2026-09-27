@@ -1,0 +1,2076 @@
+[
+  {
+    "utc": "2026-09-19T14:17:29.613382+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33865728
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27025408
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 25788416
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 5,
+        "bytes": 5139376,
+        "first": "00000000000000000001.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 5,
+        "bytes": 5186024,
+        "first": "00000000000000000001.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:18:29.678759+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33386496
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 25759744
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 25878528
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 10,
+        "bytes": 10361410,
+        "first": "00000000000000000001.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 10,
+        "bytes": 10401520,
+        "first": "00000000000000000001.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:19:29.743112+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33943552
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26292224
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 26099712
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 15,
+        "bytes": 15557988,
+        "first": "00000000000000000001.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 15,
+        "bytes": 15594668,
+        "first": "00000000000000000001.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:20:29.819862+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33427456
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26210304
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27123712
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16560692,
+        "first": "00000000000000003968.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16600194,
+        "first": "00000000000000003979.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:21:29.854752+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34385920
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26836992
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 26476544
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16506702,
+        "first": "00000000000000008877.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16520490,
+        "first": "00000000000000008859.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:22:29.876180+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 32362496
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26349568
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 26427392
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16449824,
+        "first": "00000000000000013792.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16456494,
+        "first": "00000000000000013746.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:23:29.901320+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33869824
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26566656
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 26992640
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16369670,
+        "first": "00000000000000018687.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16380636,
+        "first": "00000000000000018622.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:24:29.922624+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34131968
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26267648
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27324416
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16306024,
+        "first": "00000000000000023575.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16288748,
+        "first": "00000000000000023530.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:25:29.942316+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33447936
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27504640
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27230208
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16225326,
+        "first": "00000000000000026993.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16219558,
+        "first": "00000000000000026911.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:26:29.966247+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33935360
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26796032
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27369472
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16132954,
+        "first": "00000000000000031911.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16123756,
+        "first": "00000000000000031818.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:27:29.985939+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33067008
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26349568
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27729920
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16024430,
+        "first": "00000000000000036892.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16008722,
+        "first": "00000000000000036772.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:28:30.008955+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33570816
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26947584
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27537408
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15919948,
+        "first": "00000000000000041882.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15908246,
+        "first": "00000000000000041743.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:29:30.031733+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33947648
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27140096
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27758592
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15831110,
+        "first": "00000000000000046880.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15815048,
+        "first": "00000000000000046736.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:30:30.052722+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33570816
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26882048
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27566080
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15740992,
+        "first": "00000000000000051840.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 17,
+        "bytes": 16773566,
+        "first": "00000000000000050692.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:31:30.069705+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 36245504
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26640384
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27828224
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16369932,
+        "first": "00000000000000055771.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16326646,
+        "first": "00000000000000055613.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:32:30.085990+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 36798464
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26656768
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 27889664
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16306680,
+        "first": "00000000000000060768.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16266858,
+        "first": "00000000000000060592.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:33:30.112943+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35246080
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27414528
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 28024832
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16223060,
+        "first": "00000000000000065673.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16168524,
+        "first": "00000000000000065547.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:34:30.131981+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35475456
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26312704
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 28540928
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16108786,
+        "first": "00000000000000069428.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16059578,
+        "first": "00000000000000069318.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:35:30.151687+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35655680
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27189248
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 28340224
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16007074,
+        "first": "00000000000000074365.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15981074,
+        "first": "00000000000000074232.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:36:30.185647+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34963456
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26656768
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 28512256
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15849344,
+        "first": "00000000000000079363.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15846140,
+        "first": "00000000000000079247.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:37:30.215379+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 36868096
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27299840
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 28889088
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15750016,
+        "first": "00000000000000084309.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15754660,
+        "first": "00000000000000084122.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:38:30.232604+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35631104
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26292224
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29540352
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16703126,
+        "first": "00000000000000086964.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16706136,
+        "first": "00000000000000086792.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:39:30.250860+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35078144
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 28057600
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29061120
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16604184,
+        "first": "00000000000000091892.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16603284,
+        "first": "00000000000000091738.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:40:30.271576+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35991552
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26513408
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 28909568
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16445368,
+        "first": "00000000000000096315.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16454760,
+        "first": "00000000000000096200.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:41:30.293537+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35401728
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26505216
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29253632
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16322892,
+        "first": "00000000000000101332.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16364184,
+        "first": "00000000000000101210.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:42:30.318510+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34934784
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26050560
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29315072
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16207700,
+        "first": "00000000000000106297.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16251136,
+        "first": "00000000000000106184.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:43:30.340851+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35176448
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27172864
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29708288
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16042237,
+        "first": "00000000000000110083.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16095766,
+        "first": "00000000000000110011.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:44:30.362078+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35303424
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27127808
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29454336
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15959322,
+        "first": "00000000000000113554.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16021354,
+        "first": "00000000000000113468.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:45:30.392855+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35160064
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26341376
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29790208
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15858554,
+        "first": "00000000000000118494.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15919242,
+        "first": "00000000000000118480.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:46:30.413255+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34975744
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26161152
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29532160
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15754192,
+        "first": "00000000000000122914.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15808304,
+        "first": "00000000000000122882.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:47:30.435682+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35545088
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27029504
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29921280
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16692442,
+        "first": "00000000000000126860.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16758294,
+        "first": "00000000000000126871.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:48:30.455973+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34603008
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26243072
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30396416
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16513224,
+        "first": "00000000000000131842.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16602196,
+        "first": "00000000000000131846.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:49:30.478244+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35012608
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26816512
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29941760
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16390176,
+        "first": "00000000000000136858.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16499704,
+        "first": "00000000000000136916.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:50:30.499804+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34603008
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27488256
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29908992
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16266104,
+        "first": "00000000000000141867.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16397046,
+        "first": "00000000000000141904.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:51:30.521155+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35700736
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26689536
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29523968
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16172447,
+        "first": "00000000000000146738.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16309417,
+        "first": "00000000000000146739.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:52:30.542654+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35688448
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26750976
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30085120
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16080440,
+        "first": "00000000000000151308.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16220512,
+        "first": "00000000000000151220.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:53:30.569343+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35192832
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27025408
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30154752
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15981134,
+        "first": "00000000000000156283.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16136438,
+        "first": "00000000000000156217.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:54:30.589474+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35454976
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27451392
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29921280
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15845328,
+        "first": "00000000000000161275.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15990308,
+        "first": "00000000000000161207.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:55:30.611018+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35311616
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27025408
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29896704
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15772420,
+        "first": "00000000000000166251.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15913234,
+        "first": "00000000000000166181.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:56:30.634449+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35500032
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26570752
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30154752
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16749704,
+        "first": "00000000000000168911.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15845244,
+        "first": "00000000000000169814.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:57:30.655267+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34709504
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26513408
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30035968
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16649772,
+        "first": "00000000000000173921.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15758169,
+        "first": "00000000000000174394.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:58:30.673031+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35483648
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 28008448
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29831168
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16574496,
+        "first": "00000000000000178367.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16726558,
+        "first": "00000000000000178254.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T14:59:30.690063+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35524608
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27062272
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29671424
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16464946,
+        "first": "00000000000000183359.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16634770,
+        "first": "00000000000000183245.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:00:30.709960+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34627584
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26558464
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29949952
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16314204,
+        "first": "00000000000000188364.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16499512,
+        "first": "00000000000000188236.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:01:30.732088+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34402304
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26329088
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30265344
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16206988,
+        "first": "00000000000000193286.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16394514,
+        "first": "00000000000000193201.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:02:30.753453+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33554432
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26656768
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29515776
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16116256,
+        "first": "00000000000000198247.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16307116,
+        "first": "00000000000000198154.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:03:30.773749+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34242560
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26337280
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30253056
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16022376,
+        "first": "00000000000000202643.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16205542,
+        "first": "00000000000000202543.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:04:30.791983+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35442688
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27557888
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29884416
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15936328,
+        "first": "00000000000000207643.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16116958,
+        "first": "00000000000000207509.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:05:30.823837+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34557952
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27635712
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30380032
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15833590,
+        "first": "00000000000000212615.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16006688,
+        "first": "00000000000000212476.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:06:30.843875+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35590144
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27045888
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30056448
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16649568,
+        "first": "00000000000000216624.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15772970,
+        "first": "00000000000000217463.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:07:30.866116+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35635200
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26546176
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29528064
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16540504,
+        "first": "00000000000000221591.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16702768,
+        "first": "00000000000000221449.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:08:30.891328+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34541568
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26439680
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29696000
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15858204,
+        "first": "00000000000000226563.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16046564,
+        "first": "00000000000000226368.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:09:30.916112+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33394688
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27209728
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29573120
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 15787076,
+        "first": "00000000000000229692.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15958702,
+        "first": "00000000000000229498.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:10:30.940369+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33722368
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26423296
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29601792
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16756876,
+        "first": "00000000000000233673.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15877202,
+        "first": "00000000000000234447.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:11:30.961278+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34217984
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26759168
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29405184
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16671608,
+        "first": "00000000000000236799.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 15782442,
+        "first": "00000000000000237518.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:12:30.979791+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34734080
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26980352
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29597696
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16513196,
+        "first": "00000000000000241737.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16654170,
+        "first": "00000000000000241462.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:13:31.001340+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33714176
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 27328512
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 30044160
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16403774,
+        "first": "00000000000000246736.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16558146,
+        "first": "00000000000000246429.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:14:31.026034+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34271232
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26746880
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29884416
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16302398,
+        "first": "00000000000000251709.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16462638,
+        "first": "00000000000000251394.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:15:31.051203+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 33607680
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26763264
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29454336
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16220011,
+        "first": "00000000000000256182.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16383740,
+        "first": "00000000000000255960.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:16:31.079479+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 35315712
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26632192
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29507584
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16123512,
+        "first": "00000000000000261137.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16267050,
+        "first": "00000000000000260814.seg"
+      }
+    ]
+  },
+  {
+    "utc": "2026-09-19T15:17:31.098551+00:00",
+    "processes": [
+      {
+        "pid": 3652880,
+        "service": "blora-master",
+        "rssBytes": 34189312
+      },
+      {
+        "pid": 3653080,
+        "service": "blora-daemon",
+        "rssBytes": 26652672
+      },
+      {
+        "pid": 3653090,
+        "service": "blora-daemon",
+        "rssBytes": 29282304
+      }
+    ],
+    "archives": [
+      {
+        "directory": "blora-test-node-1/terminals/2ff67d7b2c15707fc64a73ce462ec844",
+        "segments": 16,
+        "bytes": 16050975,
+        "first": "00000000000000266097.seg"
+      },
+      {
+        "directory": "blora-test-node-1/terminals/457088d614455775bfca1ae685a24305",
+        "segments": 16,
+        "bytes": 16194384,
+        "first": "00000000000000265775.seg"
+      }
+    ]
+  }
+]

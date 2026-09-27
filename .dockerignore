@@ -1,0 +1,10 @@
+**
+!go.mod
+!go.sum
+!cmd
+!cmd/exec-helper
+!cmd/exec-helper/**
+!internal
+!internal/containerterm
+!internal/containerterm/helper
+!internal/containerterm/helper/**

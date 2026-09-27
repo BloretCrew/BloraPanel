@@ -1,0 +1,71 @@
+{
+  "date": "2026-09-21",
+  "change": "recovery/state.ts copy() uses structuredClone with JSON fallback; json() retains JSON cleaning semantics",
+  "profile": {
+    "instrumentedSeconds": 60,
+    "instrumentedP95Ms": 52.7,
+    "interpretation": "diagnostic only; profiler overhead, not acceptance evidence",
+    "hotspot": "JSON deep clone in recovery/state.ts"
+  },
+  "shortCleanRun": {
+    "passed": true,
+    "seconds": 64.954,
+    "samples": 1344,
+    "p95Ms": 45.2,
+    "maxMs": 71.9,
+    "frames": 3565,
+    "longFrames": 3,
+    "terminalBytesPerSecond": [111638.85, 111717.49],
+    "maxUnacknowledgedBytes": 79006
+  },
+  "oneHourRun": {
+    "passed": true,
+    "exitCode": 0,
+    "configuredSoakSeconds": 3600,
+    "sampleSeconds": 3604.492,
+    "pointerSamples": 48840,
+    "p95Ms": 48.1,
+    "maxMs": 160.4,
+    "frames": 197137,
+    "longFrames": 731,
+    "windows": 8,
+    "terminals": 2,
+    "directoryEntries": 10000,
+    "transferBytes": 16777216,
+    "completedTransfers": 165,
+    "stateAfter": "RUNNING",
+    "terminalBytesPerSecond": [106035.9765, 106300.1186],
+    "maxUnacknowledgedBytes": 86180,
+    "heapSamples": 2030,
+    "heapMinBytes": 35845693,
+    "heapMaxBytes": 124648991,
+    "heapAtEndBytes": 70753364,
+    "apiRttP95Ms": 82.6,
+    "browser": "Chromium 151.0.7922.71",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "logicalCpus": 12,
+    "hostMemoryBytes": 50500485120,
+    "graphics": "ANGLE / SwiftShader",
+    "terminalRenderers": ["default", "default"]
+  },
+  "resourceSampling": {
+    "intervalSeconds": 60,
+    "samples": 62,
+    "samplesBeforeBrowserTestEnd": 57,
+    "samplesAfterBrowserTestEnd": 5,
+    "samplesWithoutProcesses": 0,
+    "archiveRotationReadErrors": 0,
+    "masterMaxRssBytes": 39448576,
+    "daemonMaxRssBytes": 32038912,
+    "maxBytesPerTerminalArchive": 16774920,
+    "maxTerminalArchiveSegments": 17
+  },
+  "unitTests": "50/50",
+  "targetedRealBrowserTests": "27/27",
+  "typeCheck": "passed",
+  "productionBuild": "passed",
+  "limitations": [
+    "resource RSS/archive measurements are 60-second interval samples, not instantaneous bounds",
+    "does not cover public remote deployment, high RTT/loss, Windows real hardware, or non-Chromium browsers"
+  ]
+}

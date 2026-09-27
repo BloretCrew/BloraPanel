@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Editorial screenprint with bold type, halftone ink and warm paper">
+  <defs>
+    <pattern id="paper" width="47" height="43" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="9" r=".65" fill="#59606a" opacity=".18"/>
+      <circle cx="32" cy="6" r=".55" fill="#59606a" opacity=".15"/>
+      <circle cx="18" cy="31" r=".7" fill="#59606a" opacity=".12"/>
+      <circle cx="41" cy="37" r=".5" fill="#59606a" opacity=".16"/>
+    </pattern>
+    <pattern id="halftone" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(-18)">
+      <circle cx="6.5" cy="6.5" r="2.45" fill="#102a47"/>
+    </pattern>
+    <pattern id="smallDots" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(12)">
+      <circle cx="4" cy="4" r="1.15" fill="#f4eee1"/>
+    </pattern>
+    <clipPath id="disc"><circle cx="681" cy="437" r="294"/></clipPath>
+  </defs>
+
+  <path fill="#f1ede2" d="M0 0h1600v1000H0z"/>
+  <path fill="url(#paper)" d="M0 0h1600v1000H0z"/>
+
+  <!-- A full-bleed ink plate creates a poster composition, not an OS gradient. -->
+  <path fill="#193651" d="M0 0h531v1000H0z"/>
+  <path fill="#23415c" d="M508 0h23v1000h-23z"/>
+  <path fill="#f0bd5c" d="M0 0h531v18H0z"/>
+  <path fill="#e85c42" d="M531 0h14v1000h-14z"/>
+
+  <!-- The coarse dots are actual overlapping printed ink. -->
+  <circle cx="681" cy="437" r="294" fill="#e85c42"/>
+  <path clip-path="url(#disc)" fill="url(#halftone)" opacity=".82" d="M360 87h235v680H360z"/>
+  <path clip-path="url(#disc)" fill="#f0bd5c" opacity=".86" d="M811 113h154v632H811z"/>
+  <path clip-path="url(#disc)" fill="url(#smallDots)" opacity=".65" d="M811 113h154v632H811z"/>
+  <path clip-path="url(#disc)" fill="#172e49" opacity=".76" d="M531 422h441v29H531z"/>
+
+  <text x="-33" y="758" fill="#f2eee4" font-family="Arial,Helvetica,sans-serif" font-size="620" font-weight="800" letter-spacing="-84">07</text>
+  <path d="M57 808h386" stroke="#eec25f" stroke-width="4"/>
+  <text x="59" y="855" fill="#f2eee4" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" letter-spacing="8">EDITION</text>
+  <text x="61" y="887" fill="#eec25f" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" letter-spacing="4">PRINT / 001</text>
+
+  <path d="M1022 205h298" stroke="#193651" stroke-width="3"/>
+  <path d="M1022 216h151" stroke="#193651" stroke-width="2"/>
+  <text x="1020" y="174" fill="#193651" font-family="Arial,Helvetica,sans-serif" font-size="23" font-weight="700" letter-spacing="6">FORM</text>
+  <text x="1021" y="299" fill="#193651" font-family="Arial,Helvetica,sans-serif" font-size="74" font-weight="800" letter-spacing="-5">07</text>
+  <path fill="#e85c42" d="M1023 315h135v10h-135z"/>
+  <path d="M1024 674h279M1024 692h179" stroke="#193651" stroke-opacity=".42" stroke-width="2"/>
+  <text x="1022" y="737" fill="#193651" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" letter-spacing="4">COLOUR / SPACE / INK</text>
+
+  <!-- Small registration marks reinforce the print medium without clutter. -->
+  <g fill="none" stroke="#193651" stroke-width="1.3" opacity=".64">
+    <path d="M980 75v38m-19-19h38M1321 849v38m-19-19h38"/>
+    <circle cx="980" cy="94" r="12"/><circle cx="1321" cy="868" r="12"/>
+  </g>
+  <path fill="#e85c42" d="M0 984h531v16H0z"/>
+</svg>

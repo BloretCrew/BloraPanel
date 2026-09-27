@@ -1,0 +1,19 @@
+# Build from the repository root: docker build -f Dockerfile.isolated -t blora/isolated:local .
+# Administrators may pin these image references to locally verified digests.
+ARG BLORA_GO_IMAGE=golang:1.25.9-alpine
+ARG BLORA_BASE_IMAGE=busybox:1.37.0-musl
+FROM ${BLORA_GO_IMAGE} AS helper-build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download golang.org/x/sys
+COPY internal/containerterm/helper ./internal/containerterm/helper
+COPY cmd/exec-helper ./cmd/exec-helper
+RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath -o /exec-helper ./cmd/exec-helper
+
+FROM ${BLORA_BASE_IMAGE}
+COPY --from=helper-build --chmod=0555 /exec-helper /usr/local/lib/blora/exec-helper
+RUN mkdir -p /workspace && chown 65534:65534 /workspace
+USER 65534:65534
+WORKDIR /workspace
+ENV TERM=xterm-256color
+CMD ["/bin/sh", "-c", "while :; do sleep 3600; done"]

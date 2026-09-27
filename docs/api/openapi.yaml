@@ -1,0 +1,1522 @@
+openapi: 3.1.0
+info:
+  title: Blora Panel management API
+  version: 0.1.0
+  description: |
+    The HTTPS management API for Blora Master. It carries management data only;
+    application traffic is never proxied through the Master. All JSON fields use
+    lowerCamelCase. Mutating requests require the session CSRF token and an
+    Idempotency-Key when the operation can create a task. A 202 response means
+    that the task was accepted, not that the remote operation succeeded.
+servers:
+  - url: /api/v1
+    description: Same-origin Master API
+tags:
+  - name: session
+  - name: administration
+  - name: nodes
+  - name: instances
+  - name: tasks
+  - name: files
+  - name: terminals
+  - name: containers
+  - name: backups
+  - name: schedules
+  - name: monitoring
+  - name: system
+  - name: extensions
+  - name: workspaces
+security:
+  - sessionCookie: []
+paths:
+  /login:
+    post:
+      tags: [session]
+      security: []
+      summary: Create a browser session
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/Session'}
+        '401': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+  /logout:
+    post:
+      tags: [session]
+      summary: Revoke the current browser session
+      operationId: logout
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '401': {$ref: '#/components/responses/Error'}
+  /session:
+    get:
+      tags: [session]
+      summary: Return the authenticated user and CSRF token
+      operationId: session
+      responses:
+        '200': {$ref: '#/components/responses/Session'}
+        '401': {$ref: '#/components/responses/Error'}
+  /enroll:
+    post:
+      tags: [nodes]
+      security: []
+      summary: Redeem a one-time node enrollment
+      operationId: enroll
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /users:
+    get:
+      tags: [administration]
+      summary: List users (administrator)
+      operationId: listUsers
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+        '403': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [administration]
+      summary: Create a user (administrator)
+      operationId: createUser
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /users/{id}:
+    patch:
+      tags: [administration]
+      summary: Update a user (administrator)
+      operationId: updateUser
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /users/{id}/password:
+    post:
+      tags: [administration]
+      summary: Change a user password
+      operationId: changePassword
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /roles:
+    get:
+      tags: [administration]
+      summary: List built-in and custom role templates
+      operationId: listRoles
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+        '403': {$ref: '#/components/responses/Error'}
+  /roles/{id}:
+    put:
+      tags: [administration]
+      summary: Replace a custom role template
+      operationId: putRole
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /roles/{id}/apply:
+    post:
+      tags: [administration]
+      summary: Apply or revoke a role on an explicit resource
+      operationId: applyRole
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /grants:
+    get:
+      tags: [administration]
+      summary: List explicit grants visible to the caller
+      operationId: listGrants
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+    post:
+      tags: [administration]
+      summary: Grant a resource action (administrator)
+      operationId: grant
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    delete:
+      tags: [administration]
+      summary: Revoke a resource action (administrator)
+      operationId: revokeGrant
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /audit:
+    get:
+      tags: [administration]
+      summary: Search management audit records (administrator)
+      operationId: searchAudit
+      parameters:
+        - name: userId
+          in: query
+          schema: {type: string, maxLength: 160}
+        - name: nodeId
+          in: query
+          schema: {type: string, maxLength: 160}
+        - name: resource
+          in: query
+          description: Exact resource key such as node:<id> or instance:<id>.
+          schema: {type: string, maxLength: 160}
+        - name: action
+          in: query
+          schema: {type: string, maxLength: 160}
+        - name: from
+          in: query
+          schema: {type: string, format: date-time}
+        - name: to
+          in: query
+          schema: {type: string, format: date-time}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200, default: 100}
+        - name: offset
+          in: query
+          schema: {type: integer, minimum: 0, maximum: 1000000, default: 0}
+      responses:
+        '200':
+          description: Newest matching audit records
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuditPage'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes:
+    get:
+      tags: [nodes]
+      summary: List nodes visible to the caller
+      operationId: listNodes
+      parameters: [{$ref: '#/components/parameters/NodeScope'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/creatable:
+    get:
+      tags: [nodes]
+      summary: List nodes where the caller may create instances
+      operationId: listCreatableNodes
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/managed:
+    get:
+      tags: [nodes]
+      summary: List nodes with host management permission
+      operationId: listManagedNodes
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/enrollments:
+    post:
+      tags: [nodes]
+      summary: Create a one-time node enrollment (administrator)
+      operationId: createEnrollment
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}:
+    patch:
+      tags: [nodes]
+      summary: Update node maintenance, quota or display settings
+      operationId: updateNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/revoke:
+    post:
+      tags: [nodes]
+      summary: Revoke a node identity
+      operationId: revokeNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/rotation:
+    post:
+      tags: [nodes]
+      summary: Issue a node identity rotation
+      operationId: rotateNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+  /instances:
+    get:
+      tags: [instances]
+      summary: List instances authorized for the caller across nodes
+      operationId: listInstances
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+    post:
+      tags: [instances]
+      summary: Create an instance after rechecking node and quota authorization
+      operationId: createInstance
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /instances/{id}:
+    get:
+      tags: [instances]
+      summary: Get one instance and its authoritative state
+      operationId: getInstance
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '404': {$ref: '#/components/responses/Error'}
+    patch:
+      tags: [instances]
+      summary: Update instance settings with a revision precondition
+      operationId: updateInstance
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    delete:
+      tags: [instances]
+      summary: Tombstone a stopped instance (administrator)
+      operationId: deleteInstance
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /instances/{id}/actions:
+    post:
+      tags: [instances]
+      summary: Start, stop or restart an instance as a durable task
+      operationId: instanceAction
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /instance-templates:
+    get:
+      tags: [instances]
+      summary: List safe instance configuration templates
+      operationId: listInstanceTemplates
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /tasks:
+    get:
+      tags: [tasks]
+      summary: List tasks visible to the caller
+      operationId: listTasks
+      description: Use before=0 for current history, then nextBefore for older pages; -1 means end. A page scans at most limit root tasks and filters current authorization, so an empty page can still have a continuation. Stable row cursors avoid shifting when new tasks arrive. Legacy offset mode remains limited to the most recent 1000 root tasks; before cannot be combined with offset.
+      parameters:
+        - {name: before, in: query, schema: {type: integer, minimum: 0, maximum: 9007199254740991}}
+        - {name: state, in: query, description: Filter across all history in before cursor mode, schema: {type: string, enum: [QUEUED, RUNNING, WAITING_NODE, WAITING_CLIENT, CANCEL_REQUESTED, SUCCEEDED, FAILED, CANCELLED, INTERRUPTED]}}
+        - {$ref: '#/components/parameters/Offset'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /tasks/summary:
+    get:
+      tags: [tasks]
+      operationId: taskSummary
+      summary: Count all currently authorized nonterminal root tasks
+      description: Scans active task pages without the legacy recent-history limit, rechecks authorization, and returns active total and per-state counts. Timeout returns an error instead of partial totals.
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '503': {$ref: '#/components/responses/Error'}
+  /tasks/{id}:
+    get:
+      tags: [tasks]
+      summary: Get a task and its durable result
+      operationId: getTask
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '404': {$ref: '#/components/responses/Error'}
+  /tasks/{id}/cancel:
+    post:
+      tags: [tasks]
+      summary: Request cancellation of a task
+      operationId: cancelTask
+      description: Requests cancellation of a nonterminal task and returns the durable cancellation receipt. Repeating the request after acceptance, including after CANCELLED, returns the same receipt without advancing the task again.
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '409': {$ref: '#/components/responses/Error'}
+  /tasks/{id}/events:
+    get:
+      tags: [tasks]
+      operationId: taskStageHistory
+      summary: Read authorized persistent task stage diagnostics
+      description: Latest-first revision cursor. before=0 starts at the latest stage; nextBefore=-1 means end. Each entry contains revision, recordedAt (Unix milliseconds), state, phase, error and truncated. Phase/error are bounded to 512/4096 characters; payload and result blobs are excluded. Current task authorization is checked on every request.
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {name: before, in: query, schema: {type: integer, minimum: 0, maximum: 9007199254740991, default: 0}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /tasks/{id}/retry:
+    post:
+      tags: [tasks]
+      summary: Create a related retry for a failed instance lifecycle task
+      operationId: retryTask
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /events:
+    get:
+      tags: [tasks]
+      summary: Stream authorized task and resource events over WebSocket
+      operationId: events
+      description: notifications=1 emits only authorized root task terminal summaries and Snapshot sequence checkpoints. Omit after on the first connection to start at the current durable boundary; reconnect with the last atomically persisted sequence. The ordinary event stream remains unchanged. Payload and execution configuration are omitted from notification summaries.
+      parameters:
+        - {name: notifications, in: query, schema: {type: integer, enum: [1]}}
+        - {name: after, in: query, schema: {type: integer, minimum: 0, maximum: 9007199254740991}}
+      x-websocket: true
+      responses:
+        '101': {description: WebSocket protocol switch}
+        '401': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files:
+    get:
+      tags: [files]
+      summary: List a bounded page of an instance root
+      operationId: listFiles
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Path'}, {$ref: '#/components/parameters/Offset'}, {$ref: '#/components/parameters/Limit'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+        '403': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/access:
+    get:
+      tags: [files]
+      summary: Return the current user's file read/write capability and node identity
+      operationId: fileAccess
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/stat:
+    get:
+      tags: [files]
+      summary: Stat an authorized path
+      operationId: statFile
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Path'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '404': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/trash:
+    get:
+      tags: [files]
+      summary: List recoverable entries in the instance trash
+      operationId: listTrash
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Offset'}, {$ref: '#/components/parameters/Limit'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /instances/{id}/files/preview:
+    get:
+      tags: [files]
+      summary: Read one bounded UTF-8 preview segment without loading the whole file
+      operationId: previewFile
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {$ref: '#/components/parameters/Path'}
+        - {name: version, in: query, schema: {type: string}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, maximum: 9007199254740991, default: 0}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 61440, default: 49152}}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '415': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/content:
+    get:
+      tags: [files]
+      summary: Read UTF-8 text content and its immutable version
+      operationId: readFile
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Path'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '413': {$ref: '#/components/responses/Error'}
+    put:
+      tags: [files]
+      summary: Save text content through an idempotent task and version check
+      operationId: saveFile
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '409': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/download:
+    get:
+      tags: [files]
+      summary: Download an authorized file
+      operationId: downloadFile
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Path'}, {$ref: '#/components/parameters/Version'}]
+      responses:
+        '200': {description: File bytes, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/actions:
+    post:
+      tags: [files]
+      summary: Submit a bounded file operation
+      operationId: fileAction
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/uploads:
+    post:
+      tags: [files]
+      summary: Begin a resumable browser upload
+      operationId: beginUpload
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '400': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/uploads/{taskId}:
+    get:
+      tags: [files]
+      summary: Read upload checkpoint and task state
+      operationId: uploadStatus
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TaskId'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+    delete:
+      tags: [files]
+      summary: Request cancellation of an upload
+      operationId: cancelUpload
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TaskId'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+  /instances/{id}/files/uploads/{taskId}/chunks:
+    put:
+      tags: [files]
+      summary: Commit one upload chunk at an exact offset
+      operationId: uploadChunk
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TaskId'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /instances/{id}/files/uploads/{taskId}/complete:
+    post:
+      tags: [files]
+      summary: Complete and verify an upload
+      operationId: completeUpload
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TaskId'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /instances/{id}/terminals:
+    get:
+      tags: [terminals]
+      summary: List terminal sessions for an instance
+      operationId: listTerminals
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+    post:
+      tags: [terminals]
+      summary: Create or reattach an instance terminal session
+      operationId: createTerminal
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /terminals/{id}/close:
+    post:
+      tags: [terminals]
+      summary: Close a terminal session
+      operationId: closeTerminal
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /terminals/{id}/stream:
+    get:
+      tags: [terminals]
+      summary: Interactive terminal stream (WebSocket)
+      operationId: terminalStream
+      x-websocket: true
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {name: viewId, in: query, required: true, schema: {type: string}}
+        - {name: sequence, in: query, schema: {type: integer, format: int64, minimum: 0}}
+      responses:
+        '101': {description: WebSocket protocol switch}
+        '403': {$ref: '#/components/responses/Error'}
+  /instances/{id}/logs:
+    get:
+      tags: [terminals]
+      summary: List retained runs for an instance
+      operationId: listLogs
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /instances/{id}/logs/{runId}/stream:
+    get:
+      tags: [terminals]
+      summary: Replay and follow bounded instance output (WebSocket)
+      operationId: logStream
+      x-websocket: true
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/RunId'}, {name: sequence, in: query, schema: {type: integer, format: int64, minimum: 0}}]
+      responses:
+        '101': {description: WebSocket protocol switch}
+        '403': {$ref: '#/components/responses/Error'}
+  /instances/{id}/logs/{runId}/input:
+    post:
+      tags: [terminals]
+      summary: Queue authorized console input
+      operationId: consoleInput
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/RunId'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '409': {$ref: '#/components/responses/Error'}
+  /transfers:
+    post:
+      tags: [files]
+      summary: Start a cross-node copy or explicit move
+      operationId: createTransfer
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+    get:
+      tags: [files]
+      summary: List transfer roots visible to the caller
+      operationId: listTransfers
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /transfers/{id}:
+    get:
+      tags: [files]
+      summary: Get transfer progress and reconciliation result
+      operationId: getTransfer
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+  /transfers/{id}/entries:
+    get:
+      tags: [files]
+      summary: Read a paginated transfer manifest
+      operationId: transferEntries
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Offset'}, {$ref: '#/components/parameters/Limit'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /transfers/{id}/cancel:
+    post:
+      tags: [files]
+      summary: Request transfer cancellation
+      operationId: cancelTransfer
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+  /instances/{id}/backups:
+    get:
+      tags: [backups]
+      summary: List bounded backup snapshots
+      operationId: listBackups
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Offset'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [backups]
+      summary: Create a verifiable backup as a durable task
+      operationId: createBackup
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '400': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+  /instances/{id}/backups/prune:
+    post:
+      tags: [backups]
+      summary: Apply retention within the caller's backup scope
+      operationId: pruneBackups
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '400': {$ref: '#/components/responses/Error'}
+  /instances/{id}/restore-plans:
+    post:
+      tags: [backups]
+      summary: Build an immutable restore plan
+      operationId: createRestorePlan
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /instances/{id}/restore-plans/{planId}:
+    get:
+      tags: [backups]
+      summary: Read a paginated restore plan
+      operationId: getRestorePlan
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/PlanId'}, {$ref: '#/components/parameters/Offset'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+  /instances/{id}/restores:
+    post:
+      tags: [backups]
+      summary: Execute an explicitly confirmed restore plan
+      operationId: restoreBackup
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /schedules:
+    get:
+      tags: [schedules]
+      summary: List schedules owned by or visible to the caller
+      operationId: listSchedules
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+    post:
+      tags: [schedules]
+      summary: Create a schedule with trigger-time authorization
+      operationId: createSchedule
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /schedules/{id}:
+    put:
+      tags: [schedules]
+      summary: Update a schedule by revision
+      operationId: updateSchedule
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '409': {$ref: '#/components/responses/Error'}
+    delete:
+      tags: [schedules]
+      summary: Delete a schedule
+      operationId: deleteSchedule
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/metrics:
+    get:
+      tags: [monitoring]
+      summary: Read current node metrics
+      operationId: nodeMetrics
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+  /nodes/{id}/metrics/history:
+    get:
+      tags: [monitoring]
+      summary: Read bounded node metric history
+      operationId: nodeMetricHistory
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Limit'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /instances/{id}/metrics:
+    get:
+      tags: [monitoring]
+      summary: Read current or stale instance metrics
+      operationId: instanceMetrics
+      description: Requires current instance.read, rechecked after sampling. Returns stale cached data only for the current runId, preserving its observation time. A changed run during sampling or a mismatched node result returns RUN_CHANGED (409). Missing current-run history does not fall back to a previous run.
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+  /nodes/{id}/processes:
+    get:
+      tags: [monitoring]
+      summary: Search live host processes with a PID cursor
+      operationId: listProcesses
+      description: Each response contains at most 100 items sorted by PID and an optional nextAfterPid. Pass this cursor as afterPid; refresh from zero to see newly created lower PIDs. Search matches command or PID across the live process list.
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: search, in: query, schema: {type: string, maxLength: 256}}, {name: afterPid, in: query, schema: {type: integer, minimum: 0}}, {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 100}}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/{id}/processes/{pid}/terminate:
+    post:
+      tags: [monitoring]
+      summary: Terminate one process after identity recheck
+      operationId: terminateProcess
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: pid, in: path, required: true, schema: {type: integer, format: int64}}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [startTicks]
+              properties:
+                startTicks: {type: integer, format: int64, minimum: 1}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/docker/query:
+    post:
+      tags: [containers]
+      summary: Query Docker objects, projects or capabilities
+      operationId: dockerQuery
+      description: Requires current node host.manage. kind=operation-output with taskId and zero-based outputOffset reads one persisted Compose command output stage. output contains phase, recordedAt, completed, base64 stdout/stderr (at most 32 KiB each), independent truncation flags and optional commandError. Changed output is checkpointed every 250 ms while the command runs; completed only records observed command exit, and false or absent does not prove the command is still running. nextOutput=-1 means no later saved stage. Command exit alone does not confirm deployment success. Ordinary operation queries omit these output blobs.
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/docker/actions:
+    post:
+      tags: [containers]
+      summary: Submit an explicit Docker or Compose operation
+      operationId: dockerAction
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/docker/containers/{containerId}/logs:
+    get:
+      tags: [containers]
+      summary: Read bounded Docker container log frames
+      operationId: containerLogs
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: containerId, in: path, required: true, schema: {type: string}}, {name: since, in: query, schema: {type: string, format: date-time}}, {name: tail, in: query, schema: {type: integer, minimum: 0}}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+  /nodes/{id}/docker/containers/{containerId}/logs/history:
+    get:
+      tags: [containers]
+      summary: Read archived Docker log windows and gap markers
+      operationId: containerLogHistory
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: containerId, in: path, required: true, schema: {type: string}}, {$ref: '#/components/parameters/Offset'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/{id}/docker/containers/{containerId}/terminals:
+    post:
+      tags: [containers, terminals]
+      summary: Create a privileged Docker host terminal
+      operationId: createHostTerminal
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: containerId, in: path, required: true, schema: {type: string}}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/terminals:
+    get:
+      tags: [terminals]
+      summary: List privileged host terminal sessions
+      operationId: listHostTerminals
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/{id}/docker/project-saves:
+    post:
+      tags: [containers]
+      summary: Prepare a resumable Compose source save
+      operationId: prepareComposeSave
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+  /nodes/{id}/docker/project-saves/{saveId}:
+    get:
+      tags: [containers]
+      summary: Read Compose save progress
+      operationId: composeSaveStatus
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: saveId, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+  /nodes/{id}/docker/project-saves/{saveId}/chunks:
+    put:
+      tags: [containers]
+      summary: Commit one Compose source chunk
+      operationId: composeSaveChunk
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: saveId, in: path, required: true, schema: {type: string}}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '409': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/docker/project-saves/{saveId}/commit:
+    post:
+      tags: [containers]
+      summary: Commit a complete Compose source
+      operationId: commitComposeSave
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: saveId, in: path, required: true, schema: {type: string}}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+  /nodes/{id}/docker/projects/{projectId}/content:
+    get:
+      tags: [containers]
+      summary: Read the confirmed Compose source
+      operationId: composeContent
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: projectId, in: path, required: true, schema: {type: string}}, {$ref: '#/components/parameters/Version'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+  /nodes/{id}/system/capabilities:
+    get:
+      tags: [system]
+      summary: Read platform capability and backend information
+      operationId: systemCapabilities
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+  /nodes/{id}/system/services:
+    get:
+      tags: [system]
+      summary: List bounded service status
+      operationId: systemServices
+      description: Live service names sorted ascending. Supply nextAfter from the previous response as after; refresh the first page to discover newly added earlier names.
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 50}}, {name: after, in: query, schema: {type: string}}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/{id}/system/tasks:
+    get:
+      tags: [system]
+      summary: List bounded host scheduled tasks
+      operationId: systemTasks
+      description: Live task identities with nextAfter. Pass it as after for the next page; reset to the first page for newly added earlier identities. Windows uses ordinal full COM paths, Linux uses timer unit names.
+      parameters: [{$ref: '#/components/parameters/Id'}, {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 200, default: 100}}, {name: after, in: query, schema: {type: string}}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/{id}/system/firewall:
+    get:
+      tags: [system]
+      summary: Read firewall backend status
+      operationId: systemFirewall
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+  /nodes/{id}/system/services/actions:
+    post:
+      tags: [system]
+      summary: Start, stop or restart one allow-listed service
+      operationId: systemServiceAction
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/system/tasks/actions:
+    post:
+      tags: [system]
+      summary: Enable or disable one allow-listed scheduled task
+      operationId: systemTaskAction
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/system/firewall/preview:
+    post:
+      tags: [system]
+      summary: Preview bounded firewall port changes
+      operationId: firewallPreview
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/system/firewall/apply:
+    post:
+      tags: [system]
+      summary: Apply a firewall diff and wait for explicit confirmation
+      operationId: firewallApply
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      description: Requires planHash from the latest preview. The Daemon rechecks the zone, runtime and permanent port snapshots, and desired rules before mutation. A changed preview fails the task without applying it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [desired, confirmUntil, planHash]
+              properties:
+                desired: {type: array, maxItems: 256, items: {type: string}}
+                confirmUntil: {type: string, format: date-time}
+                planHash: {type: string, minLength: 64, maxLength: 64}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/system/firewall/confirm:
+    post:
+      tags: [system]
+      summary: Confirm retaining a previously applied firewall lease
+      operationId: firewallConfirm
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '409': {$ref: '#/components/responses/Error'}
+  /extensions:
+    get:
+      tags: [extensions]
+      summary: List installed extensions (administrator)
+      operationId: listExtensions
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+        '403': {$ref: '#/components/responses/Error'}
+  /extensions/catalog:
+    get:
+      tags: [extensions]
+      summary: Browse the local verified extension catalog
+      operationId: listExtensionCatalog
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+        '403': {$ref: '#/components/responses/Error'}
+  /extensions/catalog/{appId}/{version}:
+    get:
+      tags: [extensions]
+      summary: Acquire one verified catalog package
+      operationId: getExtensionCatalogPackage
+      parameters:
+        - {name: appId, in: path, required: true, schema: {type: string}}
+        - {name: version, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '404': {$ref: '#/components/responses/Error'}
+    
+  /extensions/catalog/install:
+    post:
+      tags: [extensions]
+      summary: Install or upgrade a package acquired from the catalog
+      operationId: installCatalogExtension
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '409': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/manifest:
+    get:
+      tags: [extensions]
+      summary: Read an enabled extension manifest
+      operationId: extensionManifest
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '404': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/bundle:
+    get:
+      tags: [extensions]
+      summary: Read an enabled bundle for sandbox execution
+      operationId: extensionBundle
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: JavaScript bundle, content: {application/javascript: {schema: {type: string}}}}
+        '409': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/package:
+    get:
+      tags: [extensions]
+      summary: Download an installed package (administrator)
+      operationId: extensionPackage
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+  /extensions/install:
+    post:
+      tags: [extensions]
+      summary: Install an extension package (administrator)
+      operationId: installExtension
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '409': {$ref: '#/components/responses/Error'}
+  /extensions/install-package:
+    post:
+      tags: [extensions]
+      summary: Install a JSON envelope containing a package payload
+      operationId: installExtensionPackage
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '201': {$ref: '#/components/responses/Json'}
+        '413': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/upgrade:
+    post:
+      tags: [extensions]
+      summary: Upgrade an extension with rollback protection
+      operationId: upgradeExtension
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '409': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/rollback:
+    post:
+      tags: [extensions]
+      summary: Restore the previous verified extension version
+      operationId: rollbackExtension
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '409': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/enabled:
+    post:
+      tags: [extensions]
+      summary: Enable or disable an extension
+      operationId: setExtensionEnabled
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '409': {$ref: '#/components/responses/Error'}
+  /extensions/{id}:
+    delete:
+      tags: [extensions]
+      summary: Uninstall an extension, optionally cleaning user data
+      operationId: uninstallExtension
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {name: cleanup, in: query, schema: {type: boolean, default: false}}
+      responses:
+        '204': {description: Extension uninstalled}
+        '409': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/notifications:
+    post:
+      tags: [extensions]
+      operationId: authorizeExtensionNotification
+      summary: Authorize a notification for the current browser workspace
+      description: Requires enabled notification.publish and app.use. Returns inert content with the server-bound appId. The desktop persists and displays it; no message is sent to other users or external services.
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title]
+              properties:
+                title: {type: string, description: Nonblank and at most 256 UTF-8 bytes}
+                message: {type: string, description: At most 4096 UTF-8 bytes}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/resource:
+    patch:
+      tags: [extensions]
+      operationId: updateExtensionResourceMetadata
+      summary: Update instance name, group or tags through resource.write
+      description: Requires enabled resource.write, app.use and instance.configure. revision is configRevision from the resource summary. Execution configuration is rejected. Replays use the stable Idempotency-Key.
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [resource, revision]
+              properties:
+                resource: {type: object, required: [kind, id], properties: {kind: {const: instance}, id: {type: string}, nodeId: {type: string}}}
+                revision: {type: integer, format: int64}
+                name: {type: string}
+                group: {type: string}
+                tags: {type: array, items: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    get:
+      tags: [extensions]
+      operationId: readExtensionResource
+      summary: Read a resource summary through an enabled extension capability
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {name: kind, in: query, required: true, schema: {type: string, enum: [node, instance]}}
+        - {name: id, in: query, required: true, schema: {type: string}}
+        - {name: nodeId, in: query, schema: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/data:
+    get:
+      tags: [extensions]
+      summary: Read the authenticated user's extension data
+      operationId: readExtensionUserData
+      description: Requires current app.use and enabled data.read capability. Owners cannot be supplied by clients; administrators also read only their own document. Returns schemaVersion, revision and data.
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    put:
+      tags: [extensions]
+      summary: Conditionally replace the authenticated user's extension data
+      operationId: writeExtensionUserData
+      description: Requires current app.use and enabled data.write capability. JSON data is limited to 16 KiB and total managed extension data and receipts to 4 MiB. A repeated request cannot overwrite later data. Package schema and revision must match.
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schemaVersion, expectedRevision, data]
+              additionalProperties: false
+              properties:
+                schemaVersion: {type: integer, minimum: 1}
+                expectedRevision: {type: integer, minimum: 0}
+                data: {}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/tasks:
+    post:
+      tags: [extensions, tasks]
+      summary: Queue a declared extension task using scoped permissions
+      operationId: createExtensionTask
+      description: Executes the installed package's WASI backend with JSON stdin/stdout. Requires app.use and node.read. The payload is limited to 32 KiB; tasks bind package and module hashes and do not grant host filesystem, environment, network, or process access.
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nodeId, payload]
+              properties:
+                nodeId: {type: string}
+                payload: {type: object, additionalProperties: true, maxProperties: 256}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/tasks/{taskId}/status:
+    get:
+      tags: [extensions, tasks]
+      summary: Read a task belonging to this extension
+      operationId: readExtensionTask
+      description: Requires task ownership (or administrator), current app.use and node.read. Historical tasks remain accessible after disabling or uninstalling the package. Wrong application identity and revoked access return 404.
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {name: taskId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {$ref: '#/components/responses/Task'}
+        '404': {$ref: '#/components/responses/Error'}
+  /extensions/{id}/tasks/{taskId}/cancel:
+    post:
+      tags: [extensions, tasks]
+      summary: Request cancellation of this extension's task
+      operationId: cancelExtensionTask
+      description: Uses the same current authorization as task reads. Repeated cancellation returns the existing receipt. Acceptance does not imply terminal cancellation or rollback of completed work.
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {name: taskId, in: path, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '404': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /workspaces:
+    get:
+      tags: [workspaces]
+      summary: List cloud workspace metadata owned by the current user
+      operationId: listCloudWorkspaces
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /workspaces/{id}:
+    get:
+      tags: [workspaces]
+      summary: Read one cloud workspace snapshot
+      operationId: getCloudWorkspace
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '404': {$ref: '#/components/responses/Error'}
+    put:
+      tags: [workspaces]
+      summary: Save a cloud workspace with an optimistic revision check
+      operationId: putCloudWorkspace
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, deviceId, baseRevision, schemaVersion, includeContent, state]
+              properties:
+                title: {type: string, maxLength: 160}
+                deviceId: {type: string, maxLength: 128}
+                baseRevision: {type: integer, format: int64, minimum: 0}
+                schemaVersion: {type: integer, minimum: 1}
+                includeContent: {type: boolean}
+                state: {type: object, additionalProperties: true}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+    delete:
+      tags: [workspaces]
+      summary: Delete one cloud workspace owned by the current user
+      operationId: deleteCloudWorkspace
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '204': {description: Cloud snapshot deleted}
+        '404': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: blora_session
+      description: HttpOnly same-origin session cookie issued by POST /login.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Token returned by GET /session; required for non-GET requests.
+    idempotencyKey:
+      type: apiKey
+      in: header
+      name: Idempotency-Key
+      description: Stable client request identity used for task admission and retry.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+    PlanId:
+      name: planId
+      in: path
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+    Path:
+      name: path
+      in: query
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 4096}
+    Version:
+      name: version
+      in: query
+      schema: {type: string, minLength: 1, maxLength: 128}
+    Offset:
+      name: offset
+      in: query
+      schema: {type: integer, format: int64, minimum: 0, default: 0}
+    Limit:
+      name: limit
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 1000, default: 50}
+    NodeScope:
+      name: scope
+      in: query
+      schema: {type: string, enum: [all, creatable, managed]}
+  requestBodies:
+    Json:
+      required: true
+      content:
+        application/json:
+          schema: {type: object, additionalProperties: true}
+  responses:
+    Json:
+      description: JSON resource or operation result
+      content:
+        application/json:
+          schema: {type: object, additionalProperties: true}
+    Items:
+      description: Bounded collection
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items]
+            properties:
+              items: {type: array, items: {type: object, additionalProperties: true}}
+            additionalProperties: true
+    Task:
+      description: Task accepted for asynchronous execution
+      headers:
+        X-Request-ID:
+          schema: {type: string}
+          description: Server request identity when supplied by the operation.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [task]
+            properties:
+              task: {$ref: '#/components/schemas/Task'}
+    Session:
+      description: Authenticated session
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [user, csrfToken]
+            properties:
+              user: {$ref: '#/components/schemas/User'}
+              csrfToken: {type: string}
+    Error:
+      description: Structured API error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: {$ref: '#/components/schemas/APIError'}
+  schemas:
+    LoginRequest:
+      type: object
+      required: [name, password]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 80}
+        password: {type: string, minLength: 1, maxLength: 128, format: password}
+      additionalProperties: false
+    ResourceRef:
+      type: object
+      required: [kind, id]
+      properties:
+        kind: {type: string}
+        id: {type: string}
+        nodeId: {type: string}
+      additionalProperties: false
+    User:
+      type: object
+      required: [userId, name, admin, disabled, revision]
+      properties:
+        userId: {type: string}
+        name: {type: string}
+        admin: {type: boolean}
+        disabled: {type: boolean}
+        revision: {type: integer, format: int64}
+    Audit:
+      type: object
+      required: [sequence, actorId, resourceKey, action, result, recordedAt]
+      properties:
+        sequence: {type: integer, format: int64}
+        actorId: {type: string}
+        nodeId: {type: string}
+        resourceKey: {type: string}
+        action: {type: string}
+        requestId: {type: string}
+        result: {type: string}
+        recordedAt: {type: string, format: date-time}
+    AuditPage:
+      type: object
+      required: [items, nextOffset]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Audit'}}
+        nextOffset: {type: integer, minimum: 0}
+    Task:
+      type: object
+      required: [taskId, requestId, actorId, resource, action, state, phase, revision, createdAt, updatedAt, deadline]
+      properties:
+        taskId: {type: string}
+        requestId: {type: string}
+        actorId: {type: string}
+        resource: {$ref: '#/components/schemas/ResourceRef'}
+        action: {type: string}
+        payload: {type: object, additionalProperties: true}
+        digest: {type: string}
+        state: {type: string, enum: [QUEUED, RUNNING, WAITING_NODE, WAITING_CLIENT, CANCEL_REQUESTED, SUCCEEDED, FAILED, CANCELLED, INTERRUPTED]}
+        phase: {type: string}
+        revision: {type: integer, format: int64}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        deadline: {type: string, format: date-time}
+        dispatchedAt: {type: string, format: date-time}
+        cancellationRequested: {type: boolean}
+        cancellationRequestId: {type: string}
+        result: {type: object, additionalProperties: true}
+        error: {type: string}
+    APIError:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        requestId: {type: string}
+        resource: {$ref: '#/components/schemas/ResourceRef'}

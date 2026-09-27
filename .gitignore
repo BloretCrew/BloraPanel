@@ -1,0 +1,38 @@
+.local/
+dist/
+node_modules/
+sdk/examples/reference-app/*.blora-extension.json
+
+# Local credentials, databases and compiled binaries.
+.env
+.env.*
+!.env.example
+!.env.*.example
+browser-credentials.json
+initial-password
+*.pem
+*.key
+*.p12
+*.pfx
+*.exe
+*.test
+*.db
+*.db-shm
+*.db-wal
+
+# Generated browser evidence and historical visual review galleries.
+web/test-results/
+web/playwright-report/
+web/real-test-results/
+web/real-playwright-report/
+web/browser-test-results/
+web/ui-screenshots/
+docs/acceptance/screenshots/
+
+# Local agent metadata, caches and operating-system files.
+.codex/
+.agents/
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
