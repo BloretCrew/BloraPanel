@@ -1,53 +1,111 @@
-# Blora Panel
+<p align="center">
+  <img src="docs/assets/blora-mark.svg" width="80" height="80" alt="Blora logo">
+</p>
 
-基于 Go Master/Daemon 与 Vue 3/TypeScript 的桌面式多节点服务器管理面板。已有真实用户/节点/实例控制、文件与编辑器、PTY、角色模板、节点维护/换钥、监控、Docker/Compose、备份调度、有限系统管理、扩展安装生命周期、本地/HTTPS 注册源和云端工作区副本链路；全范围验收仍按细项区分已验证、未验证和环境缺失。逐项状态见[验收矩阵](docs/acceptance/ACCEPTANCE_MATRIX.md)，运行会话与下一步见[执行进度](docs/execution/PROGRESS.md)。
+<h1 align="center">Blora Panel</h1>
 
-平台只承载管理通信，被管理服务的业务网络独立配置。
+<p align="center">
+  <strong>A desktop workspace for your servers.</strong><br>
+  Manage nodes, instances, files, terminals, containers, and backups from one desktop.
+</p>
 
-正式运行的目录布局、健康检查、停机一致性备份、升级与回退步骤见[运维手册](docs/operations/OPERATIONS.md)。
+<p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-Windows、systemd、远程 Engine 和长期故障场景的真实验收入口见[平台验收运行手册](docs/operations/PLATFORM_VALIDATION.md)。
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.25-00ADD8?style=flat-square&amp;logo=go&amp;logoColor=white" alt="Go 1.25">
+  <img src="https://img.shields.io/badge/Vue-3-42B883?style=flat-square&amp;logo=vuedotjs&amp;logoColor=white" alt="Vue 3">
+  <img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&amp;logo=typescript&amp;logoColor=white" alt="TypeScript 6">
+  <img src="https://img.shields.io/badge/Status-In_development-64748B?style=flat-square" alt="In development">
+</p>
 
-## 构建与本机验收
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="sdk/README.md">Extension SDK</a>
+</p>
 
-当前已验证环境为 Go 1.25.9、Node 24.15.0/npm 11.12.1、Linux amd64。依赖锁定于 go.mod/go.sum 和 web/package-lock.json。
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/ui-screenshots/all-appearance-20260926/mineral-dark-on-launcher.png">
+    <img src="web/ui-screenshots/all-appearance-20260926/mineral-light-on-launcher.png" width="100%" alt="Blora Panel desktop with the application launcher open">
+  </picture>
+</p>
+
+<p align="center">
+  <sub>Light and dark appearance · Six color palettes · Independent translucent materials</sub><br>
+  <sub>Screenshots show the current Chinese UI with isolated demo data.</sub>
+</p>
+
+<details>
+<summary>View both light and dark screenshots</summary>
+
+| Light | Dark |
+| :---: | :---: |
+| ![Light desktop](web/ui-screenshots/all-appearance-20260926/mineral-light-on-launcher.png) | ![Dark desktop](web/ui-screenshots/all-appearance-20260926/mineral-dark-on-launcher.png) |
+
+</details>
+
+## Features
+
+Blora Panel brings server management into a Material Design 3–inspired desktop, with Go services handling operations independently of the browser.
+
+| Area | What you can do |
+| :--- | :--- |
+| **Desktop workspace** | Open multiple windows and tabs, move views between windows, create resource shortcuts, and recover your workspace after a refresh. |
+| **Instances & nodes** | View authorized resources across nodes, control instance lifecycles, manage quotas, enroll nodes, and rotate node identities. |
+| **Files & editor** | Browse files, transfer data between nodes, and edit with Monaco, including recovery of unsaved text and undo history. |
+| **Terminals & monitoring** | Use PTY terminals, inspect bounded log archives, follow metrics, and track persistent tasks. |
+| **Docker & Compose** | Manage containers and Compose projects through authorized node operations, with task tracking and recovery. |
+| **Backups & schedules** | Create backups, review restore plans, configure schedules, and run administrator-defined application hooks. |
+| **Users & extensions** | Apply resource permissions and role templates, install and upgrade apps, and build extensions with the standalone SDK. |
+
+Closing a window does not stop its instance. Opening a resource shortcut does not start it. Translucency, color palette, and light/dark appearance are independent settings.
+
+## Quick start
+
+**Tested toolchain:** Linux amd64, Go **1.25.9**, Node.js **24.15.0**, and npm **11.12.1**. Use GNU Make; release packaging also requires Python **3.9+**. Dependency versions are pinned in `go.mod`, `go.sum`, and the npm lockfiles.
 
 ```sh
+git clone https://github.com/BloretCrew/BloraPanel.git
+cd BloraPanel
+
 make build
+make web
 make sdk
-cd web
-npm ci
-npm run build
-cd ..
 make fixture
 ```
 
-构建产物为 `dist/blora-master`、`dist/blora-daemon` 与 `web/dist`。`make windows` 生成 Windows amd64 双二进制；构建通过不代表 Windows Job/ConPTY 真机验收通过。
+| Command | Result |
+| :--- | :--- |
+| `make build` | Builds `dist/blora-master` and `dist/blora-daemon`. |
+| `make web` | Installs locked frontend dependencies and builds `web/dist`. |
+| `make sdk` | Builds the SDK and three reference extension packages. |
+| `make fixture` | Starts a local Master and two Daemons with isolated test accounts and resources. |
 
-源码仓库包含构建与验收入口，不包含本地凭据、运行数据库、依赖目录、发行归档和历史截图图库。`make sdk` 安装锁定依赖，并从参考扩展源码生成默认包及两个升级验证包；执行扩展相关验收前需完成此步骤。文字验收报告保留，历史截图链接对应本地开发归档。
+Open the URL printed by the fixture; the default is **`https://127.0.0.1:9443`**. It creates a local test certificate and a private `.local/fixture-*` directory. Random administrator and member credentials are written to `browser-credentials.json` with mode `0600`; there is no reusable default password.
 
-本地发行包：先在 `web`、`sdk` 和 `sdk/examples/reference-app` 分别执行 `npm ci`，然后在根目录执行 `BLORA_VERSION=development-YYYYMMDD make package`（另需 Python 3.9+）。输出位于 `dist/releases/<版本>/`：Linux/Windows Master、Daemon，以及独立前端和 SDK 共六个包。Master 包含前端，Daemon 包含隔离镜像构建输入，SDK 包含参考扩展源码、构建产物与两平台签名工具。包不包含运行身份或 node_modules；SDK 解包后的构建步骤见 `START.txt`。
+The member account has restricted access to two test instances and no instance-creation or host-shell permission. Instances start in the stopped state. Press **Ctrl+C** to stop the fixture's resources and services; its private logs remain available for diagnosis.
 
-先用 `sha256sum -c SHA256SUMS` 验证归档，每个包内另有逐文件 `MANIFEST.json`。打包固定时间戳、文件顺序和权限；同一输入重复打包内容一致。已有版本内容不同会拒绝覆盖，源码或文档改变后应选择新版本。这是本地开发交付，不自动发布；具体验证边界见[发行包报告](docs/acceptance/reports/package-2026-09-13.md)。
+<details>
+<summary><strong>Connect your own nodes</strong></summary>
 
-`make package` 会从已编译的 Go 依赖与锁定的本地 npm 包收集上游许可证和通知，见 [依赖清单](docs/licenses/inventory.json) 与 [通知原文](docs/licenses/THIRD-PARTY-NOTICES.txt)。Master/Daemon包在`docs/licenses/`中保留这些材料，独立前端和SDK包根目录另带`THIRD-PARTY-NOTICES.txt`。收集器离线运行；依赖或许可证文件缺失会停止打包。若系统把Go许可证移到GOROOT之外，可用`BLORA_GO_LICENSE_DIR`指定实际安装包的许可证目录，Fedora默认识别`/usr/share/licenses/golang`。这些材料不替项目自身选择许可证。
+### Initialize the Master
 
-fixture创建新的 `.local/fixture-*`，启动独立Master与两个Daemon，默认只监听 `https://127.0.0.1:9443`。管理员和成员密码每次随机生成，只写该目录权限0600的 `browser-credentials.json`；没有可复用默认密码。工具新建本机测试证书。
-
-成员可见两个测试实例，仅对其中一个拥有部分控制/文件写权限，没有创建实例或主机Shell权限。实例初始停止，打开快捷方式不会启动实例。Ctrl+C先停止本fixture自己的实例，再退出三个自身进程；日志与目录保留用于诊断。
-
-## 独立初始化和运行
-
-先用本地编辑器创建权限0600的初始密码文件，内容为12～72字节密码，不把密码写入命令行或仓库。然后初始化一次：
+Create a private password file with a local editor, restrict it to mode `0600`, and use a password of 12–72 bytes. Keep credentials out of shell arguments and the repository.
 
 ```sh
 ./dist/blora-master --state-dir .local/master --init --password-file /absolute/private/initial-password
 ./dist/blora-master --state-dir .local/master --listen 127.0.0.1:8443 --origin https://localhost:8443 --static-dir web/dist
 ```
 
-重复初始化会拒绝覆盖已有账号。初始化生成本机TLS证书；部署可用 `--tls-cert`、`--tls-key` 指定管理域名证书，`--origin` 必须与浏览器来源一致。本任务未公开部署。
+Initialization generates a local TLS certificate and refuses to overwrite existing accounts. For your management domain, use `--tls-cert` and `--tls-key`; `--origin` must match the browser's actual HTTPS origin.
 
-登录后在节点应用生成一次性登记票据，保存为 Daemon 所在机器的私有文本文件。准备独立配置，例如：
+### Enroll a Daemon
+
+Sign in, generate a one-time enrollment ticket in the node application, and save it as a private file on the node. Create a separate configuration for each Daemon:
 
 ```json
 {
@@ -63,27 +121,93 @@ fixture创建新的 `.local/fixture-*`，启动独立Master与两个Daemon，默
 ./dist/blora-daemon --config /absolute/private/node-a.json
 ```
 
-每个Daemon使用独立stateDir、票据和身份。caFile是受信管理CA证书，本机测试可用Master生成的tls.crt。节点主动连接Master并校验证书，已有身份不重新消费登记票据。
+Each Daemon needs its own state directory and identity. `caFile` must trust the management certificate; local testing can use the Master's generated `tls.crt`. An enrolled node reuses its identity rather than consuming another ticket.
 
-Linux原生实例需要已委派且可写的 `cgroupRoot`。信任执行内容的管理员可显式选择 `allowPGIDFallback:true`；进程组模式不提供普通用户宿主机隔离。普通用户使用隔离容器，需要管理员配置 `dockerEndpoint`、准备镜像并授予资源权限。
+Native Linux instances require an administrator-delegated, writable `cgroupRoot`. Administrators running trusted workloads can explicitly enable `allowPGIDFallback`; process groups do not provide host isolation for ordinary users. Isolated user workloads require a configured `dockerEndpoint`, a prepared image, and the appropriate permissions.
 
-节点维护、配额、角色模板、禁用/改密和换钥见[管理能力报告](docs/acceptance/reports/administration.md)。换钥保持nodeId与关联资源。独立日志helper和Windows Job keeper由Daemon自身内部入口启动，不依赖网页保持打开。
+See the [operations guide](docs/operations/OPERATIONS.md) for state directories, health checks, consistent backups, upgrades, and rollback. [Administration evidence](docs/acceptance/reports/administration.md) covers quotas, roles, account changes, node maintenance, and key rotation. Rotation preserves the node ID and resource associations; log helpers and Windows Job keepers run independently of open browser views.
 
-## 隔离容器镜像
+</details>
+
+## Architecture
+
+| Component | Responsibility |
+| :--- | :--- |
+| **Desktop** · Vue 3 / TypeScript | Windows, tabs, default apps, extension hosting, and local workspace recovery. |
+| **Master** · Go | Authentication, authorization, node coordination, resource indexes, persistent tasks, and the management gateway. |
+| **Daemon** · Go | Node-local process control, PTYs, files, containers, backups, monitoring, and task execution. |
+
+Nodes establish outbound management connections to the Master. HTTPS and WSS carry management data; managed services keep their own business networking. Resource authorization is enforced on the server, and extensions do not receive host command execution by default.
+
+```text
+cmd/        Master, Daemon, fixtures, and helper entry points
+internal/   Backend services, protocol, storage, and platform adapters
+web/        Vue desktop, default applications, and browser tests
+sdk/        Standalone app SDK and reference extension
+scripts/    Packaging and validation tools
+docs/       Design, API, operations, and acceptance records
+```
+
+## Development
+
+```sh
+make check
+make test
+npm --prefix web test
+npm --prefix web run test:e2e
+```
+
+The mock browser runner defaults to `/usr/bin/chromium-browser`; set `BLORA_CHROMIUM` to another Chromium executable when needed. Race tests require a supported native platform and a C toolchain. Tests that depend on Docker, delegated cgroups, or other platform capabilities have separate prerequisites and evidence.
+
+<details>
+<summary><strong>Real browser and fault validation</strong></summary>
+
+With the local fixture running, use its private credential file:
+
+```sh
+BLORA_E2E_CREDENTIALS=/absolute/private/fixture/browser-credentials.json npm --prefix web run test:e2e:real
+```
+
+The real runner uses Playwright's installed browsers by default; `BLORA_CHROMIUM` can select a system Chromium. See the [desktop report](docs/acceptance/reports/desktop-2026-09-09.md) and [current local functional report](docs/acceptance/reports/local-functional-2026-09-27.md) for setup and coverage.
+
+**Sustained mixed load.** Start `./dist/blora-devfixture --performance`, then run in a second terminal:
+
+```sh
+BLORA_E2E_CREDENTIALS=/absolute/private/fixture/browser-credentials.json BLORA_PERF_SOAK_SECONDS=3600 npm --prefix web run test:e2e:real -- tests/real/performance.spec.ts
+```
+
+This exercises eight windows, two continuously producing PTYs, a directory with 10,000 entries, and repeated cross-node copies. Do not replace the frontend build or run competing heavy tests during measurement. Linux resource sampling is available through `python3 scripts/performance-resources.py .local/fixture-ID --samples 62 --interval 60`. Stop the sampler and the owned fixture after the test. Current results, including failed performance thresholds, are recorded in the [performance report](docs/acceptance/reports/performance-current-2026-09-26.md).
+
+**Isolated disk-full validation.** This requires private Linux user/mount namespaces and uses a 1 MiB tmpfs in an owned test directory:
+
+```sh
+BLORA_TEST_ENOSPC=1 go test -race ./internal/master -run 'ENOSPC' -count=1 -v
+```
+
+**Isolated firewall validation.** This additionally needs private network namespaces, firewalld, firewall-cmd, nft, ip, and dbus-broker-launch:
+
+```sh
+BLORA_TEST_FIREWALL_NAMESPACE=1 go test -race ./internal/master -run '^TestPrivateFirewalldApplyAndRestore$' -count=1 -v
+```
+
+These fault tests only operate on their own isolated resources. A skipped test is not a passing result. See the [disk-full report](docs/acceptance/reports/enospc-2026-09-19.md) and [firewall report](docs/acceptance/reports/firewall-private-2026-09-19.md).
+
+</details>
+
+<details>
+<summary><strong>Containers, backup hooks, and app registries</strong></summary>
+
+Build the isolated instance image:
 
 ```sh
 docker build -f Dockerfile.isolated -t blora/isolated:local .
 ```
 
-镜像预装固定路径exec-helper并使用非root用户。运行适配器限制容器权限、资源和绑定目录；PTY关闭会核对出生身份，只结束对应exec。真实命令与边界见[容器终端报告](docs/acceptance/reports/terminal-container-2026-09-09.md)。Docker Center/Compose、容器日志有界归档、备份恢复和调度 API 已接入；远程 Engine、ENOSPC/掉电和长期故障场景仍需验收。
+The image uses a non-root user and includes the fixed-path exec helper. The adapter restricts privileges, resources, and mounts; PTY cleanup checks process identity before ending its own exec. See the [container terminal report](docs/acceptance/reports/terminal-container-2026-09-09.md).
 
-Linux Daemon启动时会先核对并清理自身遗留的Compose CLI。若提示`recover Compose CLI ownership`，需保留`containers/cli-runs/`记录，排查文件完整性与进程检查权限，再重新启动；无法确认旧CLI退出时不会接受新的Engine变更。CLI退出也不代表远程资源已回滚，应查看原任务诊断并核对实际资源。详见[恢复证据](docs/acceptance/reports/compose-cli-recovery-2026-09-13.md)。
+Linux Daemons reconcile owned leftover Compose CLI processes on startup. If `recover Compose CLI ownership` fails, preserve `containers/cli-runs/`, investigate record integrity and process inspection permissions, then restart. New Engine mutations remain blocked until ownership is resolved; CLI exit alone does not prove remote rollback. See the [Compose recovery report](docs/acceptance/reports/compose-cli-recovery-2026-09-13.md).
 
-## 默认应用与验证
-
-已接 AppHost 的入口包括实例中心、文件、编辑器、终端、任务、节点、用户与权限、设置、Docker/Compose、监控、有限系统管理和扩展管理。独立扩展 SDK 与参考包位于 [`sdk/`](sdk/README.md)，可从独立目录构建；启用扩展通过认证 bundle 接口在 opaque-origin `sandbox="allow-scripts"` iframe 中加载，并经受控任务桥接、窗口和状态合同接入桌面。管理员可以浏览本地已校验注册源、获取包并安装或升级；网络注册源和 Windows/远程高延迟场景仍按验收矩阵记录。
-
-备份与恢复从实例窗口的“打开备份与计划”进入，使用服务端版本核对、不可变恢复计划、显式覆盖确认和持久任务。Daemon 的 `backupHookCommands` 是可选的管理员固定 argv 映射；例如：
+Open the backup application from an instance's **Backups & schedules** entry. Restores use version checks, an immutable plan, explicit overwrite confirmation, and persistent tasks. Optional hooks are administrator-defined argv mappings in the Daemon configuration:
 
 ```json
 {
@@ -95,24 +219,56 @@ Linux Daemon启动时会先核对并清理自身遗留的Compose CLI。若提示
 }
 ```
 
-钩子不会经过 shell，资源身份和 hook ID 通过 `BLORA_BACKUP_*` 环境变量传入；未配置的策略会明确返回能力不可用。扩展目录既可用 `--extensions-catalog /absolute/private/catalog` 读取本地目录，也可用 `--extensions-catalog-url https://registry.example.invalid/blora/` 拉取 `index.json` 与版本包；两者不能同时配置，远程源必须是 HTTPS 且拒绝重定向。
+Hooks do not run through a shell. Resource identity and hook ID are passed through `BLORA_BACKUP_*` environment variables; an unconfigured policy reports unavailable capability.
 
-HTTP 管理接口的请求、授权、幂等、任务、WebSocket 和结构化错误合同见 [OpenAPI 描述](docs/api/openapi.yaml)。文档中的 `sessionCookie`、`X-CSRF-Token` 与 `Idempotency-Key` 对应真实 Master 校验；OpenAPI 的通用 JSON 响应只表示模块返回的具体资源由相应应用定义。
+Use `--extensions-catalog /absolute/private/catalog` for a local registry, or `--extensions-catalog-url https://registry.example.invalid/blora/` for an HTTPS registry. These options are mutually exclusive; remote registries reject redirects. Enabled apps load authenticated bundles in an opaque-origin `sandbox="allow-scripts"` iframe and use the host's authorized capability and task bridge. See the [SDK documentation](sdk/README.md) for package construction, signatures, installation, upgrades, rollback, and data migration.
+
+</details>
+
+<details>
+<summary><strong>Build release archives</strong></summary>
+
+After the dependency setup above:
 
 ```sh
-make check
-make test
-cd web
-npm test
-npm run test:e2e
+BLORA_VERSION=development-YYYYMMDD make package
+cd dist/releases/development-YYYYMMDD
+sha256sum -c SHA256SUMS
 ```
 
-真实浏览器测试读取fixture私有凭据文件，具体命令见[桌面报告](docs/acceptance/reports/desktop-2026-09-09.md)。测试只管理自己创建的资源；Windows、cgroup委派、Docker、磁盘满等环境缺口分别记录。
+Packaging creates six archives: Linux and Windows Master/Daemon, a standalone frontend, and the SDK. Master archives include the frontend; Daemon archives include isolated-image build inputs; SDK archives include reference source, packages, and signing tools for both platforms. See the included `START.txt` for SDK build instructions.
 
-持续混合负载入口：先运行 `./dist/blora-devfixture --performance`，然后在另一终端进入 `web`，执行 `BLORA_E2E_CREDENTIALS=/absolute/path/to/fixture/browser-credentials.json BLORA_PERF_SOAK_SECONDS=3600 npm run test:e2e:real -- tests/real/performance.spec.ts`。使用夹具实际输出的私有凭据路径，勿复制凭据内容。该场景打开八个窗口、两个持续输出的真实PTY、万项目录并循环执行已验证的跨节点复制；逐轮检查终端错误，每分钟报告进度。运行期间不要替换前端构建或并行执行重负载测试。Linux可用 `python3 scripts/performance-resources.py .local/fixture-实际编号 --samples 62 --interval 60` 只读采样节点RSS和归档轮转。测试终态后停止采样并对夹具按Ctrl+C；观察心跳或短时通过不等于一小时通过。当前结果与已知失败见[持续负载](docs/acceptance/reports/performance-continuous-2026-09-19.md)和[终端合批](docs/acceptance/reports/terminal-batching-2026-09-19.md)。
+Each archive also contains a per-file `MANIFEST.json`. Fixed timestamps, ordering, and modes make packaging reproducible for identical inputs; a conflicting existing version is rejected. Source or documentation changes require a new version. Archives exclude runtime identities and `node_modules`. See the [RC24 release report](docs/acceptance/reports/release-rc24-2026-09-27.md) for actual smoke, restore, and compatible rollback results.
 
-Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race ./internal/master -run 'ENOSPC' -count=1 -v`。需要系统允许私有user/mount namespace；测试自行隔离后仅在所属临时目录挂载1MiB tmpfs，验证跨节点移动与备份创建/恢复，不填满宿主磁盘。默认未启用时跳过，不计为通过；见[ENOSPC证据](docs/acceptance/reports/enospc-2026-09-19.md)。
+`make package` collects upstream licenses and notices offline from compiled Go dependencies and locked npm packages. Missing license material stops packaging. If Go license files live outside `GOROOT`, set `BLORA_GO_LICENSE_DIR`; Fedora's `/usr/share/licenses/golang` is recognized by default.
 
-独立防火墙验收：`BLORA_TEST_FIREWALL_NAMESPACE=1 go test -race ./internal/master -run '^TestPrivateFirewalldApplyAndRestore$' -count=1 -v`。需要Linux私有user/mount/net namespace及firewalld、firewall-cmd、nft、ip、dbus-broker-launch。入口先验证隔离并隐藏宿主总线，仅操作测试网络；包含真实管理连接阻断后的租约回滚。默认跳过不计通过，见[防火墙证据](docs/acceptance/reports/firewall-private-2026-09-19.md)。
+</details>
 
-证据：[核心](docs/acceptance/reports/core-2026-09-09.md)、[运行适配](docs/acceptance/reports/runtime-2026-09-09.md)、[流与日志](docs/acceptance/reports/stream-integration.md)、[文件API](docs/acceptance/reports/files-api.md)、[Docker/Compose](docs/acceptance/reports/containers-api.md)、[备份与调度](docs/acceptance/reports/backup-scheduler-library.md)。原始需求以[技术架构](docs/plan/Blora-01-技术架构.md)、[功能交互](docs/plan/Blora-02-功能与交互.md)及[行动指导](ACTION_GUIDE.md)为准。
+## Project status
+
+**Blora Panel is in active development.** Implementation and verification are tracked separately in the [acceptance matrix](docs/acceptance/ACCEPTANCE_MATRIX.md).
+
+Linux functional and release evidence is available, and Windows amd64 binaries can be built with `make windows`. Native Windows Job/ConPTY, service-manager deployments, remote environments, and physical failure scenarios still have separate validation requirements. The performance target for eight windows with translucent materials and concurrent terminal/file activity has not passed; a successful build or local functional run does not imply complete acceptance.
+
+The repository includes source, tests, dependency lockfiles, documentation, and the two README screenshots. Credentials, runtime databases, installed dependencies, release archives, generated reference packages, and the remaining historical screenshot galleries stay outside version control.
+
+## Documentation
+
+Detailed engineering documents and the SDK guide are currently maintained in Chinese.
+
+| Guide | Contents |
+| :--- | :--- |
+| [Operations](docs/operations/OPERATIONS.md) | State layout, health checks, backups, upgrades, and rollback. |
+| [Platform validation](docs/operations/PLATFORM_VALIDATION.md) | Windows, systemd, remote Engine, and fault-validation procedures. |
+| [API specification](docs/api/openapi.yaml) | Requests, authorization, idempotency, tasks, WebSockets, and structured errors. |
+| [Extension SDK](sdk/README.md) | App manifests, sandbox capabilities, signatures, and lifecycle contracts. |
+| [Acceptance matrix](docs/acceptance/ACCEPTANCE_MATRIX.md) | Implemented, verified, pending, and environment-dependent requirements. |
+| [Execution progress](docs/execution/PROGRESS.md) | Latest engineering decisions, evidence, and remaining work. |
+| [Technical architecture](docs/plan/Blora-01-技术架构.md) | Master/Daemon architecture and core technical contracts. |
+| [Features & interaction](docs/plan/Blora-02-功能与交互.md) | Product scope, applications, and workspace behavior. |
+
+The API's `sessionCookie`, `X-CSRF-Token`, and `Idempotency-Key` describe checks performed by the actual Master. Resource-specific response bodies are defined by their respective applications.
+
+## Third-party notices
+
+Dependency licenses and original notices are recorded in the [dependency inventory](docs/licenses/inventory.json) and [third-party notices](docs/licenses/THIRD-PARTY-NOTICES.txt), and are included in release archives. A project-level license has not yet been selected.

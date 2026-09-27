@@ -26,7 +26,11 @@ web/playwright-report/
 web/real-test-results/
 web/real-playwright-report/
 web/browser-test-results/
-web/ui-screenshots/
+web/ui-screenshots/*
+!web/ui-screenshots/all-appearance-20260926/
+web/ui-screenshots/all-appearance-20260926/*
+!web/ui-screenshots/all-appearance-20260926/mineral-light-on-launcher.png
+!web/ui-screenshots/all-appearance-20260926/mineral-dark-on-launcher.png
 docs/acceptance/screenshots/
 
 # Local agent metadata, caches and operating-system files.
