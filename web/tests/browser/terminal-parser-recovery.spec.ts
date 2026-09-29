@@ -18,12 +18,19 @@ const cases=[
   {name:'alternate buffer saved cursor',prefix:'normal\x1b7\x1b[?1049h\x1b[2;4Halt\x1b7\x1b[4;2H',suffix:'\x1b8!\x1b[?1049l\x1b8?',complete:true},
   {name:'saved cursor after scrollback',prefix:'line\r\n'.repeat(50)+'\x1b7tail',suffix:'\x1b8!',complete:true},
   {name:'origin mode cursor',prefix:'\x1b[2;5r\x1b[?6h\x1b[2;4H',suffix:'X\r\nY',complete:true},
+  {name:'SGR mouse protocol',prefix:'\x1b[?1000h\x1b[?1006h',suffix:'\x1b[?1006$p',complete:true},
+  {name:'pixel mouse protocol',prefix:'\x1b[?1003h\x1b[?1016h',suffix:'\x1b[?1016$p',complete:true},
+  {name:'hidden cursor mode',prefix:'\x1b[?25l',suffix:'\x1b[?25$p',complete:true},
+  {name:'blinking cursor mode',prefix:'\x1b[?12h',suffix:'\x1b[?12$p',complete:true},
+  {name:'line feed conversion',prefix:'\x1b[20hAB',suffix:'\nX\x1b[20$p',complete:true},
+  {name:'cursor style override',prefix:'\x1b[5 q',suffix:'X',complete:true},
 ]
 for(const scenario of cases)test(`${scenario.name} survives checkpoint and remount`,async({page})=>{
   await page.route('**/api/v1/**',route=>route.fulfill({json:{items:[]}}))
   await page.goto('/')
   const result=await page.evaluate(async scenario=>{
-    const terminalModule='/src/services/terminals.ts',recoveryModule='/src/recovery/service.ts'
+    const terminalModule='/src/services/terminals.ts',recoveryModule='/src/recovery/service.ts',controlModule='/src/services/terminal-control-state.ts'
+    const {captureTerminalControlState}=await import(controlModule) as typeof import('../../src/services/terminal-control-state')
     const {TerminalModel}=await import(terminalModule) as typeof import('../../src/services/terminals')
     const {RecoveryService}=await import(recoveryModule) as typeof import('../../src/recovery/service')
     const run=async(remount:boolean)=>{
@@ -47,7 +54,7 @@ for(const scenario of cases)test(`${scenario.name} survives checkpoint and remou
         const replayResponses=responses.splice(0)
         await output(scenario.suffix)
         await model.checkpoint()
-        return {screen:model.serialize.serialize({scrollback:3000}),cols:model.terminal.cols,rows:model.terminal.rows,responses,titles,replayResponses,compacted,protectedSequence}
+        return {screen:model.serialize.serialize({scrollback:3000}),controls:captureTerminalControlState(model.terminal,model.terminal.cols,model.terminal.rows),cols:model.terminal.cols,rows:model.terminal.rows,responses,titles,replayResponses,compacted,protectedSequence}
       }finally{model.dispose();container.remove();await recovery.clear()}
     }
     return {baseline:await run(false),restored:await run(true)}

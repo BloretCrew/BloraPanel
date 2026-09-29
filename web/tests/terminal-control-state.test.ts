@@ -11,6 +11,9 @@ it('rejects a corrupt second buffer before changing either buffer or charset',as
     bad.normal.scrollTop=0;bad.alternate.tabs=[-1]
     expect(()=>restoreTerminalControlState(terminal,bad,80,24)).toThrow('数值无效')
     expect(captureTerminalControlState(terminal,80,24)).toEqual(before)
+    expect(()=>restoreTerminalControlState(terminal,{...before,protocol:{...before.protocol,mouseEncoding:'custom'}},80,24)).toThrow('枚举无效')
+    expect(()=>restoreTerminalControlState(terminal,{...before,protocol:{...before.protocol,cursorHidden:'false'}},80,24)).toThrow('布尔值无效')
+    expect(captureTerminalControlState(terminal,80,24)).toEqual(before)
     const invalidCharset=structuredClone(before)
     invalidCharset.charsets=[JSON.parse('{"__proto__":"x"}')]
     expect(()=>restoreTerminalControlState(terminal,invalidCharset,80,24)).toThrow('映射无效')
