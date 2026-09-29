@@ -24,6 +24,12 @@ const cases=[
   {name:'blinking cursor mode',prefix:'\x1b[?12h',suffix:'\x1b[?12$p',complete:true},
   {name:'line feed conversion',prefix:'\x1b[20hAB',suffix:'\nX\x1b[20$p',complete:true},
   {name:'cursor style override',prefix:'\x1b[5 q',suffix:'X',complete:true},
+  {name:'indexed colour palette',prefix:'\x1b]4;1;rgb:12/34/56\x07',suffix:'\x1b]4;1;?\x07',complete:true},
+  {name:'foreground colour',prefix:'\x1b]10;rgb:23/45/67\x07',suffix:'\x1b]10;?\x07',complete:true},
+  {name:'background colour',prefix:'\x1b]11;rgb:34/56/78\x07',suffix:'\x1b]11;?\x07',complete:true},
+  {name:'cursor colour',prefix:'\x1b]12;rgb:45/67/89\x07',suffix:'\x1b]12;?\x07',complete:true},
+  {name:'indexed colour reset',prefix:'\x1b]4;255;#123456\x07',suffix:'\x1b]104;255\x07\x1b]4;255;?\x07',complete:true},
+  {name:'default colour resets',prefix:'\x1b]10;#123456\x07\x1b]11;#345678\x07\x1b]12;#56789a\x07',suffix:'\x1b]110\x07\x1b]111\x07\x1b]112\x07\x1b]10;?\x07\x1b]11;?\x07\x1b]12;?\x07',complete:true},
 ]
 for(const scenario of cases)test(`${scenario.name} survives checkpoint and remount`,async({page})=>{
   await page.route('**/api/v1/**',route=>route.fulfill({json:{items:[]}}))

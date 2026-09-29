@@ -64,10 +64,11 @@ docker run --rm --network host -e BLORA_BROWSER=webkit \
   -v "$PWD:/work" -w /work/web mcr.microsoft.com/playwright:v1.63.0-noble \
   node node_modules/@playwright/test/cli.js test --config playwright.config.ts \
   tests/browser/terminal-parser-recovery.spec.ts tests/browser/terminal-snapshot.spec.ts \
+  tests/browser/terminal-mouse-recovery.spec.ts \
   --workers=1 --timeout=60000 --reporter=line --output=/tmp/blora-terminal-webkit
 ```
 
-将环境值改成`firefox`可验证另一引擎。这里API使用隔离测试数据，但xterm、Worker和浏览器恢复存储是真实实现；它不替代下述真实双节点后端验证。2026-09-29三引擎控制序列/UTF-8/Worker结果见[检查点报告](../acceptance/reports/terminal-parser-checkpoint-2026-09-29.md)。
+将环境值改成`firefox`可验证另一引擎。这里API使用隔离测试数据，但xterm、Worker和浏览器恢复存储是真实实现；它不替代下述真实双节点后端验证。2026-09-29结果见[控制序列/UTF-8/Worker](../acceptance/reports/terminal-parser-checkpoint-2026-09-29.md)、[持久控制状态](../acceptance/reports/terminal-control-state-2026-09-29.md)、[鼠标真实点击和协议](../acceptance/reports/terminal-protocol-state-2026-09-29.md)及[自定义颜色](../acceptance/reports/terminal-colour-state-2026-09-29.md)报告。
 
 项目的 `playwright.real.config.ts` 支持 `BLORA_BROWSER=webkit`。若宿主 Linux 的 Playwright WebKit 缺少匹配 ABI 库，可用与项目 `@playwright/test` 同版本的官方容器运行；容器只连接本轮私有 fixture。监控历史场景需要读取并暂停 fixture Daemon，因此将 fixture 目录以原路径只读挂入，并使用 host PID namespace；测试源码先按该私有配置路径精确确认 PID，不会选择其他进程。
 
