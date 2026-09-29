@@ -21,6 +21,30 @@ test('window geometry and independent form drafts survive immediate reload',asyn
   await page.goto('/');await page.locator('[data-app="blora.instances"]').click();const win=page.locator('.app-window').first(),title=win.locator('.window-titlebar');const rect=await title.boundingBox();await page.mouse.move(rect!.x+240,rect!.y+15);await page.mouse.down();await page.mouse.move(rect!.x+370,rect!.y+60,{steps:5});await page.mouse.up();const transform=await win.evaluate(el=>(el as HTMLElement).style.transform);await win.getByRole('searchbox',{name:'搜索实例'}).fill('未提交筛选');await page.reload();await expect(page.locator('.app-window')).toHaveCSS('transform',/matrix/);expect(await page.locator('.app-window').evaluate(el=>(el as HTMLElement).style.transform)).toBe(transform);await expect(page.getByRole('searchbox',{name:'搜索实例'})).toHaveValue('未提交筛选')
 })
 
+test('dragging retains full material and survives reload while Escape restores geometry',async({page})=>{
+  await page.goto('/');await page.locator('[data-app="blora.instances"]').click()
+  const win=page.locator('.app-window'),title=win.locator('.window-titlebar')
+  const geometry=()=>win.evaluate(element=>(element as HTMLElement).style.transform)
+  const material=await win.evaluate(element=>getComputedStyle(element).backdropFilter)
+  expect(material).toContain('blur(')
+  const begin=async()=>{
+    const box=await title.boundingBox()
+    await page.mouse.move(box!.x+240,box!.y+15);await page.mouse.down()
+    await page.mouse.move(box!.x+300,box!.y+45,{steps:3})
+    await expect(win).toHaveClass(/moving/)
+  }
+  const original=await geometry()
+  await begin();await expect.poll(geometry).not.toBe(original)
+  expect(await win.evaluate(element=>getComputedStyle(element).backdropFilter)).toBe(material)
+  const moved=await geometry()
+  await page.reload();await page.mouse.up()
+  await expect.poll(geometry).toBe(moved)
+  await begin();await expect.poll(geometry).not.toBe(moved)
+  await page.keyboard.press('Escape');await page.mouse.up()
+  await expect.poll(geometry).toBe(moved)
+  await page.reload();await expect.poll(geometry).toBe(moved)
+})
+
 test('theme palette and translucency remain independent across all four combinations and reload',async({page})=>{
   await page.goto('/')
   const root=page.locator('html')

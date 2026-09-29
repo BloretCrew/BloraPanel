@@ -61,15 +61,8 @@ export class RecoveryService {
       try {
         if (!this.db || this.restoreFailure) return
         do {
-          // Output arriving while IDB is busy is in the synchronous journal;
-          // coalesce its next snapshot instead of copying identical revisions.
-          // Workspace values are JSON-shaped. Native cloning avoids encoding
-          // and parsing every large editor/terminal string for each snapshot.
-          // Retain the JSON path for nested proxies supplied by an app.
-          let snapshot:Workspace
-          try { snapshot = structuredClone(toRaw(this.state)) }
-          catch { snapshot = copy(toRaw(this.state)) }
-          const revision = snapshot.revision
+          // Output arriving while IDB is busy remains in the synchronous journal.
+          let revision = this.state.revision
           this.status.saving = true
           let transaction: {abort():void;done:Promise<void>} | undefined
           try {
@@ -79,8 +72,19 @@ export class RecoveryService {
             // Observe completion immediately, even when an earlier request fails.
             void tx.done.catch(()=>{})
             const old = await tx.objectStore('pointers').get(this.key)
+            // put() clones synchronously. Capture the revision immediately before
+            // it, after the pointer read, without first duplicating the workspace.
+            revision = this.state.revision
             const current = `${this.key}:${revision}`
-            await tx.objectStore('snapshots').put(snapshot, current)
+            let snapshotWrite: Promise<IDBValidKey>
+            try { snapshotWrite = tx.objectStore('snapshots').put(toRaw(this.state), current) }
+            catch (error) {
+              // A nested app-supplied Vue proxy can still require JSON cleanup.
+              // Only a synchronous clone failure is safe to retry in this tx.
+              if (!(error instanceof DOMException) || error.name !== 'DataCloneError') throw error
+              snapshotWrite = tx.objectStore('snapshots').put(copy(toRaw(this.state)), current)
+            }
+            await snapshotWrite
             await tx.objectStore('pointers').put({ current, previous: old?.current }, this.key)
             if (old?.previous && old.previous !== current) await tx.objectStore('snapshots').delete(old.previous)
             await tx.done

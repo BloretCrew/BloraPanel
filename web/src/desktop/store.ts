@@ -164,6 +164,9 @@ export const useDesktop = defineStore('desktop', () => {
   function focus(windowId: string) {
     const s = state.value!
     if (!s.windows[windowId]) return
+    // Clicking/dragging the already active window needs no new recovery entry.
+    // Check all three facts so restored/minimized or out-of-order windows heal.
+    if (s.activeWindowId === windowId && s.order.at(-1) === windowId && !s.windows[windowId].minimized) return
     commit([{ kind: 'set', path: ['order'], value: json([...s.order.filter(x => x !== windowId), windowId]) }, { kind: 'set', path: ['activeWindowId'], value: windowId }, { kind: 'set', path: ['windows', windowId, 'minimized'], value: false }])
   }
   function open(request: OpenRequest) {

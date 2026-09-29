@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import {describe,it,expect,beforeEach} from 'vitest'
+import {describe,it,expect,beforeEach,vi} from 'vitest'
 import {createPinia,setActivePinia} from 'pinia'
 import {defineComponent} from 'vue'
 import {registerApp,apps} from '../src/app-host/registry'
@@ -10,6 +10,25 @@ import {extensionDesktopAction} from '../src/app-host/extension-desktop'
 beforeEach(()=>{setActivePinia(createPinia());apps.clear();registerApp({manifest:{appId:'test',title:'Reference',icon:'R',color:'#fff',packageVersion:'1.0.0',hostApiVersion:1,entrypoints:['overview','resource'],resourceHandlers:['instance'],permissions:[],dependencies:[],windowPolicy:'multiple',tabPolicy:{types:['overview','resource'],movable:true},stateSchemaVersion:1},component:defineComponent({}),captureState:s=>s,restoreState:s=>s,migrateState:s=>s,reconcileResource:async()=>{}})})
 function setup(){const store=useDesktop(),storage={getItem:()=>null,setItem:()=>{},removeItem:()=>{},clear:()=>{},key:()=>null,length:0};const service=new RecoveryService('alice','device','tab',storage);store.recovery=service;store.state=service.state;return store}
 describe('AppHost identity and atomic ownership',()=>{
+  it('repeated focus avoids recovery writes but still raises and restores other windows',()=>{
+    const store=setup()
+    store.open({appId:'test'});const first=store.state!.order[0]!
+    store.open({appId:'test',disposition:'new-window'});const second=store.state!.order.at(-1)!
+    const writes=vi.spyOn(store.recovery!.storage,'setItem'),revision=store.state!.revision
+    for(let i=0;i<100;i++)store.focus(second)
+    expect(writes).not.toHaveBeenCalled()
+    expect(store.state!.revision).toBe(revision)
+    store.focus(first)
+    expect(writes).toHaveBeenCalledTimes(1)
+    expect(store.state!.order.at(-1)).toBe(first)
+    expect(store.state!.activeWindowId).toBe(first)
+    store.minimize(first);store.focus(first)
+    expect(store.state!.windows[first]!.minimized).toBe(false)
+    expect(store.state!.activeWindowId).toBe(first)
+    // A restored state can have a stale active ID/order combination.
+    store.state!.order=[first,second];store.focus(first)
+    expect(store.state!.order.at(-1)).toBe(first)
+  })
   it('scopes extension desktop actions to its own view and declared capabilities',()=>{
     const store=setup(),resource={kind:'instance',id:'one',nodeId:'node-a'}
     const view=store.open({appId:'test',resourceRef:resource,state:{note:'preserved'}})

@@ -30,6 +30,42 @@ describe('recovery value copies',()=>{
   })
 })
 describe('synchronous tail and transactional snapshots',()=>{
+  it('keeps the snapshot revision and contents atomic when edits arrive just after put',async()=>{
+    const {service,dbName}=await setup()
+    const nativePut=IDBObjectStore.prototype.put;let injected=false
+    IDBObjectStore.prototype.put=function(this:IDBObjectStore,value:unknown,key?:IDBValidKey){
+      const request=nativePut.call(this,value,key)
+      if(!injected&&this.name==='snapshots'){
+        injected=true
+        service.commit([{kind:'set',path:['preferences','value'],value:'after put'}])
+      }
+      return request
+    }
+    try{
+      service.commit([{kind:'set',path:['preferences','value'],value:'before put'}])
+      await service.awaitPendingWrites()
+    }finally{IDBObjectStore.prototype.put=nativePut}
+    const db=await openDB(dbName,1),pointer=await db.get('pointers',service.key)
+    const current=await db.get('snapshots',pointer.current),previous=await db.get('snapshots',pointer.previous)
+    expect(injected).toBe(true)
+    expect(current.revision).toBe(service.state.revision)
+    expect(current.preferences.value).toBe('after put')
+    expect(previous.revision).toBe(current.revision-1)
+    expect(previous.preferences.value).toBe('before put')
+    db.close()
+    const restored=new RecoveryService('alice','device','tab',new MemoryStorage(),dbName)
+    await restored.restore();expect(restored.state.preferences.value).toBe('after put')
+  })
+  it('retains the nested reactive app value fallback when IndexedDB cannot clone it',async()=>{
+    const {service,dbName}=await setup()
+    service.state.preferences.nested=reactive({text:'中文 draft'})
+    service.commit([{kind:'set',path:['preferences','other'],value:'saved'}])
+    await service.awaitPendingWrites()
+    expect(service.status.protected).toBe(true)
+    const restored=new RecoveryService('alice','device','tab',new MemoryStorage(),dbName)
+    await restored.restore()
+    expect(restored.state.preferences).toEqual({nested:{text:'中文 draft'},other:'saved'})
+  })
   it('coalesces a burst while preserving the final synchronous tail and awaited snapshot',async()=>{
     const {storage,service,dbName}=await setup()
     service.commit([{kind:'set',path:['preferences','sample'],value:0}])
