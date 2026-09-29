@@ -157,6 +157,20 @@ describe('synchronous tail and transactional snapshots',()=>{
     const restored=new RecoveryService('alice','device','tab',storage,dbName);await restored.restore()
     expect(restored.state.terminals['session:view']).toMatchObject({baseSequence:38,sequence:43,scroll:3,outputJournal:saved.outputJournal})
   })
+  it('persists ordered terminal resize deltas and rejects invalid sizes before mutation',async()=>{
+    const {storage,service,dbName}=await setup()
+    service.commit([{kind:'set',path:['terminals','s:v'],value:json({sessionId:'s',sequence:0,cols:100,rows:28,screen:'',scroll:0})}])
+    service.commit([{kind:'terminal-output',checkpointKey:'s:v',baseSequence:0,previousSequence:0,sequence:3,events:[{sequence:1,data:'G1szMQ=='},{sequence:2,kind:'resize',cols:80,rows:20},{sequence:3,data:'bVI='}],scroll:0}])
+    const expected=structuredClone(toRaw(service.state)).terminals['s:v']
+    expect(expected?.outputJournal?.[1]).toEqual({sequence:2,kind:'resize',cols:80,rows:20})
+    const revision=service.state.revision
+    expect(()=>service.commit([{kind:'terminal-output',checkpointKey:'s:v',baseSequence:0,previousSequence:3,sequence:4,events:[{sequence:4,kind:'resize',cols:0,rows:20}],scroll:0}])).toThrow('尺寸日志无效')
+    expect(service.state.revision).toBe(revision)
+    expect(service.state.terminals['s:v']).toEqual(expected)
+    await service.flush()
+    const restored=new RecoveryService('alice','device','tab',storage,dbName);await restored.restore()
+    expect(restored.state.terminals['s:v']).toEqual(expected)
+  })
   it('keeps current text and reports actual quota failure without claiming protection',async()=>{
     const {storage,service}=await setup();service.commit([{kind:'set',path:['drafts','d'],value:json(draft)}]);await service.flush();storage.fail=true
     service.commit([{kind:'edit',draftId:'d',forward:[{offset:0,length:0,text:'last'}],reverse:[{offset:0,length:4,text:''}]}])

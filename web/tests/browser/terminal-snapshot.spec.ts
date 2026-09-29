@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test'
 
-for(const [text,split,journal=0] of [['¢',1],['中',1],['中',2],['😀',1],['😀',2],['😀',3],['😀',1,1]] as const)test(`terminal checkpoint restores ${text} at byte ${split} split across reload with ${journal} journal bytes`,async({page})=>{
+for(const [text,split,journal=0,expected=text] of [['¢',1],['中',1],['中',2],['😀',1],['😀',2],['😀',3],['😀',1,1],['\x1b[31mR',4,0,'R']] as const)test(`terminal checkpoint restores ${JSON.stringify(text)} at byte ${split} split across reload with ${journal} journal bytes`,async({page})=>{
   await page.route('**/api/v1/**',route=>route.fulfill({json:{items:[]}}))
   await page.goto('/')
   const result=await page.evaluate(async({text,split,journal})=>{
@@ -25,7 +25,7 @@ for(const [text,split,journal=0] of [['¢',1],['中',1],['中',2],['😀',1],['�
       return model.terminal.buffer.active.getLine(0)?.translateToString(true)
     }finally{model.dispose();container.remove();await recovery.clear()}
   },{text,split,journal})
-  expect(result).toBe(text)
+  expect(result).toBe(expected)
 })
 
 test('terminal queries are silent during local and server replay but answer only live writable output',async({page})=>{
@@ -49,7 +49,7 @@ test('terminal queries are silent during local and server replay but answer only
       await model.receive({sequence:1,kind:'output',data:btoa(query)})
       const serverReplay=responses.splice(0)
       // Remount from the actual protected raw-output journal containing a query.
-      const journalContainsQuery=recovery.state.terminals['session:view']?.outputJournal?.some(event=>atob(event.data).includes(query))
+      const journalContainsQuery=recovery.state.terminals['session:view']?.outputJournal?.some(event=>event.data&&atob(event.data).includes(query))
       model.dispose()
       model=new TerminalModel(recovery,'session','view',value=>responses.push(value))
       model.setLease(true)

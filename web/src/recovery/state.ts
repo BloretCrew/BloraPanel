@@ -1,4 +1,4 @@
-import type { Draft, Json, TextEdit, Workspace } from '../app-host/types'
+import type { Draft, Json, TextEdit, Workspace, TerminalJournalEvent } from '../app-host/types'
 
 export const TERMINAL_OUTPUT_JOURNAL_BYTES = 128 * 1024
 export const TERMINAL_OUTPUT_JOURNAL_EVENTS = 128
@@ -8,7 +8,17 @@ export function editorHistoryBudgetBytes(draft?:Pick<Draft,'maxBytes'>){
   const editableLimit=draft?.maxBytes&&Number.isSafeInteger(draft.maxBytes)&&draft.maxBytes>0?draft.maxBytes:4*1024*1024
   return Math.min(EDITOR_HISTORY_BUDGET_BYTES,Math.max(1024,editableLimit*2))
 }
-export type Mutation = { kind: 'set'; path: string[]; value: Json } | { kind: 'delete'; path: string[] } | { kind: 'edit'; draftId: string; forward: TextEdit[]; reverse: TextEdit[];group?:string } | { kind: 'seal-history-group'; draftId:string; group:string } | { kind: 'history'; draftId: string; cursor: number } | {kind:'terminal-output';checkpointKey:string;baseSequence:number;previousSequence:number;sequence:number;events:{sequence:number;data:string}[];scroll:number}
+export type Mutation = { kind: 'set'; path: string[]; value: Json } | { kind: 'delete'; path: string[] } | { kind: 'edit'; draftId: string; forward: TextEdit[]; reverse: TextEdit[];group?:string } | { kind: 'seal-history-group'; draftId:string; group:string } | { kind: 'history'; draftId: string; cursor: number } | {kind:'terminal-output';checkpointKey:string;baseSequence:number;previousSequence:number;sequence:number;events:TerminalJournalEvent[];scroll:number}
+export function terminalJournalEvent(event:TerminalJournalEvent):TerminalJournalEvent{
+  if(!Number.isSafeInteger(event.sequence)||event.sequence<1)throw new Error('终端本地输出日志序号无效')
+  if(event.kind==='resize'){
+    if(!Number.isInteger(event.cols)||!Number.isInteger(event.rows)||event.cols!<1||event.rows!<1||event.cols!>1000||event.rows!>1000)throw new Error('终端本地尺寸日志无效')
+    return {sequence:event.sequence,kind:'resize',cols:event.cols,rows:event.rows}
+  }
+  if((event.kind!==undefined&&event.kind!=='output')||typeof event.data!=='string')throw new Error('终端本地输出日志内容无效')
+  return {sequence:event.sequence,data:event.data}
+}
+export const terminalJournalBytes=(event:TerminalJournalEvent)=>event.kind==='resize'?64:(event.data?.length||0)*2
 export type JournalEntry = { revision: number; mutations: Mutation[] }
 // Recovery values are structured data; avoid serializing large terminal output strings on every journal entry.
 // Vue proxies and non-cloneable app values retain the JSON fallback used before this optimization.
@@ -129,15 +139,17 @@ export function applyEntry(state: Workspace, entry: JournalEntry) {
       let persistedSequence = baseSequence
       let existingBytes = 0
       for (const event of existing) {
-        if (!Number.isSafeInteger(event.sequence) || event.sequence !== ++persistedSequence || typeof event.data !== 'string') throw new Error('终端已有输出日志不连续')
-        existingBytes += event.data.length * 2
+        terminalJournalEvent(event)
+        if (event.sequence !== ++persistedSequence) throw new Error('终端已有输出日志不连续')
+        existingBytes += terminalJournalBytes(event)
       }
       if (persistedSequence !== checkpoint.sequence || existingBytes > TERMINAL_OUTPUT_JOURNAL_BYTES) throw new Error('终端已有输出日志与检查点不匹配')
       let expected = checkpoint.sequence
       let addedBytes = 0
       for (const event of op.events) {
-        if (!Number.isSafeInteger(event.sequence) || event.sequence !== ++expected || typeof event.data !== 'string') throw new Error('终端本地输出日志不连续')
-        addedBytes += event.data.length * 2
+        terminalJournalEvent(event)
+        if (event.sequence !== ++expected) throw new Error('终端本地输出日志不连续')
+        addedBytes += terminalJournalBytes(event)
       }
       if (op.sequence !== expected || existingBytes + addedBytes > TERMINAL_OUTPUT_JOURNAL_BYTES) throw new Error('终端本地输出日志超出保护预算')
       checkpoint.baseSequence = baseSequence
@@ -145,7 +157,7 @@ export function applyEntry(state: Workspace, entry: JournalEntry) {
       // proxied entries inside a new raw array, making IDB/native cloning fail.
       // All sequence/budget checks above complete before this append mutates it.
       checkpoint.outputJournal ??= []
-      checkpoint.outputJournal.push(...op.events.map(event => ({sequence:event.sequence,data:event.data})))
+      checkpoint.outputJournal.push(...op.events.map(terminalJournalEvent))
       checkpoint.sequence = op.sequence
       checkpoint.scroll = op.scroll
     } else {

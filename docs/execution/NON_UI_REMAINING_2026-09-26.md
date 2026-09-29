@@ -1,5 +1,7 @@
 # UI 暂停后的剩余工作核对
 
+2026-09-29 RC28最新增量：未完成VT指令恢复已有确定复现、修复和三引擎实际验证，保留尺寸日志并防止Worker旧快照覆盖新输出；69单测、真实PTY7项和六包恢复/回退通过，见[报告](../acceptance/reports/terminal-parser-checkpoint-2026-09-29.md)。下一步独立审计已完成指令设置的持久终端状态。原Vim偶发、严格E08和外部平台验证仍未完成；UI未修改。
+
 2026-09-29 RC27最新增量：继续审计发现并修复了未完成UTF-8字节跨终端检查点丢失，相关真实浏览器、单测、双节点PTY及发行恢复/回退均通过，见[报告](../acceptance/reports/terminal-utf8-checkpoint-2026-09-29.md)。下一步仍需独立核对VT控制序列的解析器恢复边界；不能据此关闭原Vim额外字节或严格E08。平台缺口沿用下列最新记录，未声称本地工作已全部完成。
 
 2026-09-29最新收口：RC26完整真实功能51/51通过（905.725秒）；systemd/cgroup最终5项真实通过，补齐专属子组OOM/PID拒绝，见[报告](../acceptance/reports/systemd-cgroup-2026-09-29.md)。Linux X11/Dunst原生通知绘制、真实点击、刷新与退出后遗留弹窗关闭已有[实际证据](../acceptance/reports/native-notifications-2026-09-29.md)。不再把上述Linux子项列作缺环境。原Vim偶发仍未定位，严格E08仍失败；Windows、其他桌面平台、跨主机、宿主级耗尽和物理故障继续保留，未宣称全量完成。

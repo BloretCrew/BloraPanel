@@ -4,8 +4,10 @@ import {FitAddon} from '@xterm/addon-fit'
 import {WebglAddon} from '@xterm/addon-webgl'
 import {TerminalSnapshot} from './terminal-snapshot'
 import {pendingUtf8} from './terminal-utf8'
+import {terminalParserAtBoundary} from './terminal-parser-state'
+import type {TerminalJournalEvent} from '../app-host/types'
 import type {RecoveryService} from '../recovery/service'
-import {json,TERMINAL_OUTPUT_JOURNAL_BYTES,TERMINAL_OUTPUT_JOURNAL_EVENTS} from '../recovery/state'
+import {json,terminalJournalEvent,terminalJournalBytes,TERMINAL_OUTPUT_JOURNAL_BYTES,TERMINAL_OUTPUT_JOURNAL_EVENTS} from '../recovery/state'
 import '@xterm/xterm/css/xterm.css'
 export interface TerminalEvent {sequence:number;kind:'output'|'resize';data?:string;cols?:number;rows?:number}
 function decodeOutput(value:string){
@@ -29,7 +31,7 @@ export class TerminalModel {
   private disposed=false
   private snapshot?:TerminalSnapshot
   private container?:HTMLElement
-  private outputJournal:{sequence:number;data:string}[]=[]
+  private outputJournal:TerminalJournalEvent[]=[]
   private journalBytes=0
   private utf8Tail:Uint8Array=new Uint8Array()
   readonly checkpointKey:string
@@ -81,17 +83,20 @@ export class TerminalModel {
         await this.write(pending)
       }
       let sequence=saved.baseSequence??saved.sequence
-      for(const event of saved.outputJournal||[]){
-        if(event.sequence!==sequence+1||typeof event.data!=='string')throw new Error('终端本地输出日志不连续，原记录已保留')
-        this.journalBytes+=event.data.length*2
+      for(const stored of saved.outputJournal||[]){
+        const event=terminalJournalEvent(stored)
+        if(event.sequence!==sequence+1)throw new Error('终端本地输出日志不连续，原记录已保留')
+        this.journalBytes+=terminalJournalBytes(event)
         if(this.journalBytes>TERMINAL_OUTPUT_JOURNAL_BYTES)throw new Error('终端本地输出日志超出保护预算')
-        await this.write(decodeOutput(event.data))
+        if(event.kind==='resize'){this.terminal.resize(event.cols!,event.rows!);await this.mirror(snapshot=>snapshot.resize(event.cols!,event.rows!))}
+        else await this.write(decodeOutput(event.data!))
         sequence=event.sequence
       }
       if(sequence!==saved.sequence)throw new Error('终端本地输出日志与检查点序号不匹配')
-      this.outputJournal=(saved.outputJournal||[]).map(event=>({...event}))
-      this.terminal.scrollToLine(saved.scroll);if(saved.selection){const {start,end}=saved.selection;this.terminal.select(start.x,start.y,(end.y-start.y)*saved.cols+end.x-start.x)}
+      this.outputJournal=(saved.outputJournal||[]).map(terminalJournalEvent)
+      this.terminal.scrollToLine(saved.scroll);if(saved.selection){const {start,end}=saved.selection;this.terminal.select(start.x,start.y,(end.y-start.y)*this.terminal.cols+end.x-start.x)}
     }
+    else await this.checkpoint()
     // Only the server's replay-complete message enables outbound terminal responses.
   }
   private disableSnapshot(){this.snapshot?.dispose();this.snapshot=undefined;if(this.container)this.container.dataset.terminalCheckpoint='main'}
@@ -166,28 +171,32 @@ export class TerminalModel {
   }
   private async protectOutputs(events:TerminalEvent[]){
     const saved=this.recovery.state.terminals[this.checkpointKey]
-    const addedBytes=events.reduce((sum,event)=>sum+(event.data?.length||0)*2,0)
-    if(events.some(event=>event.kind!=='output')||!saved||this.outputJournal.length+events.length>TERMINAL_OUTPUT_JOURNAL_EVENTS||this.journalBytes+addedBytes>TERMINAL_OUTPUT_JOURNAL_BYTES){await this.checkpoint();return}
+    const addedBytes=events.reduce((sum,event)=>sum+terminalJournalBytes(event),0)
+    if(events.some(event=>event.kind!=='output')||!saved||this.outputJournal.length+events.length>TERMINAL_OUTPUT_JOURNAL_EVENTS||this.journalBytes+addedBytes>TERMINAL_OUTPUT_JOURNAL_BYTES){if(await this.checkpoint())return}
+    if(!saved)throw new Error('终端缺少安全解析边界的初始检查点')
+    if(this.outputJournal.length+events.length>TERMINAL_OUTPUT_JOURNAL_EVENTS||this.journalBytes+addedBytes>TERMINAL_OUTPUT_JOURNAL_BYTES)throw new Error('终端未完成控制序列超出保护预算，原检查点已保留')
     // Persist parsed remote output immediately, without serializing all 3000
     // scrollback lines or recopying the output journal on every chunk. Only
     // output is replayed locally; user input is never journaled or replayed.
-    this.outputJournal.push(...events.map(event=>({sequence:event.sequence,data:event.data!})))
-    this.journalBytes+=addedBytes
     this.recovery.commit([
-      {kind:'terminal-output',checkpointKey:this.checkpointKey,baseSequence:saved.baseSequence??saved.sequence,previousSequence:saved.sequence,sequence:this.sequence,events:events.map(event=>({sequence:event.sequence,data:event.data!})),scroll:this.terminal.buffer.active.viewportY},
+      {kind:'terminal-output',checkpointKey:this.checkpointKey,baseSequence:saved.baseSequence??saved.sequence,previousSequence:saved.sequence,sequence:this.sequence,events:events.map(terminalJournalEvent),scroll:this.terminal.buffer.active.viewportY},
     ])
+    this.outputJournal.push(...events.map(terminalJournalEvent))
+    this.journalBytes+=addedBytes
   }
   async checkpoint(){
-    if(this.parsing || this.disposed)return
+    if(this.parsing || this.disposed||!terminalParserAtBoundary(this.terminal))return false
+    const sequence=this.sequence
     // xterm serialization includes alternate screen, cursor and modes in this pinned version.
     // Parse callbacks establish the sequence boundary; no historical input is stored.
     let screen:string|undefined
     if(this.snapshot)try{screen=await this.snapshot.screen()}catch(error){if(import.meta.env.DEV)console.debug('Terminal checkpoint fallback',error);this.disableSnapshot()}
-    if(this.disposed)return
+    if(this.disposed||this.parsing||this.sequence!==sequence||!terminalParserAtBoundary(this.terminal))return false
     screen??=this.serialize.serialize({scrollback:3000})
     const checkpoint={sessionId:this.sessionId,viewTabId:this.viewTabId,sequence:this.sequence,cols:this.terminal.cols,rows:this.terminal.rows,screen,scroll:this.terminal.buffer.active.viewportY,selection:this.terminal.getSelectionPosition(),...(this.utf8Tail.length?{pendingUtf8:btoa(String.fromCharCode(...this.utf8Tail))}:{})}
     this.recovery.commit([{kind:'set',path:['terminals',this.checkpointKey],value:json(checkpoint)}])
     this.outputJournal=[];this.journalBytes=0
+    return true
   }
   dispose(){this.disposed=true;this.snapshot?.dispose();this.snapshot=undefined;this.terminal.dispose()}
 }
