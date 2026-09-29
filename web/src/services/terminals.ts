@@ -36,8 +36,10 @@ export class TerminalModel {
   private outputJournal:TerminalJournalEvent[]=[]
   private journalBytes=0
   private utf8Tail:Uint8Array=new Uint8Array()
+  private colorMode:'light'|'dark'='light'
   readonly checkpointKey:string
   constructor(readonly recovery:RecoveryService,readonly sessionId:string,readonly viewTabId:string,readonly onInput:(value:string)=>void,mode:'light'|'dark'='light'){
+    this.colorMode=mode
     this.checkpointKey=`${sessionId}:${viewTabId}`
     const saved=recovery.state.terminals[this.checkpointKey]||recovery.state.terminals[sessionId]
     this.sequence=saved?.sequence||0
@@ -47,7 +49,8 @@ export class TerminalModel {
     this.terminal.onScroll(()=>{if(!this.replaying && !this.parsing)this.protectView()})
     this.terminal.onSelectionChange(()=>{if(!this.replaying && !this.parsing)this.protectView()})
   }
-  async mount(container:HTMLElement){
+  mount(container:HTMLElement){return this.parsed=this.mountTerminal(container)}
+  private async mountTerminal(container:HTMLElement){
     this.container=container
     this.terminal.open(container)
     try{
@@ -90,6 +93,10 @@ export class TerminalModel {
         await this.write(pending)
       }
       let sequence=saved.baseSequence??saved.sequence
+      const reset=saved.colorResetSequence
+      if(reset!==undefined&&(!Number.isSafeInteger(reset)||reset<sequence||reset>saved.sequence))throw new Error('终端主题恢复顺序无效，原记录已保留')
+      const restoreTheme=()=>{this.terminal.options.theme={...terminalColors[this.colorMode]}}
+      if(reset===sequence)restoreTheme()
       for(const stored of saved.outputJournal||[]){
         const event=terminalJournalEvent(stored)
         if(event.sequence!==sequence+1)throw new Error('终端本地输出日志不连续，原记录已保留')
@@ -98,6 +105,7 @@ export class TerminalModel {
         if(event.kind==='resize'){this.terminal.resize(event.cols!,event.rows!);await this.mirror(snapshot=>snapshot.resize(event.cols!,event.rows!))}
         else await this.write(decodeOutput(event.data!))
         sequence=event.sequence
+        if(reset===sequence)restoreTheme()
       }
       if(sequence!==saved.sequence)throw new Error('终端本地输出日志与检查点序号不匹配')
       this.outputJournal=(saved.outputJournal||[]).map(terminalJournalEvent)
@@ -167,7 +175,15 @@ export class TerminalModel {
   }
   proposedSize(){return this.fit.proposeDimensions()}
   setFontSize(value:number){this.terminal.options.fontSize=value}
-  setColorMode(mode:'light'|'dark'){this.terminal.options.theme=terminalColors[mode]}
+  setColorMode(mode:'light'|'dark'){
+    // Order local theme resets with parsed remote output. A reset is metadata,
+    // never bytes inserted into a potentially incomplete CSI/OSC sequence.
+    return this.parsed=this.parsed.then(()=>{
+      if(this.disposed)return
+      if(this.recovery.state.terminals[this.checkpointKey])this.recovery.commit([{kind:'set',path:['terminals',this.checkpointKey,'colorResetSequence'],value:this.sequence}])
+      this.colorMode=mode;this.terminal.options.theme=terminalColors[mode]
+    })
+  }
   private protectView(){
     if(this.disposed||!this.recovery.state.terminals[this.checkpointKey])return
     const selection=this.terminal.getSelectionPosition()

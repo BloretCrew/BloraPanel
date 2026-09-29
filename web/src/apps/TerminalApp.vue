@@ -154,7 +154,7 @@ async function trackEnd(){
 function zoom(delta:number){const value=Math.max(9,Math.min(28,fontSize.value+delta));patch('fontSize',value);terminal?.setFontSize(value);requestSize()}
 async function copySelection(){const text=terminal?.terminal.getSelection();if(!text)return;try{await navigator.clipboard.writeText(text)}catch(e){error.value='浏览器拒绝复制：'+String(e)}}
 watch(()=>props.visible,visible=>{if(visible)requestSize()})
-watch(uiTheme,mode=>terminal?.setColorMode(mode))
+watch(uiTheme,mode=>{void terminal?.setColorMode(mode).catch(e=>{error.value='终端主题恢复保护失败：'+String(e)})})
 onMounted(load)
 onBeforeUnmount(()=>{disposed=true;if(taskTimer)clearTimeout(taskTimer);if(endTimer)clearTimeout(endTimer);stopConnection()})
 </script>

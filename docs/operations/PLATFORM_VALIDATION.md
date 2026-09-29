@@ -65,6 +65,7 @@ docker run --rm --network host -e BLORA_BROWSER=webkit \
   node node_modules/@playwright/test/cli.js test --config playwright.config.ts \
   tests/browser/terminal-parser-recovery.spec.ts tests/browser/terminal-snapshot.spec.ts \
   tests/browser/terminal-mouse-recovery.spec.ts \
+  tests/browser/terminal-theme-recovery.spec.ts \
   --workers=1 --timeout=60000 --reporter=line --output=/tmp/blora-terminal-webkit
 ```
 
