@@ -228,6 +228,8 @@ Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race 
 
 已有 Linux 功能与发行验证证据，`make windows` 可构建 Windows amd64 二进制。Windows Job/ConPTY 真机、服务管理器部署、远端环境与物理故障仍需各自验证。当前完整通透材质混合负载的性能目标尚未通过；构建或本地功能通过不代表全范围验收完成。
 
+真实 systemd 服务/定时器生命周期、委派 cgroup 进程管理与 CPU 限流已有[隔离 Linux 容器证据](docs/acceptance/reports/systemd-cgroup-2026-09-29.md)，可按[平台指南](docs/operations/PLATFORM_VALIDATION.md#systemd-servicetimer)复现；不替代 Windows 真机或生产主机部署验证。
+
 仓库包含源码、测试、依赖锁文件、文档及两张 README 展示截图。凭据、运行数据库、已安装依赖、发行归档、生成的参考包与其他历史截图图库不进入版本控制。
 
 ## 文档导航

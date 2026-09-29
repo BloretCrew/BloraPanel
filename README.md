@@ -250,6 +250,8 @@ Each archive also contains a per-file `MANIFEST.json`. Fixed timestamps, orderin
 
 Linux functional and release evidence is available, and Windows amd64 binaries can be built with `make windows`. Native Windows Job/ConPTY, service-manager deployments, remote environments, and physical failure scenarios still have separate validation requirements. The performance target for eight windows with translucent materials and concurrent terminal/file activity has not passed; a successful build or local functional run does not imply complete acceptance.
 
+Real systemd service/timer lifecycles and delegated cgroup process control now have [isolated Linux container evidence](docs/acceptance/reports/systemd-cgroup-2026-09-29.md), including CPU throttling. The [platform guide](docs/operations/PLATFORM_VALIDATION.md#systemd-servicetimer) provides the reproducible runner; this does not replace native Windows or production-host validation.
+
 The repository includes source, tests, dependency lockfiles, documentation, and the two README screenshots. Credentials, runtime databases, installed dependencies, release archives, generated reference packages, and the remaining historical screenshot galleries stay outside version control.
 
 ## Documentation

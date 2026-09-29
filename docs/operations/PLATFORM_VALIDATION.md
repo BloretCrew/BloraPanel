@@ -26,7 +26,19 @@ make windows
 
 ## systemd service/timer
 
-在一次性虚拟机或明确隔离的 systemd 容器中，先确认实际 user/system manager 可连接，再运行 `internal/systeminfo` 的服务和计划任务集成测试。测试环境必须允许创建临时 `.service`/`.timer` 单元、启动/停止/启用/禁用并读取状态；不得连接当前开发宿主机的生产服务或用户总线。当前 runner 没有可操作的 manager，相关结果保持“环境缺失”。
+当前已有一次性容器入口，运行真实 systemd PID 1、生产服务/计划任务适配器和可选 cgroup 运行管理测试：
+
+```sh
+go test -c -o /tmp/blora-systeminfo.test ./internal/systeminfo
+go test -c -o /tmp/blora-runtime.test ./internal/runtime
+python3 scripts/systemd-e2e.py --binary /tmp/blora-systeminfo.test --runtime-binary /tmp/blora-runtime.test
+```
+
+需要 Docker 及 `mcr.microsoft.com/playwright:v1.63.0-noble` 镜像中的 systemd。入口创建随机命名、无网络、私有 PID/mount/cgroup 命名空间的容器，仅只读挂载两个测试程序和初始化脚本；使用容器内 `SYS_ADMIN` 与独立 seccomp 配置将其私有 cgroup 子树改为可写，不使用 privileged 模式，不挂载宿主总线、cgroup、设备或 Docker socket。不能改成连接现有生产 manager。
+
+服务测试创建独有的 runtime unit，验证启动/重启/停止后的真实PID、规范名/别名列表，以及未加载定时器可见性、启用/停用状态、真实 oneshot 触发。cgroup测试验证进程出生归属、整组终止、CPU/内存/进程数限制文件和CPU实际限流；内存OOM及进程数耗尽不在该测试的已通过范围。父级专属slice在启动时显式设置CPUQuota以启用cpu控制器，仅设置CPUAccounting并不保证控制器被委派。
+
+未提供专属标记、PID 1不是systemd、测试程序不含指定测试、测试跳过、controller不完整或清理失败都不能通过。无显式环境开关时Go包的相关真实测试会跳过；跳过不算平台验收。2026-09-29本机隔离容器真实3项通过，见[systemd与cgroup报告](../acceptance/reports/systemd-cgroup-2026-09-29.md)。这补齐Linux容器内对应链路，不替代Windows服务、生产主机部署、内核差异或设备故障验证。
 
 ## 远程 Docker Engine 与网络故障
 

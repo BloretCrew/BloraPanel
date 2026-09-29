@@ -51,7 +51,7 @@ func listServicesAfter(ctx context.Context, limit int, after string) ([]Service,
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.CommandContext(ctx, "systemctl", "list-units", "--type=service", "--all", "--no-legend", "--no-pager", "--plain")
+		return listSystemdServicesAfter(ctx, limit, after)
 	case "windows":
 		return listWindowsServices(ctx, limit, after)
 	case "darwin":

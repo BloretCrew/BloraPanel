@@ -97,7 +97,7 @@ func listScheduledTasksAfter(ctx context.Context, limit int, after string) ([]Sc
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.CommandContext(ctx, "systemctl", "list-timers", "--all", "--no-legend", "--no-pager")
+		return listSystemdTimersAfter(ctx, limit, after)
 	case "windows":
 		return listWindowsTasks(ctx, limit, after)
 	case "darwin":
@@ -108,9 +108,6 @@ func listScheduledTasksAfter(ctx context.Context, limit int, after string) ([]Sc
 	b, e := cmd.Output()
 	if e != nil {
 		return nil, e
-	}
-	if runtime.GOOS == "linux" {
-		return taskRowsAfter(parseLinuxTimers(string(b), 0), limit, after), nil
 	}
 	out := []ScheduledTask{}
 	for _, line := range strings.Split(string(b), "\n") {

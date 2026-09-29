@@ -300,6 +300,55 @@ func TestDelegatedCgroupRealLaunch(t *testing.T) {
 	}
 }
 
+func TestDelegatedCgroupResourceLimits(t *testing.T) {
+	root := os.Getenv("BLORA_TEST_CGROUP_ROOT")
+	if root == "" {
+		t.Skip("environment missing: explicitly delegated cgroup v2 subtree required")
+	}
+	m, err := New(Options{StateRoot: t.TempDir(), CgroupRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := m.Start(context.Background(), model.ID(), model.ID(), model.InstanceConfig{
+		Mode: "native", Command: []string{"/bin/sh", "-c", "while :; do :; done"},
+		MemoryBytes: 32 << 20, PidsLimit: 8, CPUQuota: 50000,
+	}, IO{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if outcome, err := m.Stop(ctx, r, StopPolicy{Force: true, KillWait: time.Second}, nil); err != nil || !outcome.Exited {
+			t.Errorf("cleanup limited run: %+v %v", outcome, err)
+		}
+		if err := m.Cleanup(ctx, r); err != nil {
+			t.Errorf("cleanup limited cgroup: %v", err)
+		}
+	})
+	for file, want := range map[string]string{"memory.max": "33554432", "pids.max": "8", "cpu.max": "50000 100000"} {
+		value, err := os.ReadFile(filepath.Join(r.Unit, file))
+		if err != nil || strings.TrimSpace(string(value)) != want {
+			t.Fatalf("kernel limit %s=%q, want %q: %v", file, value, want, err)
+		}
+	}
+	// A bounded CPU loop must actually be throttled by this run's own cgroup.
+	// Memory/PID values above verify configuration, not an OOM/exhaustion test.
+	waitCondition(t, func() bool {
+		data, err := os.ReadFile(filepath.Join(r.Unit, "cpu.stat"))
+		if err != nil {
+			return false
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) == 2 && fields[0] == "nr_throttled" && fields[1] != "0" {
+				return true
+			}
+		}
+		return false
+	})
+}
+
 func itoa(n int) string {
 	const digits = "0123456789"
 	if n == 0 {
