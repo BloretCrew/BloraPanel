@@ -3,6 +3,7 @@ import {SerializeAddon} from '@xterm/addon-serialize'
 import {FitAddon} from '@xterm/addon-fit'
 import {WebglAddon} from '@xterm/addon-webgl'
 import {TerminalSnapshot} from './terminal-snapshot'
+import {pendingUtf8} from './terminal-utf8'
 import type {RecoveryService} from '../recovery/service'
 import {json,TERMINAL_OUTPUT_JOURNAL_BYTES,TERMINAL_OUTPUT_JOURNAL_EVENTS} from '../recovery/state'
 import '@xterm/xterm/css/xterm.css'
@@ -30,6 +31,7 @@ export class TerminalModel {
   private container?:HTMLElement
   private outputJournal:{sequence:number;data:string}[]=[]
   private journalBytes=0
+  private utf8Tail:Uint8Array=new Uint8Array()
   readonly checkpointKey:string
   constructor(readonly recovery:RecoveryService,readonly sessionId:string,readonly viewTabId:string,readonly onInput:(value:string)=>void,mode:'light'|'dark'='light'){
     this.checkpointKey=`${sessionId}:${viewTabId}`
@@ -72,6 +74,12 @@ export class TerminalModel {
     if(saved){
       if(saved.outputJournal&&(!Array.isArray(saved.outputJournal)||saved.outputJournal.length>TERMINAL_OUTPUT_JOURNAL_EVENTS))throw new Error('终端本地输出日志超出条目预算')
       await this.write(saved.screen)
+      if(saved.pendingUtf8!==undefined){
+        if(typeof saved.pendingUtf8!=='string'||saved.pendingUtf8.length!==4)throw new Error('终端检查点的UTF-8续接格式无效，原记录已保留')
+        const pending=decodeOutput(saved.pendingUtf8)
+        if(pending.length>3||pendingUtf8(new Uint8Array(),pending).length!==pending.length)throw new Error('终端检查点的UTF-8续接字节无效，原记录已保留')
+        await this.write(pending)
+      }
       let sequence=saved.baseSequence??saved.sequence
       for(const event of saved.outputJournal||[]){
         if(event.sequence!==sequence+1||typeof event.data!=='string')throw new Error('终端本地输出日志不连续，原记录已保留')
@@ -92,6 +100,7 @@ export class TerminalModel {
   }
   private async write(data:string|Uint8Array){
     await new Promise<void>(resolve=>this.terminal.write(data,resolve))
+    if(typeof data!=='string')this.utf8Tail=pendingUtf8(this.utf8Tail,data)
     await this.mirror(snapshot=>snapshot.write(data))
   }
   receive(event:TerminalEvent){return this.receiveBatch([event])}
@@ -176,7 +185,7 @@ export class TerminalModel {
     if(this.snapshot)try{screen=await this.snapshot.screen()}catch(error){if(import.meta.env.DEV)console.debug('Terminal checkpoint fallback',error);this.disableSnapshot()}
     if(this.disposed)return
     screen??=this.serialize.serialize({scrollback:3000})
-    const checkpoint={sessionId:this.sessionId,viewTabId:this.viewTabId,sequence:this.sequence,cols:this.terminal.cols,rows:this.terminal.rows,screen,scroll:this.terminal.buffer.active.viewportY,selection:this.terminal.getSelectionPosition()}
+    const checkpoint={sessionId:this.sessionId,viewTabId:this.viewTabId,sequence:this.sequence,cols:this.terminal.cols,rows:this.terminal.rows,screen,scroll:this.terminal.buffer.active.viewportY,selection:this.terminal.getSelectionPosition(),...(this.utf8Tail.length?{pendingUtf8:btoa(String.fromCharCode(...this.utf8Tail))}:{})}
     this.recovery.commit([{kind:'set',path:['terminals',this.checkpointKey],value:json(checkpoint)}])
     this.outputJournal=[];this.journalBytes=0
   }

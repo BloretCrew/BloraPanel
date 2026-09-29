@@ -1,5 +1,7 @@
 # UI 暂停后的剩余工作核对
 
+2026-09-29 RC27最新增量：继续审计发现并修复了未完成UTF-8字节跨终端检查点丢失，相关真实浏览器、单测、双节点PTY及发行恢复/回退均通过，见[报告](../acceptance/reports/terminal-utf8-checkpoint-2026-09-29.md)。下一步仍需独立核对VT控制序列的解析器恢复边界；不能据此关闭原Vim额外字节或严格E08。平台缺口沿用下列最新记录，未声称本地工作已全部完成。
+
 2026-09-29最新收口：RC26完整真实功能51/51通过（905.725秒）；systemd/cgroup最终5项真实通过，补齐专属子组OOM/PID拒绝，见[报告](../acceptance/reports/systemd-cgroup-2026-09-29.md)。Linux X11/Dunst原生通知绘制、真实点击、刷新与退出后遗留弹窗关闭已有[实际证据](../acceptance/reports/native-notifications-2026-09-29.md)。不再把上述Linux子项列作缺环境。原Vim偶发仍未定位，严格E08仍失败；Windows、其他桌面平台、跨主机、宿主级耗尽和物理故障继续保留，未宣称全量完成。
 
 2026-09-29 最新平台/发行状态：真实systemd服务与timer、委派cgroup归属/整组终止/限额文件/CPU实际限流3项通过，并修复停止服务和未加载timer列表遗漏。RC26六包、2,215条内部记录/三份Web、独立双节点启动、停机恢复与兼容RC25回退均通过，见[平台与发行报告](../acceptance/reports/systemd-cgroup-2026-09-29.md)。下方“无可运行systemd环境”仅是历史结论。Windows、生产部署、跨主机、设备故障及原生通知中心未覆盖项继续分别验证；原Vim偶发/E08仍未关闭。

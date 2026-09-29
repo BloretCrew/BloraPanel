@@ -1,5 +1,33 @@
 import {test,expect} from '@playwright/test'
 
+for(const [text,split,journal=0] of [['¢',1],['中',1],['中',2],['😀',1],['😀',2],['😀',3],['😀',1,1]] as const)test(`terminal checkpoint restores ${text} at byte ${split} split across reload with ${journal} journal bytes`,async({page})=>{
+  await page.route('**/api/v1/**',route=>route.fulfill({json:{items:[]}}))
+  await page.goto('/')
+  const result=await page.evaluate(async({text,split,journal})=>{
+    const terminalModule='/src/services/terminals.ts',recoveryModule='/src/recovery/service.ts'
+    const {TerminalModel}=await import(terminalModule) as typeof import('../../src/services/terminals')
+    const {RecoveryService}=await import(recoveryModule) as typeof import('../../src/recovery/service')
+    const recovery=new RecoveryService('split-refresh','device','tab',sessionStorage,'split-'+crypto.randomUUID())
+    await recovery.restore()
+    recovery.state.views.view={viewTabId:'view',appId:'blora.terminal',type:'session',title:'split',stateSchemaVersion:1,state:{}}
+    const container=document.createElement('div');container.style.cssText='width:800px;height:400px';document.body.append(container)
+    let model=new TerminalModel(recovery,'session','view',()=>{})
+    try{
+      await model.mount(container);await model.restoreComplete()
+      const bytes=new TextEncoder().encode(text)
+      await model.receive({sequence:1,kind:'output',data:btoa(String.fromCharCode(...bytes.slice(0,split)))})
+      await model.checkpoint();await recovery.awaitPendingWrites()
+      if(journal)await model.receive({sequence:2,kind:'output',data:btoa(String.fromCharCode(...bytes.slice(split,split+journal)))})
+      model.dispose()
+      model=new TerminalModel(recovery,'session','view',()=>{})
+      await model.mount(container);await model.restoreComplete()
+      await model.receive({sequence:journal?3:2,kind:'output',data:btoa(String.fromCharCode(...bytes.slice(split+journal)))})
+      return model.terminal.buffer.active.getLine(0)?.translateToString(true)
+    }finally{model.dispose();container.remove();await recovery.clear()}
+  },{text,split,journal})
+  expect(result).toBe(text)
+})
+
 test('terminal queries are silent during local and server replay but answer only live writable output',async({page})=>{
   await page.route('**/api/v1/**',route=>route.fulfill({json:{items:[]}}))
   await page.goto('/')
