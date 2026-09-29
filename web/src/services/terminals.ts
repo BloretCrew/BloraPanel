@@ -5,6 +5,7 @@ import {WebglAddon} from '@xterm/addon-webgl'
 import {TerminalSnapshot} from './terminal-snapshot'
 import {pendingUtf8} from './terminal-utf8'
 import {terminalParserAtBoundary} from './terminal-parser-state'
+import {captureTerminalControlState,restoreTerminalControlState} from './terminal-control-state'
 import type {TerminalJournalEvent} from '../app-host/types'
 import type {RecoveryService} from '../recovery/service'
 import {json,terminalJournalEvent,terminalJournalBytes,TERMINAL_OUTPUT_JOURNAL_BYTES,TERMINAL_OUTPUT_JOURNAL_EVENTS} from '../recovery/state'
@@ -76,6 +77,10 @@ export class TerminalModel {
     if(saved){
       if(saved.outputJournal&&(!Array.isArray(saved.outputJournal)||saved.outputJournal.length>TERMINAL_OUTPUT_JOURNAL_EVENTS))throw new Error('终端本地输出日志超出条目预算')
       await this.write(saved.screen)
+      if(saved.controlState!==undefined){
+        restoreTerminalControlState(this.terminal,saved.controlState,this.terminal.cols,this.terminal.rows)
+        await this.mirror(snapshot=>snapshot.restoreControls(saved.controlState!,this.terminal.cols,this.terminal.rows))
+      }
       if(saved.pendingUtf8!==undefined){
         if(typeof saved.pendingUtf8!=='string'||saved.pendingUtf8.length!==4)throw new Error('终端检查点的UTF-8续接格式无效，原记录已保留')
         const pending=decodeOutput(saved.pendingUtf8)
@@ -193,7 +198,7 @@ export class TerminalModel {
     if(this.snapshot)try{screen=await this.snapshot.screen()}catch(error){if(import.meta.env.DEV)console.debug('Terminal checkpoint fallback',error);this.disableSnapshot()}
     if(this.disposed||this.parsing||this.sequence!==sequence||!terminalParserAtBoundary(this.terminal))return false
     screen??=this.serialize.serialize({scrollback:3000})
-    const checkpoint={sessionId:this.sessionId,viewTabId:this.viewTabId,sequence:this.sequence,cols:this.terminal.cols,rows:this.terminal.rows,screen,scroll:this.terminal.buffer.active.viewportY,selection:this.terminal.getSelectionPosition(),...(this.utf8Tail.length?{pendingUtf8:btoa(String.fromCharCode(...this.utf8Tail))}:{})}
+    const checkpoint={sessionId:this.sessionId,viewTabId:this.viewTabId,sequence:this.sequence,cols:this.terminal.cols,rows:this.terminal.rows,screen,controlState:json(captureTerminalControlState(this.terminal,this.terminal.cols,this.terminal.rows)),scroll:this.terminal.buffer.active.viewportY,selection:this.terminal.getSelectionPosition(),...(this.utf8Tail.length?{pendingUtf8:btoa(String.fromCharCode(...this.utf8Tail))}:{})}
     this.recovery.commit([{kind:'set',path:['terminals',this.checkpointKey],value:json(checkpoint)}])
     this.outputJournal=[];this.journalBytes=0
     return true

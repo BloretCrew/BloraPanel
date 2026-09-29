@@ -30,6 +30,7 @@ export class TerminalSnapshot {
   initialize(cols:number,rows:number){return this.request({kind:'init',cols,rows})}
   write(data:string|Uint8Array){return this.request({kind:'write',data})}
   resize(cols:number,rows:number){return this.request({kind:'resize',cols,rows})}
+  restoreControls(state:unknown,cols:number,rows:number){return this.request({kind:'controls',state,cols,rows})}
   async screen(){
     const screen=await this.request({kind:'snapshot'})
     if(typeof screen!=='string')throw new Error('终端检查点 Worker 未返回屏幕')

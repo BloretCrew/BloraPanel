@@ -9,8 +9,17 @@ const cases=[
   {name:'OSC hyperlink',prefix:'\x1b]8;;https://example.invalid/pa',suffix:'th\x1b\\link\x1b]8;;\x1b\\'},
   {name:'DCS mode query',prefix:'\x1bP$q',suffix:'m\x1b\\R'},
   {name:'charset designation',prefix:'\x1b(',suffix:'0qq\x1b(BR'},
+  {name:'completed charset',prefix:'\x1b(0',suffix:'qq\x1b(BR',complete:true},
+  {name:'completed scroll region',prefix:'1\r\n2\r\n3\r\n4\x1b[2;4r\x1b[4;1H',suffix:'\r\nX',complete:true},
+  {name:'saved cursor',prefix:'first\x1b7\r\nsecond',suffix:'\x1b8!',complete:true},
+  {name:'custom tab stop',prefix:'\x1b[3g\x1b[1;4H\x1bH\r',suffix:'\tX',complete:true},
+  {name:'saved cursor colour',prefix:'\x1b[31mfirst\x1b7\x1b[32m\r\nsecond',suffix:'\x1b8!',complete:true},
+  {name:'shifted G1 charset',prefix:'\x1b)0\x0e',suffix:'qq\x0fR',complete:true},
+  {name:'alternate buffer saved cursor',prefix:'normal\x1b7\x1b[?1049h\x1b[2;4Halt\x1b7\x1b[4;2H',suffix:'\x1b8!\x1b[?1049l\x1b8?',complete:true},
+  {name:'saved cursor after scrollback',prefix:'line\r\n'.repeat(50)+'\x1b7tail',suffix:'\x1b8!',complete:true},
+  {name:'origin mode cursor',prefix:'\x1b[2;5r\x1b[?6h\x1b[2;4H',suffix:'X\r\nY',complete:true},
 ]
-for(const scenario of cases)test(`unfinished ${scenario.name} survives checkpoint and remount`,async({page})=>{
+for(const scenario of cases)test(`${scenario.name} survives checkpoint and remount`,async({page})=>{
   await page.route('**/api/v1/**',route=>route.fulfill({json:{items:[]}}))
   await page.goto('/')
   const result=await page.evaluate(async scenario=>{
@@ -18,7 +27,8 @@ for(const scenario of cases)test(`unfinished ${scenario.name} survives checkpoin
     const {TerminalModel}=await import(terminalModule) as typeof import('../../src/services/terminals')
     const {RecoveryService}=await import(recoveryModule) as typeof import('../../src/recovery/service')
     const run=async(remount:boolean)=>{
-      const recovery=new RecoveryService('parser','device','tab',sessionStorage,'parser-'+crypto.randomUUID())
+      const database='parser-'+crypto.randomUUID()
+      let recovery=new RecoveryService('parser','device','tab',sessionStorage,database)
       await recovery.restore()
       recovery.state.views.view={viewTabId:'view',appId:'blora.terminal',type:'session',title:'parser',stateSchemaVersion:1,state:{}}
       const container=document.createElement('div');container.style.cssText='width:800px;height:400px';document.body.append(container)
@@ -33,7 +43,7 @@ for(const scenario of cases)test(`unfinished ${scenario.name} survives checkpoin
         const compacted=await model.checkpoint()
         await recovery.awaitPendingWrites()
         const protectedSequence=recovery.state.terminals['session:view']?.sequence
-        if(remount){model.dispose();model=create();await model.mount(container);await model.restoreComplete()}
+        if(remount){model.dispose();recovery=new RecoveryService('parser','device','tab',sessionStorage,database);await recovery.restore();model=create();await model.mount(container);await model.restoreComplete()}
         const replayResponses=responses.splice(0)
         await output(scenario.suffix)
         await model.checkpoint()
@@ -43,7 +53,7 @@ for(const scenario of cases)test(`unfinished ${scenario.name} survives checkpoin
     return {baseline:await run(false),restored:await run(true)}
   },scenario)
   expect(result.restored).toEqual(result.baseline)
-  expect(result.restored.compacted).toBe(false)
+  expect(result.restored.compacted).toBe(!!scenario.complete)
   expect(result.restored.protectedSequence).toBe(scenario.resize?2:1)
   expect(result.restored.replayResponses).toEqual([])
 })

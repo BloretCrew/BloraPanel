@@ -2,10 +2,12 @@ import './terminal-worker-env'
 import {Terminal as HeadlessTerminal} from '@xterm/headless'
 import {SerializeAddon} from '@xterm/addon-serialize'
 import type {Terminal} from '@xterm/xterm'
+import {restoreTerminalControlState} from './terminal-control-state'
 
 type Request = {id:number;kind:'init';cols:number;rows:number}
   | {id:number;kind:'write';data:string|Uint8Array}
   | {id:number;kind:'resize';cols:number;rows:number}
+  | {id:number;kind:'controls';state:unknown;cols:number;rows:number}
   | {id:number;kind:'snapshot'}
 let terminal:HeadlessTerminal|undefined
 const serialize=new SerializeAddon()
@@ -23,6 +25,7 @@ self.onmessage=(event:MessageEvent<Request>)=>{
       if(!terminal)throw new Error('终端检查点尚未初始化')
       if(request.kind==='write')await new Promise<void>(resolve=>terminal!.write(request.data,resolve))
       else if(request.kind==='resize')terminal.resize(request.cols,request.rows)
+      else if(request.kind==='controls')restoreTerminalControlState(terminal,request.state,request.cols,request.rows)
       else{
         self.postMessage({id:request.id,screen:serialize.serialize({scrollback:3000})})
         return
