@@ -61,7 +61,7 @@ async function attach(id:string){
   if(!container.value||disposed)return
   stopConnection();const generation=connection;patch('sessionId',id);error.value='';status.value='正在鉴权并挂载原会话'
   const bytes=new ByteWindow(),model=new TerminalModel(recovery,id,props.viewTabId,input=>{
-    if(!writable.value||!connected.value)return
+    if(generation!==connection||disposed||!writable.value||!connected.value)return
     try{const data=new TextEncoder().encode(input);if(data.byteLength>32*1024)throw new Error('单次终端输入超过32 KiB，未发送，请分段粘贴');if(!socket||socket.bufferedAmount+data.length+512>INTERACTIVE_WINDOW)throw new Error('终端输入缓冲已满，此次输入未发送');const sequence=bytes.reserve(data.length);send(MessageType.Data,data,sequence)}catch(e){error.value=String(e)}
   },uiTheme.value)
   terminal=model;await model.mount(container.value);if(disposed||generation!==connection){model.dispose();return}
@@ -69,7 +69,7 @@ async function attach(id:string){
   const ws=new WebSocket(`${protocol}//${location.host}/api/v1/terminals/${encodeURIComponent(id)}/stream?viewId=${encodeURIComponent(props.viewTabId)}&sequence=${model.sequence}`);socket=ws;ws.binaryType='arraybuffer'
   let processing=false,queuedBytes=0,canReconnect=true
   const pending:{frame:Envelope;size:number}[]=[]
-  function fail(e:unknown){error.value=String(e);status.value='连接已停止 · 原检查点保留';writable.value=false;connected.value=false;model.setLease(false);canReconnect=false;ws.close(4002,'terminal protocol failed')}
+  function fail(e:unknown){if(generation!==connection||disposed)return;error.value=String(e);status.value='连接已停止 · 原检查点保留';writable.value=false;connected.value=false;model.setLease(false);canReconnect=false;ws.close(4002,'terminal protocol failed')}
   async function process(frame:Envelope){
     if(generation!==connection||disposed||!canReconnect)return
     if(frame.protocolVersion!==1||frame.generation!==1||frame.channel!==2||frame.streamId!==id)throw new Error('终端消息身份或连接代次不匹配')
@@ -78,7 +78,7 @@ async function attach(id:string){
       if(info.sessionId!==id)throw new Error('终端应答资源不匹配')
       if(model.sequence+1<info.earliest)throw new Error('输出归档已超过保留范围，原屏幕保留；不能无缝恢复此检查点')
       writable.value=!!info.writable;model.setLease(writable.value);status.value=model.replaying?'正在回放原会话':writable.value?'已连接 · 输入控制者':'已连接 · 只读观察'
-    }else if(frame.type===MessageType.Resume){await model.restoreComplete();connected.value=true;status.value=writable.value?'已连接 · 输入控制者':'已连接 · 只读观察';requestSize()}
+    }else if(frame.type===MessageType.Resume){await model.restoreComplete();if(generation!==connection||disposed||!canReconnect)return;connected.value=true;status.value=writable.value?'已连接 · 输入控制者':'已连接 · 只读观察';requestSize()}
     else if(frame.type===MessageType.Ack)bytes.acknowledge(frame.sequence||0,frame.credit||0)
     else if(frame.type===MessageType.Error){const detail=decodeJSON<{code:string;message:string}>(frame.payload);throw new Error(`${detail.code}：${detail.message}`)}
     else if(frame.type===MessageType.Ping)send(MessageType.Pong,frame.payload)
@@ -116,6 +116,7 @@ async function attach(id:string){
     }
   }
   ws.onmessage=event=>{
+    if(generation!==connection||disposed||!canReconnect)return
     try{
       if(!(event.data instanceof ArrayBuffer))throw new Error('终端管理通道只接受Protobuf二进制消息')
       const frame=decodeEnvelope(new Uint8Array(event.data)),size=frame.payload?.byteLength||0;queuedBytes+=size

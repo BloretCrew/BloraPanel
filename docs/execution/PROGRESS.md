@@ -1,5 +1,15 @@
 # Blora Panel 执行进度与续接记录
 
+2026-09-29 RC34最终：完整真实功能51/51通过897.040秒（session90325退出0），首轮RC33的49/51失败保留；三浏览器终端组合各4/4、六包2,251条记录/三份Web、停机恢复及兼容RC33回退均通过，见[报告](../acceptance/reports/terminal-generation-2026-09-29.md)。修复旧连接异步错误污染新连接；未证明原Vim偶发/撤权超时根因。玻璃遮挡裁剪像素不一致，未采用。fixture由trap停止，诊断Vite78601已Ctrl+C退出130，无本轮活跃测试句柄。下一动作审阅文档/提交推送；严格E08与Windows/跨主机/物理故障等未通过项继续保留，UI冻结。
+
+2026-09-29 RC34最新接管：三引擎终端组合各4/4、六包构建/2,251条记录/独立恢复及兼容RC33回退均已通过，详见[报告](../acceptance/reports/terminal-generation-2026-09-29.md)。完整真实51项session90325仍确认存活，已进入第35项121点监控；前轮两处扩展失败本轮均通过，尚待全套终态。日志.local/evidence/rc34/real-full.log，附件/tmp/blora-rc34-real-full；不可重启替代原会话。玻璃遮挡裁剪诊断已退出0，但连续原版截图零差异、候选35,344像素改变（455像素通道差>8），不采用、不计性能改善；日志web/.local/evidence/rc34/opaque-control.log，图片/tmp/blora-opaque-{before,control,after}.png。诊断Vite session78601待停止，产品未加入裁剪。下一动作收取完整回归、补验收与剩余清单并提交推送；严格E08/原偶发/外部平台缺口保留。
+
+RC34续接：RC33完整51项session47037已退出1，49通过/2扩展失败，879.929秒，所属fixture结束；新增旧代次竞态与原终端三配置4/4通过46.248秒，72520已结束。现在RC34包构建session6350、Firefox4项session14140，日志.local/evidence/rc34；须先收取，再串行WebKit、六包校验/恢复及修复后完整51项回归。产品仅TerminalApp连接代次保护，UI未变；不得把首轮49/51写成通过。
+
+2026-09-29 RC34进行中：实际复现旧连接解析失败晚返回会禁用新连接，terminal-generation首次失败25.664秒、代次校验修复后通过12.250秒；当前补当前连接错误继续禁用输入，与原terminal.spec三配置组合session72520运行。证据web/.local/evidence/rc34，见[报告](../acceptance/reports/terminal-generation-2026-09-29.md)。RC33完整51项session47037仍在运行，已有扩展通知/名称保存两项失败，保留原附件；测试补既有真实hover命中前置条件待复验。产品源码已改但web/dist仍是RC33，必须等原全套结束后再构建RC34并验证修复，不能混算版本。新竞态未被认定为原Vim偶发根因。
+
+2026-09-29恢复本地任务：起点3f0f9eb，RC33当前源码完整真实51项回归已启动session47037，日志.local/evidence/rc33/real-full.log，附件/tmp/blora-rc33-real-full。必须收取同一会话终态，不能用旧RC26通过代替。本轮开始新的受阻审计计数，不沿用此前blocked。源码审查发现TerminalApp旧代次异步失败可改写当前连接状态，新增terminal-generation.spec.ts可控延迟复现，尚未运行/确认，不宣称原Vim根因；产品源码未改。等待Docker相关测试完成后再运行该浏览器探针，避免已知网络变更干扰。UI冻结及严格E08阈值保持。
+
 2026-09-29 RC33后复核：产品HEAD dfb0c14、工作树起始干净；核对发行/终端/矩阵/平台报告后，将[剩余工作页](NON_UI_REMAINING_2026-09-26.md)整理成当前清单，旧过程保留本文件及Git历史，避免旧RC23/长测RUNNING等条目误导执行。再次确认本机无/dev/dri，未发现QEMU/KVM入口；没有新确定缺陷、可区分性能方案或活动测试句柄。本次仅文档整理，不重复构建、不提升验收状态。下一动作校验链接并提交推送；后续需要新失败附件/性能假设或对应隔离环境，严格E08及未定位偶发保留。
 
 2026-09-29 RC33最终：OSC 8链接持久恢复修复完成，Chromium61/61、Firefox/WebKit各50/50、76单测及真实双节点PTY7/7（74.004秒）通过；RC33六包2,243条记录/三份Web与独立恢复/兼容RC32回退通过，见[报告](../acceptance/reports/terminal-links-recovery-2026-09-29.md)。所有本轮会话已结束，fixture/浏览器容器/发行冒烟所属进程均已清理，无运行句柄接管。下一动作提交推送源码与验收记录；后续仅对有新证据或可区分假设的剩余缺口继续定位，不把重复通过视作原Vim偶发根因修复，不无目的扩展VT实现范围。严格E08、本机缺硬件图形设备、Windows/跨主机/物理故障等缺口仍保留，UI冻结未改。

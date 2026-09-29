@@ -87,7 +87,7 @@ test('independent extension notification retains source and survives refresh wit
     releaseData()
     stage='fill and publish'
     await extension.getByLabel('工作笔记').fill('<b>inert notification text</b>')
-    await extension.getByRole('button',{name:'发送站内通知'}).click()
+    await clickPaintedExtensionButton(page,extension.getByRole('button',{name:'发送站内通知'}))
     stage='verify publish'
     await expect(extension.getByText('站内通知已保存',{exact:true})).toBeVisible()
     await expect(page.getByLabel('站内通知列表')).toHaveCount(0)
@@ -150,11 +150,11 @@ test('independent extension persists metadata draft and updates real instance',a
       ;(window as any).__restoreNotificationStorage=()=>{Storage.prototype.setItem=original}
       Storage.prototype.setItem=function(key:string,value:string){if(this===sessionStorage&&key.startsWith('blora:tail:'))throw new Error('injected recovery failure');return original.call(this,key,value)}
     })
-    await resource.getByRole('button',{name:'保存实例名称',exact:true}).click()
+    await clickPaintedExtensionButton(page,resource.getByRole('button',{name:'保存实例名称',exact:true}))
     await expect(resource.getByText('Error: injected recovery failure',{exact:true})).toBeVisible()
     expect(writes).toBe(0)
     await page.evaluate(()=>{(window as any).__restoreNotificationStorage()})
-    await resource.getByRole('button',{name:'重试保存实例名称',exact:true}).click()
+    await clickPaintedExtensionButton(page,resource.getByRole('button',{name:'重试保存实例名称',exact:true}))
     await expect(resource.getByText('实例名称已保存',{exact:true})).toBeVisible()
     expect(writes).toBe(1)
     const updated=(await (await page.request.get('/api/v1/instances')).json()).items.find((x:any)=>x.instanceId===instance.instanceId)
