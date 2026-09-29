@@ -92,6 +92,10 @@ def main():
                      ["--env", f"BLORA_TEST_CGROUP_ROOT={delegated}"])
             run_test("/probe/runtime.test", "TestDelegatedCgroupResourceLimits",
                      ["--env", f"BLORA_TEST_CGROUP_ROOT={delegated}"])
+            run_test("/probe/runtime.test", "TestDelegatedCgroupMemoryExhaustion",
+                     ["--env", f"BLORA_TEST_CGROUP_ROOT={delegated}"])
+            run_test("/probe/runtime.test", "TestDelegatedCgroupPidsExhaustion",
+                     ["--env", f"BLORA_TEST_CGROUP_ROOT={delegated}"])
             subprocess.run(["docker", "exec", name, "rmdir", delegated], check=True, timeout=10)
     finally:
         if created:

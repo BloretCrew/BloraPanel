@@ -40,8 +40,14 @@ python3 scripts/systemd-e2e.py --binary /tmp/blora-systeminfo.test --runtime-bin
 
 ## 范围与后续
 
+后续补验已真实触发内存和PID限制：`cgroup_exhaustion_linux_test.go`先确认自己的32MiB/8进程内核限制，最多申请128MiB或创建12个短命子进程；仅在该专属组将swap上限设为0。`TestDelegatedCgroupMemoryExhaustion`读取非零`memory.events:oom_kill`并由生产Observe确认整组退出；`TestDelegatedCgroupPidsExhaustion`读取非零`pids.events:max`并核对只有8个进程获准，随后生产Stop/Cleanup清理整组。两个用例仅限有专属标记的测试容器。
+
+更新后的完整systemd/cgroup入口 **5项通过**，`systemd-exhaustion.log`退出0，包装器9.652秒、入口9.544秒，`cleanedUp:true`；前面3项记录仍是第一次阶段结果。没有修改产品的swap策略，也不能把子组OOM当作宿主整机内存耗尽或物理故障证据。
+
+RC26完整HTTPS/双节点/Docker功能回归已结束：**51/51通过，905.725秒**，`real-full.log`及`.result.json`，2026-09-29 04:59:11～05:14:16 UTC。包括真实分钟备份及正文恢复、监控历史跨失联/重启、权限撤销、扩展生命周期、文件/PTY、浏览器关闭续传和工作区冲突。该轮Vim/top刷新通过；原RC25偶发额外字节仍未定位，不因本次通过而声称已修复。严格E08单独排除，性能未由本轮功能通过覆盖。
+
 RC26交付已完成：`GOMAXPROCS=4 BLORA_VERSION=development-20260929-rc26 make package`退出0，81.235秒；六包外部SHA256、2,215条内部路径/模式/长度/摘要、三份Web与当前构建一致性及依赖许可证检查通过（4.694秒）。`SHA256SUMS`自身摘要为`1251c3fc22219eb96ce298a7417a3aaca4d752df88b5fa1cebacd0c780e5c5b1`。
 
 `python3 scripts/package-smoke.py dist/releases/development-20260929-rc26 --state-restore --rollback-release dist/releases/development-20260929-rc25`退出0，10.320秒：独立SDK构建/签名、Master初始化/TLS/静态资源/登录、两个打包Daemon ONLINE、停机恢复后原TLS/节点身份/只读授权/任务回执/资源正文及兼容RC25回退全部通过。所属进程已停止。日志`package-build.log`、`package-verify.log`、`package-smoke.log`；产物`dist/releases/development-20260929-rc26`。没有重跑与本次后端修改无关的全UI截图或性能长测。
 
-F13/E05的Linux systemd适配及E09/A03的上述委派cgroup子项已获得真实本机证据，不再笼统标为“完全没有可运行manager”。Windows、生产部署、其他内核/跨主机、OOM/进程数耗尽、物理掉电及系统通知中心仍分别验收。严格E08和Vim原偶发问题状态不变，不用本次平台通过代替其他场景。
+F13/E05的Linux systemd适配及E09/A03的上述委派cgroup子项已获得真实本机证据，不再笼统标为“完全没有可运行manager”。Windows、生产部署、其他内核/跨主机、宿主级资源耗尽、物理掉电及系统通知中心仍分别验收。严格E08和Vim原偶发问题状态不变，不用本次平台通过代替其他场景。

@@ -1,0 +1,15 @@
+[global]
+    origin = top-right
+    offset = 20x20
+    width = 380
+    font = Noto Sans CJK SC 12
+    format = "<b>%s</b>\n%b"
+    mouse_left_click = do_action, close_current
+    mouse_middle_click = close_current
+    mouse_right_click = close_current
+[urgency_normal]
+    timeout = 0
+[urgency_low]
+    timeout = 0
+[urgency_critical]
+    timeout = 0

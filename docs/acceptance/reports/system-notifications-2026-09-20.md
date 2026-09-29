@@ -1,5 +1,7 @@
 # 浏览器系统通知 API 路径验收（2026-09-20）
 
+2026-09-29后续：已在独立Xvfb/DBus/Dunst环境补齐Linux原生绘制、真实鼠标点击、刷新去重与浏览器退出后的平台行为，见[原生通知补验](native-notifications-2026-09-29.md)。下文仍保留本次API验证的原始范围；其他桌面系统未由后续Linux结果覆盖。
+
 ## 验收范围
 
 在真实 TLS Master/双 Daemon fixture 和 headed Chromium（Xvfb）中，授予该测试来源通知权限，使用任务中心开启系统通知，再由真实节点任务完成触发通知服务。测试确认实际 Chromium `Notification` 对象收到任务标题、正文和稳定 tag，并派发该对象的 click 事件后打开绑定该 taskId 的专用任务窗口。站内任务通知保持独立。

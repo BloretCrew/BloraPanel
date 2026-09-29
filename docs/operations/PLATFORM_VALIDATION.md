@@ -36,9 +36,9 @@ python3 scripts/systemd-e2e.py --binary /tmp/blora-systeminfo.test --runtime-bin
 
 需要 Docker 及 `mcr.microsoft.com/playwright:v1.63.0-noble` 镜像中的 systemd。入口创建随机命名、无网络、私有 PID/mount/cgroup 命名空间的容器，仅只读挂载两个测试程序和初始化脚本；使用容器内 `SYS_ADMIN` 与独立 seccomp 配置将其私有 cgroup 子树改为可写，不使用 privileged 模式，不挂载宿主总线、cgroup、设备或 Docker socket。不能改成连接现有生产 manager。
 
-服务测试创建独有的 runtime unit，验证启动/重启/停止后的真实PID、规范名/别名列表，以及未加载定时器可见性、启用/停用状态、真实 oneshot 触发。cgroup测试验证进程出生归属、整组终止、CPU/内存/进程数限制文件和CPU实际限流；内存OOM及进程数耗尽不在该测试的已通过范围。父级专属slice在启动时显式设置CPUQuota以启用cpu控制器，仅设置CPUAccounting并不保证控制器被委派。
+服务测试创建独有的 runtime unit，验证启动/重启/停止后的真实PID、规范名/别名列表，以及未加载定时器可见性、启用/停用状态、真实 oneshot 触发。cgroup测试验证进程出生归属、整组终止、CPU/内存/进程数限制文件及CPU实际限流。补充用例在专属32MiB/8进程子组内触发内核OOM与进程创建拒绝，核对`memory.events:oom_kill`、`pids.events:max`、实际进程数和退出确认；为保证OOM条件，仅在该测试组关闭swap。探针最多申请128MiB或创建12个短命子进程，不进行无界耗尽。父级专属slice在启动时显式设置CPUQuota以启用cpu控制器，仅设置CPUAccounting并不保证控制器被委派。
 
-未提供专属标记、PID 1不是systemd、测试程序不含指定测试、测试跳过、controller不完整或清理失败都不能通过。无显式环境开关时Go包的相关真实测试会跳过；跳过不算平台验收。2026-09-29本机隔离容器真实3项通过，见[systemd与cgroup报告](../acceptance/reports/systemd-cgroup-2026-09-29.md)。这补齐Linux容器内对应链路，不替代Windows服务、生产主机部署、内核差异或设备故障验证。
+未提供专属标记、PID 1不是systemd、测试程序不含指定测试、测试跳过、controller不完整或清理失败都不能通过。无显式环境开关时Go包的相关真实测试会跳过；跳过不算平台验收。2026-09-29本机隔离容器最终5项通过，见[systemd与cgroup报告](../acceptance/reports/systemd-cgroup-2026-09-29.md)。这补齐Linux容器内对应链路，不替代Windows服务、生产主机部署、内核差异或设备故障验证。
 
 ## 远程 Docker Engine 与网络故障
 
@@ -75,6 +75,21 @@ docker run --rm --network host --pid host \
 ```
 
 测试结束后向 fixture 发送 Ctrl+C，确认其进程和目录均已清理。该路径验证 Linux 上的 WebKit 浏览器链路，不代替 Windows 浏览器、远端网络或一小时性能验收。
+
+## Linux 原生通知弹窗
+
+已有构建好的 `dist/blora-devfixture`、`web/dist` 和 `web/node_modules` 时，可运行独立的 X11/DBus/Dunst 通知验证：
+
+```sh
+docker build --network host -t blora-native-notifications:e2e -f scripts/native-notifications.Dockerfile scripts
+python3 scripts/native-notifications-e2e.py --output .local/evidence/native-notifications-new-run
+```
+
+输出目录必须尚不存在。入口启动独立 loopback TLS 双节点 fixture，以及拥有私有 Xvfb 显示和 DBus 会话的一次性容器。容器使用 host 网络连接该 loopback fixture，但不挂载宿主显示、DBus、设备或 Docker socket；仓库只读，证据目录独立可写。结束时清理所属 fixture/容器，保留私有日志与原生桌面 PNG。不要将测试连接到生产账号或现有桌面会话。
+
+测试通过真实节点任务触发 Chromium 原生通知，由 Dunst 绘制，使用 XTest 鼠标点击通知进程的窗口，核对原 taskId 对应专用任务窗口。没有替换 Notification 或派发脚本 click 事件。Dunst 的左键动作按[官方说明](https://dunst-project.org/documentation/faq/#clicking-on-a-notification-with-a-message-like-click-here-does-nothing)配置为 `do_action, close_current`。无弹窗、无截图、点击未路由或清理失败均不能通过。
+
+2026-09-29实际绘制与点击已通过，见[通知补验报告](../acceptance/reports/native-notifications-2026-09-29.md)。浏览器退出后该Dunst组合保留已投递通知，测试核对用户仍能关闭它，没有声称后台投递或退出后重启跳转。此结果不代表Windows、macOS、Wayland、GNOME/KDE通知中心或声音策略；每个平台运行结果需分别留证，不能仅因入口存在而标为通过。
 
 ## 物理故障和长期场景
 
