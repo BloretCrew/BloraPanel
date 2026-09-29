@@ -1,5 +1,53 @@
 import {test,expect} from '@playwright/test'
 
+test('terminal queries are silent during local and server replay but answer only live writable output',async({page})=>{
+  await page.route('**/api/v1/**',route=>route.fulfill({json:{items:[]}}))
+  await page.goto('/')
+  const result=await page.evaluate(async()=>{
+    const terminalModule='/src/services/terminals.ts',recoveryModule='/src/recovery/service.ts'
+    const {TerminalModel}=await import(terminalModule) as typeof import('../../src/services/terminals')
+    const {RecoveryService}=await import(recoveryModule) as typeof import('../../src/recovery/service')
+    const recovery=new RecoveryService('query-boundary','device','tab',sessionStorage,'query-'+crypto.randomUUID())
+    await recovery.restore()
+    recovery.state.views.view={viewTabId:'view',appId:'blora.terminal',type:'session',title:'queries',stateSchemaVersion:1,state:{}}
+    // DECRQM produces the $y response seen in the intermittent real Vim test.
+    const query='\x1b[?2004$p',responses:string[]=[]
+    const container=document.createElement('div');container.style.cssText='width:800px;height:400px';document.body.append(container)
+    let model=new TerminalModel(recovery,'session','view',value=>responses.push(value))
+    try{
+      await model.mount(container)
+      await model.checkpoint()
+      model.setLease(true)
+      await model.receive({sequence:1,kind:'output',data:btoa(query)})
+      const serverReplay=responses.splice(0)
+      // Remount from the actual protected raw-output journal containing a query.
+      const journalContainsQuery=recovery.state.terminals['session:view']?.outputJournal?.some(event=>atob(event.data).includes(query))
+      model.dispose()
+      model=new TerminalModel(recovery,'session','view',value=>responses.push(value))
+      model.setLease(true)
+      await model.mount(container)
+      const localReplay=responses.splice(0)
+      await model.restoreComplete()
+      const completion=responses.splice(0)
+      await model.receive({sequence:2,kind:'output',data:btoa(query)})
+      const live=responses.splice(0)
+      model.setLease(false)
+      await model.receive({sequence:3,kind:'output',data:btoa(query)})
+      const readOnly=responses.splice(0)
+      model.setLease(true)
+      await model.receive({sequence:4,kind:'output',data:btoa(query)})
+      return {journalContainsQuery,serverReplay,localReplay,completion,live,readOnly,reacquired:responses}
+    }finally{model.dispose();container.remove();await recovery.clear()}
+  })
+  expect(result.journalContainsQuery).toBe(true)
+  expect(result.serverReplay).toEqual([])
+  expect(result.localReplay).toEqual([])
+  expect(result.completion).toEqual([])
+  expect(result.live).toEqual(['\x1b[?2004;2$y'])
+  expect(result.readOnly).toEqual([])
+  expect(result.reacquired).toEqual(result.live)
+})
+
 test('worker and visible xterm checkpoints agree across UTF-8 boundaries, scrollback, modes and resize',async({page})=>{
   page.on('console',message=>{if(message.text().startsWith('Terminal checkpoint fallback'))console.log(message.text())})
   await page.route('**/api/v1/**',route=>route.fulfill({json:{items:[]}}))

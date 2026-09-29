@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto'
 import {test,expect,type Page} from '@playwright/test'
 import {realLogin} from './login'
 import {decodeEnvelope,MessageType} from '../../src/services/protocol'
+import {startRenderTrace} from './render-trace'
 
 const fixture=JSON.parse(readFileSync(process.env.BLORA_E2E_CREDENTIALS!,'utf8'))
 async function headers(page:Page){return {'X-CSRF-Token':(await(await page.request.get('/api/v1/session')).json()).csrfToken,'Idempotency-Key':randomUUID()}}
@@ -127,6 +128,7 @@ test('real eight-window mixed load measures pointer response with two PTYs and v
   const perfDiagnostics=!!process.env.BLORA_PERF_DIAGNOSTICS
   const profiler=process.env.BLORA_PERF_PROFILE||profileSoak?await page.context().newCDPSession(page):undefined
   if(profiler){await profiler.send('Profiler.enable');await profiler.send('Profiler.start')}
+  const finishRenderTrace=process.env.BLORA_PERF_RENDER_TRACE?await startRenderTrace(page):undefined
   await page.evaluate((diagnostics:boolean)=>{
     const probe={latencies:[] as number[],frames:[] as number[],slowPointers:[] as Array<{latencyMs:number;inputDelayMs:number;frameAfterHandlerMs:number;eventTime:number;x:number;y:number;buttons:number}>,longTasks:[] as Array<{startTime:number;duration:number;name:string}>,longTaskObserver:undefined as PerformanceObserver|undefined,storageWrites:{count:0,totalChars:0,totalMs:0,maxChars:0,maxMs:0,durations:[] as number[]},restoreStorage:undefined as (()=>void)|undefined,running:true,last:performance.now()}
     ;(window as any).__bloraPerf=probe
@@ -173,6 +175,11 @@ test('real eight-window mixed load measures pointer response with two PTYs and v
   await page.mouse.move(title!.x+240,title!.y+15);await page.mouse.down()
   for(let i=0;i<120;i++)await page.mouse.move(title!.x+240+Math.sin(i/10)*80,title!.y+15+Math.cos(i/10)*30)
   await page.mouse.up()
+  if(finishRenderTrace){
+    const rendering=await finishRenderTrace()
+    console.log('BLORA_PERF_RENDER_TRACE '+JSON.stringify(rendering))
+    await info.attach('render-timing-summary.json',{body:JSON.stringify(rendering,null,2),contentType:'application/json'})
+  }
   const finishProfile=async()=>{if(profiler){
     const {profile}=await profiler.send('Profiler.stop'),names=new Map(profile.nodes.map((node:any)=>{
       const frame=node.callFrame;let source=frame.url||''

@@ -174,10 +174,28 @@ test('actual PTY pointer tear-out and merge preserve session and never replay in
   await expect(page.getByText('会话已结束 · 屏幕检查点保留',{exact:true})).toBeVisible({timeout:30000});expect(errors).toEqual([])
 })
 
-test('actual vim unsaved buffer and top survive refresh without replayed input',async({page})=>{
+test('actual vim unsaved buffer and top survive refresh without replayed input',async({page},testInfo)=>{
   const inputs:string[]=[],errors:string[]=[]
+  const traffic:{connection:number;direction:string;phase:string;type:number;at:number;hex:string}[]=[]
+  let connection=0,phase='initial'
   page.on('pageerror',error=>errors.push(error.message))
-  page.on('websocket',socket=>{if(socket.url().includes('/terminals/'))socket.on('framesent',event=>{if(typeof event.payload!=='string'){const frame=decodeEnvelope(new Uint8Array(event.payload));if(frame.type===MessageType.Data)inputs.push(new TextDecoder().decode(frame.payload))}})})
+  page.on('websocket',socket=>{if(socket.url().includes('/terminals/')){
+    const id=++connection
+    const record=(direction:'framesent'|'framereceived',event:{payload:string|Buffer})=>{if(typeof event.payload!=='string'){
+      const frame=decodeEnvelope(new Uint8Array(event.payload))
+      if(frame.type===MessageType.Data||frame.type===MessageType.Resume){traffic.push({connection:id,direction,phase,type:frame.type,at:performance.now(),hex:Buffer.from(frame.payload||[]).toString('hex')});if(traffic.length>300)traffic.shift()}
+      if(direction==='framesent'&&frame.type===MessageType.Data)inputs.push(new TextDecoder().decode(frame.payload))
+    }}
+    socket.on('framesent',event=>record('framesent',event))
+    socket.on('framereceived',event=>record('framereceived',event))
+  }})
+  const unchangedInput=async(before:string)=>{
+    const after=inputs.join('')
+    // The line reporter interprets ESC sequences in assertion strings. Preserve
+    // exact bytes and connection/replay boundaries without relaxing equality.
+    if(after!==before)await testInfo.attach('terminal-refresh-traffic.json',{body:Buffer.from(JSON.stringify({phase,before:Buffer.from(before).toString('hex'),after:Buffer.from(after).toString('hex'),traffic})),contentType:'application/json'})
+    expect(after).toBe(before)
+  }
   await login(page);await resource(page,'控制台');await page.getByRole('button',{name:'新建会话',exact:true}).click()
   const connected=()=>expect(page.getByText('已连接 · 输入控制者',{exact:true})).toBeVisible({timeout:30000})
   await connected()
@@ -186,14 +204,14 @@ test('actual vim unsaved buffer and top survive refresh without replayed input',
   await expect.poll(async()=>(await checkpoint(page,sessionId))?.screen,{timeout:30000}).toContain(name)
   await page.keyboard.type('i');await page.keyboard.insertText(marker+'中文现场');await page.keyboard.press('Escape')
   await expect.poll(async()=>(await checkpoint(page,sessionId))?.screen).toContain('中文现场')
-  const before=inputs.join('');await page.reload();await connected();expect(inputs.join('')).toBe(before)
+  const before=inputs.join('');phase='vim-reload';await page.reload();await connected();await unchangedInput(before)
   expect(await page.locator('.terminal-container').getAttribute('data-session-id')).toBe(sessionId)
   await expect.poll(async()=>(await checkpoint(page,sessionId))?.screen).toContain(marker)
   await page.locator('.xterm-helper-textarea').focus();await page.keyboard.type(':wq\n')
   await expect.poll(async()=>(await content(page,name))?.text,{timeout:30000}).toBe(marker+'中文现场\n')
   await page.keyboard.type('top -d 1\n')
   await expect.poll(async()=>(await checkpoint(page,sessionId))?.screen,{timeout:30000}).toContain('load average')
-  const topInput=inputs.join('');await page.reload();await connected();expect(inputs.join('')).toBe(topInput)
+  const topInput=inputs.join('');phase='top-reload';await page.reload();await connected();await unchangedInput(topInput)
   await expect.poll(async()=>(await checkpoint(page,sessionId))?.screen).toContain('load average')
   await page.locator('.xterm-helper-textarea').focus();await page.keyboard.type('q');await page.keyboard.type(`printf 'TOP-EXIT-VERIFIED\\n' > ${name}.top\n`)
   await expect.poll(async()=>(await content(page,name+'.top'))?.text,{timeout:30000}).toBe('TOP-EXIT-VERIFIED\n')
