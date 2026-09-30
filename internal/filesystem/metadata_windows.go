@@ -20,7 +20,8 @@ func reopenMetadata(f *os.File) (windows.Handle, error) {
 	// Reopen the exact object handle with attribute access. Resolving its path
 	// again could follow a replacement directory or link during a rename race.
 	reopen := windows.NewLazySystemDLL("kernel32.dll").NewProc("ReOpenFile")
-	h, _, err := reopen.Call(f.Fd(), windows.FILE_WRITE_ATTRIBUTES, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, windows.FILE_FLAG_BACKUP_SEMANTICS)
+	// os.File.Chmod first reads existing attributes before changing READONLY.
+	h, _, err := reopen.Call(f.Fd(), windows.FILE_READ_ATTRIBUTES|windows.FILE_WRITE_ATTRIBUTES, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, windows.FILE_FLAG_BACKUP_SEMANTICS)
 	if windows.Handle(h) == windows.InvalidHandle {
 		return windows.InvalidHandle, err
 	}

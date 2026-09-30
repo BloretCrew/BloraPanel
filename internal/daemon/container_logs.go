@@ -100,18 +100,9 @@ func (d *Daemon) persistContainerLog(window model.ContainerLogWindow) error {
 	if err := os.Rename(n, path); err != nil {
 		return err
 	}
-	// Persist the directory entry as well as file contents so a power loss
-	// cannot leave the newly archived window invisible after rename.
-	dir, err := os.Open(root)
-	if err != nil {
-		return err
-	}
-	err = dir.Sync()
-	closeErr := dir.Close()
-	if err != nil {
-		return err
-	}
-	return closeErr
+	// Also persist the directory entry on platforms that support directory
+	// sync. Windows guarantees the file flush above, not directory durability.
+	return syncContainerLogDirectory(root)
 }
 
 func safeContainerLogName(id string) string {

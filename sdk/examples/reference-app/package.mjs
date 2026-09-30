@@ -2,15 +2,16 @@ import {readFile, writeFile} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
 import {build} from 'esbuild'
 import {execFileSync} from 'node:child_process'
+import {fileURLToPath} from 'node:url'
 const version=process.argv[2]||'0.3.0',schema=Number(process.argv[3]||1),output=process.argv[4]||'reference.blora-extension.json'
 if(!/^\d+\.\d+\.\d+$/.test(version)||![1,2,3].includes(schema)||!/^[-a-zA-Z0-9.]+\.json$/.test(output))throw new Error('invalid package version, schema or output filename')
 
-await build({entryPoints: [new URL('./src/index.ts', import.meta.url).pathname],
+await build({entryPoints: [fileURLToPath(new URL('./src/index.ts', import.meta.url))],
   bundle: true, platform: 'browser', format: 'esm', target: 'es2022',
   define:{REFERENCE_VERSION:JSON.stringify(version),REFERENCE_SCHEMA:String(schema)},
-  outfile: new URL('./dist/index.js', import.meta.url).pathname})
+  outfile: fileURLToPath(new URL('./dist/index.js', import.meta.url))})
 
-execFileSync('go',['build','-buildvcs=false','-trimpath','-o',new URL('./dist/backend.wasm',import.meta.url).pathname,new URL('./backend/main.go',import.meta.url).pathname],
+execFileSync('go',['build','-buildvcs=false','-trimpath','-o',fileURLToPath(new URL('./dist/backend.wasm',import.meta.url)),fileURLToPath(new URL('./backend/main.go',import.meta.url))],
   {env:{...process.env,GOOS:'wasip1',GOARCH:'wasm',CGO_ENABLED:'0'},stdio:'inherit'})
 const frontend = await readFile(new URL('./dist/index.js', import.meta.url),'utf8')
 const backend = await readFile(new URL('./dist/backend.wasm', import.meta.url))

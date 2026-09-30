@@ -44,6 +44,21 @@ progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
 ## Recover an interrupted run
 
+For the next run after the first returned report, download the updated script
+and use `-Remaining`:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Remaining
+```
+
+This makes a fresh checkout and repeats SDK packaging, native checks, full Go
+regression (including known unresolved failures), race checks when GCC is
+available, and all three browser suites. It omits standalone Go builds/vet and
+web build/unit tests that already passed. The report records `runMode=remaining`
+and explicitly lists omissions; previous passes are not imported into this run.
+This is a diagnostic/retest run, not a claim that all outstanding platform
+acceptance is automated. Report every failure in the returned ZIP.
+
 Download the current script using the first two lines above, then run:
 
 ```powershell

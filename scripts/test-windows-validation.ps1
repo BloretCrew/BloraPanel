@@ -18,6 +18,7 @@ $events=New-Object System.Collections.Generic.List[object]
 $active=$null; $stage=0
 $started=[DateTime]::UtcNow; $commit='test-only'; $Ref='test'; $fatal=''; $savedEnvironment=@{}
 $uncovered=@('harness only'); $ProgressPreference='SilentlyContinue'
+$Remaining=$true
 # Test only: the timeout case runs the Start-Sleep cmdlet in the owned shell,
 # not an external grandchild. Windows production uses taskkill /T /F.
 function taskkill.exe { param([Parameter(ValueFromRemainingArguments=$true)]$Arguments)
@@ -39,6 +40,7 @@ try {
     # Exercise the real finally block, including summary, checksums and ZIP.
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.runMode -ne 'remaining') { throw 'Remaining mode not recorded' }
     if ($result.outcome -ne 'FAILED' -or !$result.requiredNativeTestsMissing.Count) { throw 'False success summary' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip=[IO.Compression.ZipFile]::OpenRead((Join-Path $run 'Blora-Windows-Report.zip'))

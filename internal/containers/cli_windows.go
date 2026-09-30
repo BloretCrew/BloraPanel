@@ -66,7 +66,13 @@ func runCLI(ctx context.Context, command []string, dir, stateRoot string, env []
 		if err = windows.DuplicateHandle(windows.CurrentProcess(), windows.Handle(file.Fd()), windows.CurrentProcess(), &handles[i], 0, true, windows.DUPLICATE_SAME_ACCESS); err != nil {
 			return err
 		}
-		defer windows.CloseHandle(handles[i])
+		// Capture the slot, not the handle value: it is closed immediately
+		// after CreateProcess. A second close could hit a reused runtime handle.
+		defer func(index int) {
+			if handles[index] != 0 {
+				windows.CloseHandle(handles[index])
+			}
+		}(i)
 	}
 	if err = attrs.Update(windows.PROC_THREAD_ATTRIBUTE_HANDLE_LIST, unsafe.Pointer(&handles[0]), uintptr(len(handles))*unsafe.Sizeof(handles[0])); err != nil {
 		return err

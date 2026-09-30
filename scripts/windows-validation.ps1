@@ -9,6 +9,7 @@ param(
     [string]$WorkRoot = (Join-Path $env:USERPROFILE 'BloraValidation'),
     [string]$Ref = 'main',
     [switch]$InstallTools,
+    [switch]$Remaining,
     [switch]$CollectLatest,
     [string]$CollectRun = ''
 )
@@ -172,6 +173,9 @@ $uncovered = @(
     'Real Docker/Compose requires an explicitly authorized disposable Engine; opt-in Engine tests remain skipped here.',
     'Power loss, device cache loss, Engine disk exhaustion and remote certificate/network operations are not performed.'
 )
+if ($Remaining) {
+    $uncovered += 'Remaining mode intentionally omits Go vet, standalone Go builds, web production build and web unit tests; prior results are NOT imported as passes. SDK build/package, native checks, full Go regression, available race checks and all three browsers run again.'
+}
 try {
     Write-Host "Work directory: $run`nA report ZIP will be written even when a stage fails." -ForegroundColor Cyan
     $gitReady=Tool 'git.exe' 'Git.Git'
@@ -183,14 +187,16 @@ try {
     if (!(Invoke-Stage 'checkout' 'git.exe' @('-C',$repo,'checkout','--detach','FETCH_HEAD') $run)) { throw 'Checkout failed.' }
     $commit=(& git.exe -C $repo rev-parse HEAD).Trim()
     [void](Invoke-Stage 'git-version' 'git.exe' @('--version'))
-    if ($goReady) {
+    function Invoke-GoChecks {
         [void](Invoke-Stage 'go-version' 'go.exe' @('version'))
         [void](Invoke-Stage 'go-toolchain' 'go.exe' @('env','GOOS','GOARCH','GOVERSION','CGO_ENABLED'))
         $env:CGO_ENABLED='0'
         [void](Invoke-Stage 'go-download' 'go.exe' @('mod','download') $repo 1800)
-        [void](Invoke-Stage 'go-vet' 'go.exe' @('vet','./...') $repo 1800)
-        foreach ($component in @('master','daemon','extension-sign')) {
-            [void](Invoke-Stage "build-$component" 'go.exe' @('build','-trimpath','-o',(Join-Path $run "bin/blora-$component.exe"),"./cmd/$component"))
+        if (!$Remaining) {
+            [void](Invoke-Stage 'go-vet' 'go.exe' @('vet','./...') $repo 1800)
+            foreach ($component in @('master','daemon','extension-sign')) {
+                [void](Invoke-Stage "build-$component" 'go.exe' @('build','-trimpath','-o',(Join-Path $run "bin/blora-$component.exe"),"./cmd/$component"))
+            }
         }
         [void](Invoke-Stage 'windows-native' 'go.exe' @('test','-json','-count=1','-timeout=15m','./internal/runtime','./internal/terminal','./internal/runlog','./internal/monitor','./internal/systeminfo','-run','^TestWindows') $repo 3600 -GoEvents)
         [void](Invoke-Stage 'go-all' 'go.exe' @('test','-json','-count=1','-p=2','-timeout=20m','./...') $repo 7200 -GoEvents)
@@ -201,16 +207,21 @@ try {
             $env:CGO_ENABLED='0'
         } else { Missing 'go-race' 'No gcc.exe on PATH. Windows race needs a compatible mingw-w64 C compiler; normal and native tests still run.' }
     }
+    $goChecksRun=$false
     if ($nodeReady) {
         [void](Invoke-Stage 'node-version' 'node.exe' @('--version'))
         [void](Invoke-Stage 'npm-version' 'npm.cmd' @('--version'))
         foreach ($directory in @('sdk','sdk/examples/reference-app','web')) {
+            if ($directory -eq 'web' -and $goReady) { Invoke-GoChecks; $goChecksRun=$true }
             $path=Join-Path $repo $directory; $label=$directory.Replace('/','-')
             if (Invoke-Stage "$label-install" 'npm.cmd' @('ci') $path 1800) {
-                [void](Invoke-Stage "$label-build" 'npm.cmd' @('run','build') $path 1800)
-                if ($directory -eq 'sdk/examples/reference-app') { [void](Invoke-Stage 'sdk-package' 'npm.cmd' @('run','package:fixtures') $path 1800) }
+                if (!$Remaining -or $directory -ne 'web') { [void](Invoke-Stage "$label-build" 'npm.cmd' @('run','build') $path 1800) }
+                if ($directory -eq 'sdk/examples/reference-app') {
+                    [void](Invoke-Stage 'sdk-package-default' 'npm.cmd' @('run','package') $path 1800)
+                    [void](Invoke-Stage 'sdk-package' 'npm.cmd' @('run','package:fixtures') $path 1800)
+                }
                 if ($directory -eq 'web') {
-                    [void](Invoke-Stage 'web-unit' 'npm.cmd' @('test') $path 1800)
+                    if (!$Remaining) { [void](Invoke-Stage 'web-unit' 'npm.cmd' @('test') $path 1800) }
                     $env:CI='1'; $env:BLORA_E2E_FRESH_SERVER='1'
                     foreach ($browser in @('chromium','firefox','webkit')) {
                         if (Invoke-Stage "install-$browser" 'node.exe' @('node_modules/@playwright/test/cli.js','install',$browser) $path 1800) {
@@ -223,6 +234,8 @@ try {
             } else { Missing "$label-tests" 'Dependency installation failed.' }
         }
     }
+    # Master integration tests consume the actual reference package files.
+    if ($goReady -and !$goChecksRun) { Invoke-GoChecks }
 } catch { $fatal=Clean $_.Exception.Message; Write-Host $fatal -ForegroundColor Red }
 finally {
     # Must see actual terminal PASS events, not merely a successful empty filter.
@@ -246,6 +259,7 @@ finally {
     if ($fatal -or @($steps | Where-Object { $_.status -in @('FAIL','TIMEOUT') }).Count) { $outcome='FAILED' }
     elseif ($missingTests.Count -or $skips.Count -or @($steps | Where-Object status -eq 'BLOCKED').Count) { $outcome='INCOMPLETE' }
     $result=[ordered]@{schema=1;outcome=$outcome;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');commit=$commit;requestedRef=$Ref;windows=[Environment]::OSVersion.VersionString;architecture=$env:PROCESSOR_ARCHITECTURE;logicalProcessors=[Environment]::ProcessorCount;powershell=$PSVersionTable.PSVersion.ToString();fatal=$fatal;steps=@($steps.ToArray());requiredNativeTestsMissing=$missingTests;goTestEvents=@($events.ToArray());browserSummary=$browserSummary;notCovered=$uncovered}
+    $result['runMode'] = $(if ($Remaining) { 'remaining' } else { 'full' })
     Save-Text (Join-Path $report 'report.json') ($result | ConvertTo-Json -Depth 30)
     $lines=@('# Blora Windows validation', '', "Result: **$outcome**", "Commit: $commit", "UTC: $($result.startedAt) to $($result.finishedAt)", '', 'This is an automated evidence bundle, not full Windows/platform acceptance.', '', '| Stage | Result | Seconds | Log |','|---|---|---:|---|')
     foreach ($s in $steps) { $lines+="| $($s.name) | $($s.status) | $($s.seconds) | $($s.log) |" }

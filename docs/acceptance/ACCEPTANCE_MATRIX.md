@@ -1,5 +1,7 @@
 # Blora Panel 全范围验收矩阵
 
+2026-09-30 Windows首次用户实机证据：Job/keeper/daemon退出恢复、日志管道、监控、SCM/Task Scheduler查询等九项关键原生通过，ConPTY关键项失败；全Go仍有产品兼容缺陷和Linux夹具不兼容，浏览器尚未运行、race缺GCC。Web构建与76单测通过。首批修正及准确边界见[Windows首轮报告](reports/windows-first-report-2026-09-30.md)，本地Linux回归/Windows交叉编译不是修复后Windows运行证据，不提升Windows整体验收。
+
 2026-09-29 F06/RC34：复现旧连接异步解析失败污染新连接，增加连接代次/销毁保护；当前连接错误仍停止输入。Chromium/Firefox/WebKit定向组合各4/4通过；六包2,251条记录/三份Web、独立停机恢复及兼容RC33回退通过，见[报告](reports/terminal-generation-2026-09-29.md)。RC33完整复验49/51，两项扩展失败保留；补原生鼠标hover命中前置后RC34完整真实功能51/51通过897.040秒、无skip。玻璃遮挡裁剪像素等价检查失败未采用，UI未变；功能套件不含独立E08负载门禁，严格E08及原偶发/外部平台缺口保留。
 
 2026-09-29 F06/RC33：实际复现并修复OSC 8链接跨检查点丢失，保留主/备用/历史屏幕范围与当前输出属性，并使用原生标记管理生命周期。Chromium61项、Firefox/WebKit各50项、76单测、真实双节点PTY7项通过；实际鼠标点击和两次持久恢复目标一致，原生URI限制保留。RC33六包2,243条记录/三份Web及独立恢复/兼容RC32回退通过，见[报告](reports/terminal-links-recovery-2026-09-29.md)。UI未改；原Vim偶发、严格E08和外部平台缺口未关闭。

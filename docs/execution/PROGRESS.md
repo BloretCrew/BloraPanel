@@ -1,5 +1,11 @@
 # Blora Panel 执行进度与续接记录
 
+2026-09-30 新版脚本交付验证：PowerShell 7.4 隔离容器 harness 退出 0，覆盖 remaining 模式记录、参数、损坏进度宿主、失败/跳过/截止、三类报告结果、ZIP 边界和旧报告恢复。实际 Windows 行为仍待回传；本次不把脚本测试算作 Windows 产品通过。
+
+2026-09-30 用户要求提供剩余项新版脚本：新增 `-Remaining`，保留 SDK 打包、Windows 原生、全 Go 回归/可用 race、三浏览器；省略上一轮已通过的独立构建/vet/Web 单测，报告记录模式和覆盖缺口，不导入旧 PASS。仍包含已知未解决测试以收集现场，不宣称全量修复。上一轮 Git 暂存自动审批两次超时，修复尚未同步 GitHub；本轮正在重新验证与交付。
+
+2026-09-30用户Windows报告已读取：见[首轮报告](../acceptance/reports/windows-first-report-2026-09-30.md)，原ZIP hash记录，未公开私有日志。原生关键9/10通过，ConPTY失败；全Go316pass/26fail/14skip事件，containers发生runtime.semawakeup；Web76单测/生产构建通过、浏览器未运行、GCC缺失。修复SDK fileURLToPath与先生成默认/v2/v3包再Go测试的顺序、Windows CLI句柄重复关闭、metadata缺READ_ATTRIBUTES、日志目录sync平台适配。Linux定向三包通过，三包Windows测试交叉编译、实际参考扩展打包及PowerShell harness通过；所有本轮会话结束。Windows重新执行仍未验证。下一动作审阅提交这些确定修正，继续ConPTY标准句柄/启动现场、Master /bin/sh夹具移植、Windows权限断言/根目录重命名/ZIP膨胀夹具及协议20ms初始传输测试；不能让用户重复原样全套并把同一失败当环境问题。
+
 2026-09-30 Windows脚本故障修复：用户截图显示Chromium下载完成后Windows PowerShell Write-Progress抛IndexOutOfRangeException，且Compress-Archive内部同类调用阻止报告ZIP。移除父脚本Write-Progress，子shell设置SilentlyContinue，改15秒普通文本状态及.NET ZIP；新增CollectLatest/CollectRun仅收集原日志、明确不重跑/不提升验收。新增模拟损坏进度宿主、子进度抑制和恢复打包测试；Windows实机原结果仍需用户回传，不能将脚本修复当产品Windows验收通过。
 
 2026-09-29 Windows远端自助验收入口：用户有Windows设备但不开放连接，新增`scripts/windows-validation.ps1`及[运行说明](../operations/WINDOWS_VALIDATION.md)。独立GitHub拉取/commit记录，可选winget工具安装，原生必需测试PASS事件校验、全Go/可用GCC的race、SDK/Web构建及三引擎浏览器，实时双流日志、阶段截止、失败继续、结果/skip/gap/ZIP报告。清除继承的BLORA环境防止连接旧Engine。Playwright mock配置不再在Windows写死Linux Chromium路径，runner强制新Vite服务。官方PowerShell7.4隔离容器语法/字面参数/失败/skip/超时/三类汇总/ZIP排除私有目录测试通过；首轮测试harness的Start-Sleep参数形式错误已修正，非Windows实机失败。`npm run check`及新服务模式真实浏览器终端代次用例1/1（7.9秒）通过。Windows实机仍待用户回传ZIP；脚本明确不覆盖服务/任务变更生命周期、系统通知中心、Linux依赖的真实浏览器fixture、物理故障/E08/远程Engine等，不提升整个平台验收。无本轮运行句柄，下一动作提交推送并交付运行命令。
