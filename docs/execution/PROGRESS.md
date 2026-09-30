@@ -1,5 +1,7 @@
 # Blora Panel 执行进度与续接记录
 
+2026-09-30 Windows脚本故障修复：用户截图显示Chromium下载完成后Windows PowerShell Write-Progress抛IndexOutOfRangeException，且Compress-Archive内部同类调用阻止报告ZIP。移除父脚本Write-Progress，子shell设置SilentlyContinue，改15秒普通文本状态及.NET ZIP；新增CollectLatest/CollectRun仅收集原日志、明确不重跑/不提升验收。新增模拟损坏进度宿主、子进度抑制和恢复打包测试；Windows实机原结果仍需用户回传，不能将脚本修复当产品Windows验收通过。
+
 2026-09-29 Windows远端自助验收入口：用户有Windows设备但不开放连接，新增`scripts/windows-validation.ps1`及[运行说明](../operations/WINDOWS_VALIDATION.md)。独立GitHub拉取/commit记录，可选winget工具安装，原生必需测试PASS事件校验、全Go/可用GCC的race、SDK/Web构建及三引擎浏览器，实时双流日志、阶段截止、失败继续、结果/skip/gap/ZIP报告。清除继承的BLORA环境防止连接旧Engine。Playwright mock配置不再在Windows写死Linux Chromium路径，runner强制新Vite服务。官方PowerShell7.4隔离容器语法/字面参数/失败/skip/超时/三类汇总/ZIP排除私有目录测试通过；首轮测试harness的Start-Sleep参数形式错误已修正，非Windows实机失败。`npm run check`及新服务模式真实浏览器终端代次用例1/1（7.9秒）通过。Windows实机仍待用户回传ZIP；脚本明确不覆盖服务/任务变更生命周期、系统通知中心、Linux依赖的真实浏览器fixture、物理故障/E08/远程Engine等，不提升整个平台验收。无本轮运行句柄，下一动作提交推送并交付运行命令。
 
 2026-09-29 RC34最终：完整真实功能51/51通过897.040秒（session90325退出0），首轮RC33的49/51失败保留；三浏览器终端组合各4/4、六包2,251条记录/三份Web、停机恢复及兼容RC33回退均通过，见[报告](../acceptance/reports/terminal-generation-2026-09-29.md)。修复旧连接异步错误污染新连接；未证明原Vim偶发/撤权超时根因。玻璃遮挡裁剪像素不一致，未采用。fixture由trap停止，诊断Vite78601已Ctrl+C退出130，无本轮活跃测试句柄。下一动作审阅文档/提交推送；严格E08与Windows/跨主机/物理故障等未通过项继续保留，UI冻结。

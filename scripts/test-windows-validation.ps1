@@ -1,5 +1,9 @@
 # Function-level tests runnable in PowerShell on Linux; not Windows acceptance.
 $ErrorActionPreference='Stop'
+# Reproduce the user's broken Windows progress renderer: neither the runner nor
+# its report packer may invoke these host-dependent commands.
+function Write-Progress { throw 'Injected progress renderer IndexOutOfRangeException' }
+function Compress-Archive { throw 'Archive progress renderer must not be invoked' }
 $tokens=$null; $errors=$null
 $source=Join-Path $PSScriptRoot 'windows-validation.ps1'
 $ast=[Management.Automation.Language.Parser]::ParseFile($source,[ref]$tokens,[ref]$errors)
@@ -22,6 +26,7 @@ function taskkill.exe { param([Parameter(ValueFromRemainingArguments=$true)]$Arg
 try {
     $value='space path & literal $() ` quote " and 中文'
     if (!(Invoke-Stage 'arguments' 'Write-Output' @($value) $run 10)) { throw 'Argument invocation failed' }
+    if (!(Invoke-Stage 'child-progress' 'Write-Progress' @('test progress') $run 10)) { throw 'Child progress not suppressed' }
     if (![IO.File]::ReadAllText((Join-Path $report '01-arguments.log')).Contains($value)) { throw 'Arguments changed' }
     if (Invoke-Stage 'failure' 'Write-Error' @('intentional failure') $run 10) { throw 'Failure counted as pass' }
     $event='{"Action":"skip","Package":"example","Test":"TestSkipped","Elapsed":0}'
@@ -53,5 +58,24 @@ try {
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE') { throw 'Skip did not prevent success' }
-    Write-Host 'PASS: parser, literal arguments, failed command, skipped event, timeout, missing coverage, passing/incomplete/failed summaries and ZIP boundaries.'
+    $previousOS=$env:OS
+    try {
+        $env:OS='Windows_NT'
+        $shell=Join-Path $PSHOME 'pwsh'; if (!(Test-Path $shell)) { $shell=Join-Path $PSHOME 'powershell.exe' }
+        & $shell -NoProfile -File $source -WorkRoot $run -CollectRun $run
+        if ($LASTEXITCODE -ne 0) { throw 'Recovery entry failed' }
+        $recovered=@(Get-ChildItem $run -Filter 'Blora-Windows-Recovered-*.zip')
+        if ($recovered.Count -ne 1) { throw 'Recovered ZIP missing' }
+        $zip=[IO.Compression.ZipFile]::OpenRead($recovered[0].FullName)
+        try { if (!($zip.Entries.FullName -contains 'RECOVERY.txt') -or !($zip.Entries.FullName -contains 'report.json')) { throw 'Recovery evidence missing' } } finally { $zip.Dispose() }
+        $collection=Join-Path $run 'collection'
+        foreach ($name in @('20260101-010101-old','20260102-010101-new')) {
+            $folder=Join-Path $collection "$name/report"
+            [void](New-Item -ItemType Directory -Path $folder -Force)
+            Save-Text (Join-Path $folder 'steps-so-far.json') '[]'
+        }
+        & $shell -NoProfile -File $source -WorkRoot $collection -CollectLatest
+        if ($LASTEXITCODE -ne 0 -or @(Get-ChildItem (Join-Path $collection '20260102-010101-new') -Filter '*.zip').Count -ne 1 -or @(Get-ChildItem (Join-Path $collection '20260101-010101-old') -Filter '*.zip').Count -ne 0) { throw 'CollectLatest selected the wrong run' }
+    } finally { $env:OS=$previousOS }
+    Write-Host 'PASS: failing progress host, child progress suppression, arguments, failure/skip/timeout, report outcomes, ZIP boundaries and old-run recovery.'
 } finally { Remove-Item -LiteralPath $run -Recurse -Force }

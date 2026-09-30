@@ -38,6 +38,25 @@ Each invocation creates a new timestamped directory. `-Ref` can be a branch,
 tag or commit; the exact fetched commit is included in the report. The console
 shows the current stage, elapsed time and live test output. A failed stage does
 not stop independent later stages. Individual commands have time limits.
+Progress uses plain text (including a 15-second heartbeat), not the Windows
+PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
+progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
+
+## Recover an interrupted run
+
+Download the current script using the first two lines above, then run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -CollectLatest
+```
+
+This only packages existing evidence from the most recent run under the default
+work root; it does not repeat tests or infer that unfinished tests passed. It
+prints a new `Blora-Windows-Recovered-<id>.zip` path. For a custom location use
+`-WorkRoot 'D:\BloraValidation' -CollectLatest`, or select the exact old run with
+`-CollectRun 'D:\BloraValidation\<timestamp-id>'`. Keep the original logs and send
+the recovered ZIP before rerunning. The recovery marker explicitly records that
+the run may have been interrupted. Do not collect a run that is still active.
 
 ## What runs
 

@@ -8,13 +8,42 @@ Optional tool installation uses winget and may show normal installer prompts.
 param(
     [string]$WorkRoot = (Join-Path $env:USERPROFILE 'BloraValidation'),
     [string]$Ref = 'main',
-    [switch]$InstallTools
+    [switch]$InstallTools,
+    [switch]$CollectLatest,
+    [string]$CollectRun = ''
 )
 $ErrorActionPreference = 'Stop'
-$ProgressPreference = 'Continue'
+$ProgressPreference = 'SilentlyContinue'
 if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows, not WSL or Linux.' }
 if ($Ref.StartsWith('-')) { throw 'Ref must be a branch, tag, or commit, not a Git option.' }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
+function New-ReportZip([string]$Folder,[string]$Destination) {
+    # Avoid Microsoft.PowerShell.Archive / Write-Progress host rendering entirely.
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive=[IO.Compression.ZipFile]::Open($Destination,[IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($file in Get-ChildItem -LiteralPath $Folder -File) {
+            if ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Report contains a linked file; refusing to follow it.' }
+            [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,$file.FullName,$file.Name,[IO.Compression.CompressionLevel]::Optimal)
+        }
+    } finally { $archive.Dispose() }
+}
+if ($CollectLatest -or $CollectRun) {
+    if ($CollectLatest -and $CollectRun) { throw 'Choose either -CollectLatest or -CollectRun.' }
+    if ($CollectLatest) {
+        $candidate=Get-ChildItem -LiteralPath $WorkRoot -Directory | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'report/steps-so-far.json') } | Sort-Object Name -Descending | Select-Object -First 1
+        if (!$candidate) { throw 'No previous run found. Use -CollectRun with the previous work directory.' }
+        $CollectRun=$candidate.FullName
+    }
+    $oldReport=Join-Path $CollectRun 'report'
+    if (!(Test-Path -LiteralPath (Join-Path $oldReport 'steps-so-far.json'))) { throw 'No stage checkpoint in this run directory.' }
+    $destination=Join-Path $CollectRun ('Blora-Windows-Recovered-'+[guid]::NewGuid().ToString('N').Substring(0,8)+'.zip')
+    [IO.File]::WriteAllText((Join-Path $oldReport 'RECOVERY.txt'),"Recovered existing logs only. No tests were rerun and no missing test is counted as passed. Original report/exit records may describe an interrupted run. Collected UTC: $([DateTime]::UtcNow.ToString('o'))",$utf8)
+    New-ReportZip $oldReport $destination
+    Write-Host "Recovered previous evidence; tests NOT resumed.`nSend this ZIP: $destination" -ForegroundColor Cyan
+    exit 0
+}
 $run = Join-Path $WorkRoot ((Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8))
 $report = Join-Path $run 'report'
 $repo = Join-Path $run 'source'
@@ -52,13 +81,14 @@ function Invoke-Stage {
     $logName = $id + '.log'
     $writer = New-Object IO.StreamWriter((Join-Path $report $logName), $false, $utf8)
     $clock = [Diagnostics.Stopwatch]::StartNew()
-    $exitCode = -1; $status = 'FAIL'; $detail = ''; $process = $null
+    $exitCode = -1; $status = 'FAIL'; $detail = ''; $process = $null; $nextHeartbeat=15
     try {
         # Encode structured arguments; no user path/ref is interpolated as shell code.
         $spec = @{exe=$Exe;arguments=@($Arguments);directory=$Directory} | ConvertTo-Json -Compress
         $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($spec))
         $child = @"
 `$ErrorActionPreference='Stop'
+`$ProgressPreference='SilentlyContinue'
 `$OutputEncoding=[Console]::OutputEncoding=New-Object Text.UTF8Encoding(`$false)
 `$s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$payload')) | ConvertFrom-Json
 try { Set-Location -LiteralPath `$s.directory; `$a=@(`$s.arguments); & `$s.exe @a; if (`$null -eq `$LASTEXITCODE) {exit 0}; exit `$LASTEXITCODE } catch { [Console]::Error.WriteLine(`$_.Exception.Message); exit 1 }
@@ -82,7 +112,10 @@ try { Set-Location -LiteralPath `$s.directory; `$a=@(`$s.arguments); & `$s.exe @
                 & taskkill.exe /PID $process.Id /T /F 2>&1 | ForEach-Object { $writer.WriteLine((Clean "$_")) }
                 break
             }
-            Write-Progress -Activity 'Blora Windows validation' -Status "$Name - $([int]$clock.Elapsed.TotalSeconds)s (test output below)"
+            if ($clock.Elapsed.TotalSeconds -ge $nextHeartbeat) {
+                Write-Host "[RUNNING] $Name - $([int]$clock.Elapsed.TotalSeconds)s"
+                $nextHeartbeat=$clock.Elapsed.TotalSeconds+15
+            }
             for ($i=0;$i -lt 2;$i++) {
                 if ($null -ne $reads[$i] -and $reads[$i].IsCompleted) {
                     $line = $reads[$i].GetAwaiter().GetResult()
@@ -192,7 +225,6 @@ try {
     }
 } catch { $fatal=Clean $_.Exception.Message; Write-Host $fatal -ForegroundColor Red }
 finally {
-    Write-Progress -Activity 'Blora Windows validation' -Completed
     # Must see actual terminal PASS events, not merely a successful empty filter.
     $required=@('TestWindowsJobKeepsDescendantsAfterParentExits','TestWindowsJobCrashRecoveryPreservesRun','TestWindowsDaemonExitReopenAndStop','TestWindowsKeeperBirthMismatchFailsClosed','TestWindowsKeeperStartupFailureCleansEmptyJob','TestWindowsConPTYRealCommandResizeAndJobClose','TestWindowsDaemonExitDoesNotCloseBusinessPipe','TestWindowsNativeMetricsAndProcessIdentity','TestWindowsNativeServiceEnumeration','TestWindowsTaskSchedulerEnumeration')
     $missingTests=@($required | Where-Object { $name=$_; !($events | Where-Object { $_.stage -eq 'windows-native' -and $_.test -eq $name -and $_.action -eq 'pass' }) })
@@ -223,13 +255,16 @@ finally {
     if ($fatal) { $lines+=@('', '## Fatal error', $fatal) }
     $lines+=@('', 'Only this report folder is zipped. Source, browser traces, credentials, environment dumps and test state are excluded.', 'Before sharing, review the logs for local paths or identifiers emitted by failed tests. Timeout/abort cleanup requires inspection; do not terminate unrelated services.')
     Save-Text (Join-Path $report 'README.md') ($lines -join "`r`n")
-    $hashes=Get-ChildItem $report -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
+    $hashes=Get-ChildItem $report -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
     Save-Text (Join-Path $report 'SHA256SUMS.txt') ($hashes -join "`r`n")
     $zip=Join-Path $run 'Blora-Windows-Report.zip'
-    Compress-Archive -Path (Join-Path $report '*') -DestinationPath $zip
+    $zipReady=$false
+    try { New-ReportZip $report $zip; $zipReady=$true }
+    catch { Write-Host "ZIP creation failed: $($_.Exception.Message). Report files remain at $report" -ForegroundColor Red; $outcome='FAILED' }
     foreach ($item in Get-ChildItem Env:) { if ($item.Name -match '^(BLORA_|GOOS$|GOARCH$|GOFLAGS$|CGO_ENABLED$|GORACE$|CC$|CI$|PLAYWRIGHT_)') { [Environment]::SetEnvironmentVariable($item.Name,$null,'Process') } }
     foreach ($key in $savedEnvironment.Keys) { [Environment]::SetEnvironmentVariable($key,$savedEnvironment[$key],'Process') }
-    Write-Host "`nResult: $outcome`nSend this ZIP: $zip`nSummary: $(Join-Path $report 'README.md')" -ForegroundColor Cyan
+    Write-Host "`nResult: $outcome`nSummary: $(Join-Path $report 'README.md')" -ForegroundColor Cyan
+    if ($zipReady) { Write-Host "Send this ZIP: $zip" -ForegroundColor Cyan }
 }
 if ($outcome -eq 'FAILED') { exit 1 }
 if ($outcome -eq 'INCOMPLETE') { exit 2 }
