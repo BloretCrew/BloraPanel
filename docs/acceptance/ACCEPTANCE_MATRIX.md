@@ -629,3 +629,9 @@ Windows Job/ConPTY/监控/系统适配、独立 systemd manager、远程 Engine/
 - 未覆盖范围及下一步：
 
 最终报告必须明确区分：已实现且已验证、已实现但未验证、尚未实现、环境阻塞。全部必需功能与关键场景具有真实证据且缺口清零，才可以宣布全范围完成；后续仅剩视觉和非关键体验细化时也要具体列出。
+# Windows returned evidence update (2026-09-30)
+
+See [second Windows report](reports/windows-second-report-2026-09-30.md): three
+browser suites executed with 118/119, 115/119 and 111/119 passes respectively;
+Go unavailable meant native and full Go checks did not run. Windows acceptance
+remains incomplete; prior native results are not new validation.

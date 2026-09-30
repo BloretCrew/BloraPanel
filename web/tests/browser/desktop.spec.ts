@@ -297,12 +297,19 @@ test('copying a browser tab creates an isolated branch and immediate typing keep
   await page.reload();await expect(page.locator('.monaco-editor .view-lines')).not.toContainText('分支输入');await duplicate.close()
 })
 
-test('committed IME, simultaneous multi-cursor edits and find state survive immediate reload',async({page,context})=>{
-  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message))
+test('native Chromium IME composition survives immediate reload',async({page,context,browserName})=>{
+  test.skip(browserName!=='chromium','Native composition injection requires CDP; Firefox/WebKit native IME remains unverified.')
   await page.goto('/');await page.locator('[data-app="blora.editor"]').click();await page.getByRole('textbox',{name:'文件正文编辑器'}).focus()
   const input=await context.newCDPSession(page)
   await input.send('Input.imeSetComposition',{text:'中文组合',selectionStart:4,selectionEnd:4})
   await input.send('Input.insertText',{text:'中文组合'})
+  await page.reload();await expect(page.locator('.monaco-editor .view-lines')).toContainText('中文组合')
+})
+
+test('committed Unicode, simultaneous multi-cursor edits and find state survive immediate reload',async({page})=>{
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message))
+  await page.goto('/');await page.locator('[data-app="blora.editor"]').click();await page.getByRole('textbox',{name:'文件正文编辑器'}).focus()
+  await page.keyboard.insertText('中文组合')
   await page.keyboard.insertText('\nmatch\nmatch')
   await page.reload();await expect(page.locator('.monaco-editor .view-lines')).toContainText('中文组合')
   await page.getByRole('button',{name:'查找',exact:true}).click();await page.getByRole('textbox',{name:'查找内容',exact:true}).fill('match');await page.getByRole('textbox',{name:'替换内容',exact:true}).fill('替换草稿')

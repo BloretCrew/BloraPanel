@@ -157,6 +157,17 @@ try { Set-Location -LiteralPath `$s.directory; `$a=@(`$s.arguments); & `$s.exe @
     return ($status -eq 'PASS')
 }
 function Tool([string]$command,[string]$package) {
+    # A terminal opened before winget installation may retain a stale PATH.
+    # Refresh registered paths before treating an installed tool as missing.
+    $env:Path=$env:Path+';'+[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')
+    if ($command -eq 'go.exe' -and !(Get-Command $command -ErrorAction SilentlyContinue)) {
+        foreach ($base in @($env:ProgramFiles,$env:LOCALAPPDATA)) {
+            if ($base) {
+                $bin=Join-Path $base 'Go/bin'
+                if (Test-Path -LiteralPath (Join-Path $bin 'go.exe') -PathType Leaf) { $env:Path+=';'+$bin; break }
+            }
+        }
+    }
     if (Get-Command $command -ErrorAction SilentlyContinue) { return $true }
     if ($InstallTools -and (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
         [void](Invoke-Stage "install-$package" 'winget.exe' @('install','--exact','--id',$package,'--source','winget','--accept-package-agreements','--accept-source-agreements','--disable-interactivity') $run 1800)
@@ -217,8 +228,12 @@ try {
             if (Invoke-Stage "$label-install" 'npm.cmd' @('ci') $path 1800) {
                 if (!$Remaining -or $directory -ne 'web') { [void](Invoke-Stage "$label-build" 'npm.cmd' @('run','build') $path 1800) }
                 if ($directory -eq 'sdk/examples/reference-app') {
-                    [void](Invoke-Stage 'sdk-package-default' 'npm.cmd' @('run','package') $path 1800)
-                    [void](Invoke-Stage 'sdk-package' 'npm.cmd' @('run','package:fixtures') $path 1800)
+                    if ($goReady) {
+                        [void](Invoke-Stage 'sdk-package-default' 'npm.cmd' @('run','package') $path 1800)
+                        [void](Invoke-Stage 'sdk-package' 'npm.cmd' @('run','package:fixtures') $path 1800)
+                    } else {
+                        Missing 'sdk-package' 'Go unavailable: WASI packages cannot be generated. The reference-extension browser scenario will also lack its package.'
+                    }
                 }
                 if ($directory -eq 'web') {
                     if (!$Remaining) { [void](Invoke-Stage 'web-unit' 'npm.cmd' @('test') $path 1800) }

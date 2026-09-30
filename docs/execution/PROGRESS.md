@@ -1,5 +1,7 @@
 # Blora Panel 执行进度与续接记录
 
+2026-09-30 第二轮 Windows 报告已分析，见[报告](../acceptance/reports/windows-second-report-2026-09-30.md)。Go PATH 缺失导致原生/全 Go 未运行，SDK WASI 包失败；浏览器 Chromium118/119、Firefox115/119、WebKit111/119，进度与 ZIP 已恢复。修正 Go 探测刷新/缺依赖记录、字号断言舍入、CDP IME 与跨浏览器恢复测试分离；PowerShell harness 与字号 Firefox 定向通过。仍须核查编辑器恢复、WebKit 超时/任务请求、ConPTY 等；不得算 Windows Go 修复复测通过。
+
 2026-09-30 新版脚本交付验证：PowerShell 7.4 隔离容器 harness 退出 0，覆盖 remaining 模式记录、参数、损坏进度宿主、失败/跳过/截止、三类报告结果、ZIP 边界和旧报告恢复。实际 Windows 行为仍待回传；本次不把脚本测试算作 Windows 产品通过。
 
 2026-09-30 用户要求提供剩余项新版脚本：新增 `-Remaining`，保留 SDK 打包、Windows 原生、全 Go 回归/可用 race、三浏览器；省略上一轮已通过的独立构建/vet/Web 单测，报告记录模式和覆盖缺口，不导入旧 PASS。仍包含已知未解决测试以收集现场，不宣称全量修复。上一轮 Git 暂存自动审批两次超时，修复尚未同步 GitHub；本轮正在重新验证与交付。

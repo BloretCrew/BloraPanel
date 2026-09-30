@@ -82,7 +82,9 @@ test('workspace preferences persist and layout reset keeps a backup workspace',a
   await page.getByLabel('窗口切换快捷键').selectOption('off')
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark')
   await expect(page.locator('html')).toHaveAttribute('data-density','compact')
-  await expect(page.locator('html')).toHaveCSS('font-size','14.3px')
+  // Firefox quantizes layout values to fractions of a CSS pixel (14.2969px).
+  // Still reject a wrong scale; tolerate only subpixel serialization rounding.
+  await expect.poll(async()=>Math.abs(await page.locator('html').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))-14.3)).toBeLessThan(0.01)
   page.once('dialog',dialog=>dialog.accept())
   await page.getByRole('button',{name:'恢复默认布局'}).click()
   await expect(page.getByRole('status')).toContainText('已恢复默认布局')
