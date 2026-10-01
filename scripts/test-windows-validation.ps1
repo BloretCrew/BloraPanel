@@ -17,7 +17,7 @@ $steps=New-Object System.Collections.Generic.List[object]
 $events=New-Object System.Collections.Generic.List[object]
 $active=$null; $stage=0
 $started=[DateTime]::UtcNow; $commit='test-only'; $Ref='test'; $fatal=''; $savedEnvironment=@{}
-$savedPath=$env:Path; $Retest=$false; $retestPlan=Get-RetestPlan
+$savedPath=$env:Path; $Retest=$false; $Followup=$false; $retestPlan=Get-RetestPlan
 $uncovered=@('harness only'); $ProgressPreference='SilentlyContinue'
 $Remaining=$true
 # Test only: the timeout case runs the Start-Sleep cmdlet in the owned shell,
@@ -69,7 +69,7 @@ try {
     foreach ($name in $requiredNames) { $events.Add([pscustomobject]@{stage='windows-native';test=$name;package='harness';action='pass';elapsed=0}) }
     foreach ($case in $retestPlan.goCases) { $events.Add([pscustomobject]@{stage='go-retest';test=$case.test;package=$case.package;action='pass';elapsed=0}) }
     $events.Add([pscustomobject]@{stage='go-race';test='TestHarness';package='harness';action='pass';elapsed=0})
-    $browserData=@{stats=@{expected=$retestPlan.browserTitles.Count;unexpected=0;flaky=0;skipped=0};suites=@(@{title='nested file';suites=@(@{title='nested group';specs=@($retestPlan.browserTitles | ForEach-Object { @{title=$_;ok=$true;tests=@(@{expectedStatus='passed';status='expected';results=@(@{status='passed'})})} })})})}
+    $browserData=@{stats=@{expected=$retestPlan.browserCaseCount;unexpected=0;flaky=0;skipped=0};suites=@(@{title='nested file';suites=@(@{title='nested group';specs=@($retestPlan.browserTitles | ForEach-Object { @{title=$_;ok=$true;tests=@(@{expectedStatus='passed';status='expected';results=@(@{status='passed'})})} })})})}
     foreach ($browser in @('chromium','firefox','webkit')) { Save-Text (Join-Path $report "$browser.json") ($browserData | ConvertTo-Json -Depth 20) }
     Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
@@ -82,6 +82,47 @@ try {
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or $result.requiredGoRetestsMissing.Count -ne 1 -or @($result.browserSummary | Where-Object browser -eq 'firefox')[0].requiredRetestTitlesMissing.Count -ne 1) { throw 'Incomplete retest or flaky browser accepted as pass' }
+    # Fourth-report scope: all six browser scenarios, 18 WebKit executions,
+    # and three executions of each named Go regression remain required.
+    $steps.Clear(); $events.Clear(); $Retest=$false; $Followup=$true; $retestPlan=Get-FollowupPlan
+    if ($retestPlan.goCases.Count -ne 3 -or $retestPlan.browserFiles.Count -ne 2 -or $retestPlan.browserTitles.Count -ne 6) { throw 'Followup scope changed unexpectedly' }
+    $steps.Add([pscustomobject]@{name='harness-pass';status='PASS';exitCode=0;seconds=0;detail='';log=''})
+    foreach ($name in $requiredNames) { $events.Add([pscustomobject]@{stage='windows-native';test=$name;package='harness';action='pass';elapsed=0}) }
+    foreach ($case in $retestPlan.goCases) { foreach ($execution in 1..3) { $events.Add([pscustomobject]@{stage='go-retest';test=$case.test;package=$case.package;action='pass';elapsed=0}) } }
+    $events.Add([pscustomobject]@{stage='go-race';test='TestHarness';package='harness';action='pass';elapsed=0})
+    foreach ($browser in @('chromium','firefox','webkit')) {
+        $executions=$(if ($browser -eq 'webkit') { 3 } else { 1 })
+        $specs=@(foreach ($execution in 1..$executions) { foreach ($title in $retestPlan.browserTitles) { @{title=$title;ok=$true;tests=@(@{expectedStatus='passed';status='expected';results=@(@{status='passed'})})} } })
+        $browserData=@{stats=@{expected=(6*$executions);unexpected=0;flaky=0;skipped=0};suites=@(@{specs=$specs})}
+        if ($browser -eq 'webkit') {
+            $sample=@{signals=@(@{kind='requestfailed';path='/api/v1/tasks'});surface=@{visibility='visible';paint=$false}} | ConvertTo-Json -Depth 10
+            $browserData.suites[0].specs[0].tests[0].results[0]['attachments']=@(@{name='blora-runtime-diagnostics';contentType='application/json';body=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($sample))},@{name='private-credentials';contentType='application/json';path='/do/not/read/private.json'})
+        }
+        Save-Text (Join-Path $report "$browser.json") ($browserData | ConvertTo-Json -Depth 20)
+    }
+    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.runMode -ne 'followup' -or $result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS') { throw 'Valid followup summary incorrect' }
+    if (!(Test-Path (Join-Path $report 'browser-webkit-diagnostic-1.json')) -or (Test-Path (Join-Path $report 'private-credentials.json'))) { throw 'Diagnostic bundling boundary failed' }
+    # An aggregate claiming 18 successes cannot hide a missing third
+    # execution of one particular required scenario.
+    $completeWebkitSpecs=@($browserData.suites[0].specs)
+    $browserData.suites[0].specs=@($completeWebkitSpecs[1..17])
+    Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
+    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.outcome -ne 'INCOMPLETE' -or @($result.browserSummary | Where-Object browser -eq 'webkit')[0].requiredRetestTitlesMissing.Count -ne 1) { throw 'Missing third browser execution counted as passed' }
+    $browserData.suites[0].specs=$completeWebkitSpecs
+    # Nominal aggregate success with only one WebKit execution per case, or
+    # two Go passes instead of three, must not satisfy this followup plan.
+    $events.RemoveAt($events.Count-2)
+    $browserData.stats.expected=6; Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
+    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.outcome -ne 'INCOMPLETE' -or $result.requiredGoRetestsMissing.Count -ne 1 -or !@($result.steps | Where-Object name -eq 'browser-webkit-case-count').Count) { throw 'Incomplete followup counted as passed' }
     # Verify compiler extraction with tiny fixtures; no compiler is downloaded
     # or executed by the harness. Validate the helper's complete syntax too.
     $compilerAst=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'windows-race-compiler.ps1'),[ref]$tokens,[ref]$errors)
@@ -122,5 +163,5 @@ try {
         & $shell -NoProfile -File $source -WorkRoot $collection -CollectLatest
         if ($LASTEXITCODE -ne 0 -or @(Get-ChildItem (Join-Path $collection '20260102-010101-new') -Filter '*.zip').Count -ne 1 -or @(Get-ChildItem (Join-Path $collection '20260101-010101-old') -Filter '*.zip').Count -ne 0) { throw 'CollectLatest selected the wrong run' }
     } finally { $env:OS=$previousOS }
-    Write-Host 'PASS: failing progress host, child progress suppression, literal arguments, failure/skip/timeout, full/remaining/retest coverage gates, compiler checksum/traversal, ZIP boundaries and old-run recovery.'
+    Write-Host 'PASS: failing progress host, child progress suppression, literal arguments, failure/skip/timeout, full/remaining/retest/followup coverage gates, diagnostic bundling, compiler checksum/traversal, ZIP boundaries and old-run recovery.'
 } finally { Remove-Item -LiteralPath $run -Recurse -Force }

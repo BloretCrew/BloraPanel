@@ -76,7 +76,7 @@ func identityAlive(i Identity) (bool, error) {
 		return false, nil
 	}
 	birth, state, err := procBirth(i.PID)
-	if errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, os.ErrNotExist) || errors.Is(err, unix.ESRCH) {
 		return false, nil
 	}
 	if err != nil {

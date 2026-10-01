@@ -103,6 +103,12 @@ func TestStdinSurvivesDaemonAndOutputEOF(t *testing.T) {
 	if n, err := c.WriteInput(context.Background(), []byte(line)); err != nil || n != len(line) {
 		t.Fatalf("independent input: %d %v", n, err)
 	}
+	// The result path can exist while WriteFile is still writing it. Wait for
+	// the owned business process to finish before inspecting its completed
+	// result, and before invoking the runtime-owned Finish action.
+	if err = waitTestProcessExit(result.BusinessPID, 3*time.Second); err != nil {
+		t.Fatal(err)
+	}
 	for {
 		data, e := os.ReadFile(filepath.Join(root, "business-result"))
 		if e == nil {
@@ -115,11 +121,6 @@ func TestStdinSurvivesDaemonAndOutputEOF(t *testing.T) {
 			t.Fatal("business did not receive input")
 		}
 		time.Sleep(10 * time.Millisecond)
-	}
-	// The test business exits after the durable result; confirm its actual OS
-	// process is no longer live before invoking the runtime-owned Finish action.
-	if err = waitTestProcessExit(result.BusinessPID, 3*time.Second); err != nil {
-		t.Fatal(err)
 	}
 	batch, err := c.Read(context.Background(), 0, 4096)
 	if err != nil || len(batch.Events) != 0 {

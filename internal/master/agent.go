@@ -231,6 +231,14 @@ func (s *Server) dispatch(ctx context.Context, node string, p *peer) {
 			if t.State == model.WaitingClient {
 				continue
 			}
+			// Client uploads are prepared through the bulk RPC, not a daemon
+			// task receipt. Their cancel route must confirm staging cleanup;
+			// dispatching a generic cancel first races that cleanup with a
+			// misleading missing-task receipt. Already dispatched commits
+			// still require the normal daemon cancellation/reconciliation.
+			if t.CancellationRequested && t.DispatchedAt.IsZero() && (t.Action == "file.upload" || t.Action == "file.save") {
+				continue
+			}
 			if t.DispatchedAt.IsZero() && (t.Action == "instance.start" || t.Action == "instance.restart") {
 				n, _, err := s.store.Node(ctx, node)
 				if err != nil || n.Maintenance {

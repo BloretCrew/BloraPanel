@@ -5,6 +5,7 @@ package runlog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -29,7 +30,7 @@ func waitTestProcessExit(pid int, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		_, state, err := procBirth(pid)
-		if os.IsNotExist(err) || state == 'Z' || state == 'X' {
+		if os.IsNotExist(err) || errors.Is(err, unix.ESRCH) || state == 'Z' || state == 'X' {
 			return nil
 		}
 		if err != nil {

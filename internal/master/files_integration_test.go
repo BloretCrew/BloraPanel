@@ -559,10 +559,25 @@ func TestCancelAcceptedUploadBeforeNodePreparation(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	// The durable intent exists but the process never reached node preparation.
-	result := f.admin.request("DELETE", fileURL(i)+"/uploads/"+task.ID, nil, model.ID(), 202)
+	// Simulate a lost cancel response before bulk cleanup. Keep the real
+	// dispatcher running through several ticks: a client upload has no
+	// daemon task receipt yet, so generic cancellation must not be sent.
+	cancelKey := model.ID()
+	task, e = f.store.RequestCancel(context.Background(), task.ID, cancelKey)
+	if e != nil {
+		t.Fatal(e)
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		current, err := f.store.Task(context.Background(), task.ID)
+		if err != nil || current.State != model.CancelRequested || !current.DispatchedAt.IsZero() {
+			t.Fatalf("client cleanup escaped to generic dispatcher: state=%s dispatched=%v err=%v", current.State, current.DispatchedAt, err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	result := f.admin.request("DELETE", fileURL(i)+"/uploads/"+task.ID, nil, cancelKey, 202)
 	task = parseFileTask(t, result)
-	if task.State != model.Cancelled {
+	if task.State != model.Cancelled || task.CancellationRequestID != cancelKey || !task.DispatchedAt.IsZero() {
 		t.Fatalf("unprepared cancellation %+v", task)
 	}
 	if _, e = os.Stat(filepath.Join(f.roots[0], "never-started")); !os.IsNotExist(e) {

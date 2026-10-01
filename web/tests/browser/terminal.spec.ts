@@ -1,4 +1,4 @@
-import {test,expect,type WebSocketRoute} from '@playwright/test'
+import {test,expect} from '../helpers/management-fixture'
 import {decodeEnvelope,encodeEnvelope,encodeJSON,MessageType} from '../../src/services/protocol'
 
 // Transport doubles are confined to this test. The xterm parser, serializer,
@@ -26,10 +26,10 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   page.on('pageerror',error=>errors.push(error.message))
   const resource={kind:'instance',id:'terminal-instance',nodeId:'terminal-node'}
   const session={sessionId:'terminal-fixture',state:'RUNNING',resource,backend:'test-transport',cols:100,rows:28,archive:{maxBytes:16777216},maxSessions:64,maxAttachments:16}
-  await page.route('**/api/v1/**',route=>{
+  await page.context().route('**/api/v1/**',route=>{
     const path=new URL(route.request().url()).pathname
     if(path.endsWith('/terminals')&&route.request().method()==='POST')creates++
-    const json=path.endsWith('/session')?{user:{userId:'terminal-browser-test',name:'终端测试',admin:true},csrfToken:'test-only'}:path.endsWith('/instances')?{items:[{instanceId:resource.id,nodeId:resource.nodeId,nodeName:'终端测试节点',nodeState:'ONLINE',name:'终端测试实例',state:'RUNNING',revision:1,config:{mode:'native'}}]}:path.endsWith('/terminals')?{items:[session]}:{items:[]}
+    const json=path.endsWith('/session')?{user:{userId:'terminal-browser-test',name:'终端测试',admin:true},csrfToken:'test-only'}:path.endsWith('/tasks/summary')?{active:0,states:{}}:path.endsWith('/instances')?{items:[{instanceId:resource.id,nodeId:resource.nodeId,nodeName:'终端测试节点',nodeState:'ONLINE',name:'终端测试实例',state:'RUNNING',revision:1,config:{mode:'native'}}]}:path.endsWith('/terminals')?{items:[session]}:{items:[]}
     return route.fulfill({json})
   })
   await page.routeWebSocket(/\/api\/v1\/terminals\/terminal-fixture\/stream/,ws=>{

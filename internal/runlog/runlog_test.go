@@ -32,6 +32,55 @@ func helperCommand() []string {
 	return []string{os.Args[0], "-test.run=^TestRunlogHelperProcess$", "--"}
 }
 
+func TestFinishRechecksDurableRecordAfterHelperExit(t *testing.T) {
+	for _, tc := range []struct {
+		name, phase                   string
+		replaceIdentity, replaceToken bool
+		want                          error
+	}{
+		{name: "synced_completion", phase: "complete"},
+		{name: "synced_failure", phase: "failed", want: ErrIncomplete},
+		{name: "exit_without_completion", phase: "output_complete", want: ErrIncomplete},
+		{name: "replacement_helper", phase: "complete", replaceIdentity: true, want: ErrUnknown},
+		{name: "replacement_token", phase: "complete", replaceToken: true, want: ErrUnknown},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &Capture{root: t.TempDir(), runID: "finish-race"}
+			initial := record{Version: 1, RunID: c.runID, Token: strings.Repeat("a", 64), Identity: Identity{PID: 42, Birth: 7}, Phase: "output_complete"}
+			if err := saveRecord(c.root, initial); err != nil {
+				t.Fatal(err)
+			}
+			// Deterministically interleave the actual durable write with the
+			// liveness probe. This is the race observed in the Windows report.
+			probes := 0
+			err := c.waitForFinish(context.Background(), func(identity Identity) (bool, error) {
+				probes++
+				if identity != initial.Identity {
+					t.Fatal("probe lost helper birth identity")
+				}
+				final := initial
+				final.Phase, final.Diagnostic = tc.phase, "archive sync failed"
+				if tc.replaceIdentity {
+					final.Identity.Birth++
+				}
+				if tc.replaceToken {
+					final.Token = strings.Repeat("b", 64)
+				}
+				if err := saveRecord(c.root, final); err != nil {
+					t.Fatal(err)
+				}
+				return false, nil
+			})
+			if !errors.Is(err, tc.want) || probes != 1 {
+				t.Fatalf("finish=%v want=%v probes=%d", err, tc.want, probes)
+			}
+			if tc.phase == "failed" && !strings.Contains(err.Error(), "archive sync failed") {
+				t.Fatal("lost drain failure diagnostic")
+			}
+		})
+	}
+}
+
 func startCapture(t *testing.T, size int64) *Capture {
 	t.Helper()
 	c, err := Start(context.Background(), Options{Root: t.TempDir(), RunID: "run-test", Command: helperCommand(), Archive: terminal.ArchiveOptions{MaxBytes: size, SegmentBytes: size / 4}})

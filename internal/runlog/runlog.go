@@ -122,12 +122,27 @@ func readableRecord(root, runID string) (record, error) {
 		return r, err
 	}
 	if !alive {
+		r, err = reloadExitedRecord(root, runID, r)
+		if err != nil || finished(r.Phase) {
+			return r, err
+		}
 		// The original writer is positively gone. Historical complete records
 		// may be recovered, but no new pipe/helper can restore live capture.
 		r.Phase = "invalid"
 		r.Diagnostic = "log helper exited without a durable complete drain; historical output may be incomplete"
 	}
 	return r, nil
+}
+
+// Reread after an OS exit observation so a completion synced between the
+// first read and the liveness check is not mistaken for an incomplete drain.
+// A different helper identity or token cannot complete the original capture.
+func reloadExitedRecord(root, runID string, prior record) (record, error) {
+	final, err := loadRecord(root, runID)
+	if err == nil && (final.Identity != prior.Identity || final.Token != prior.Token) {
+		err = ErrUnknown
+	}
+	return final, err
 }
 
 func saveRecord(root string, r record) error {
@@ -472,6 +487,10 @@ func (c *Capture) Finish(ctx context.Context) error {
 		// the runtime exited. It does not execute a business input command.
 		_ = c.requestBody(deadline, r, http.MethodPost, "/finish", nil, &accepted)
 	}
+	return c.waitForFinish(deadline, identityAlive)
+}
+
+func (c *Capture) waitForFinish(ctx context.Context, alive func(Identity) (bool, error)) error {
 	for {
 		r, err := loadRecord(c.root, c.runID)
 		if err != nil {
@@ -483,15 +502,29 @@ func (c *Capture) Finish(ctx context.Context) error {
 			}
 			return nil
 		}
-		alive, err := identityAlive(r.Identity)
+		live, err := alive(r.Identity)
 		if err != nil {
 			return err
 		}
-		if !alive {
+		if !live {
+			// The helper may have synced its final record and exited between
+			// the record read and liveness probe. Only a fresh completion
+			// record from that same helper proves the drain; exit alone does
+			// not. Never accept a replacement PID/birth/token as completion.
+			final, err := reloadExitedRecord(c.root, c.runID, r)
+			if err != nil {
+				return err
+			}
+			if final.Phase == "complete" {
+				return nil
+			}
+			if final.Phase == "failed" {
+				return fmt.Errorf("%s: %w", final.Diagnostic, ErrIncomplete)
+			}
 			return ErrIncomplete
 		}
 		select {
-		case <-deadline.Done():
+		case <-ctx.Done():
 			if err = terminateIdentity(r.Identity); err != nil {
 				return fmt.Errorf("log drain deadline; helper cleanup unconfirmed: %w", err)
 			}

@@ -81,6 +81,42 @@ Use `-Ref <commit>` to pin the source revision supplied in the conversation;
 download the runner from that same revision. `-InstallTools` is optional if Git,
 Go or Node.js is missing. Normal test objects are isolated in the new work root.
 
+## Follow up the fourth returned report
+
+After the [fourth returned report](../acceptance/reports/windows-fourth-report-2026-10-01.md),
+use the revision supplied in the conversation and **`-Followup
+-InstallRaceCompiler`** instead of repeating the earlier 27-case/all-package
+run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref <commit> -Followup -InstallRaceCompiler
+```
+
+Followup makes a fresh checkout and builds the SDK packages. It requires three
+executions of each of the two new Go failures and the new durable-finish
+interleaving regression, all eleven native checks, and full race regression
+of **Master and runlog**. It also runs all six scenarios in `accounts.spec.ts`
+and `terminal.spec.ts`: once each on Chromium/Firefox, three times on WebKit
+(6 / 6 / 18 passing executions required). These browser tests still use real
+trusted actions, actual xterm/Monaco/storage and the original strict recovery,
+password exclusion, ACK/credit and no-replay assertions. They use transport
+doubles, including the independent notification stream, not a Windows
+full-stack backend.
+
+The report records `runMode=followup` and the exact intentional omissions.
+Other packages/browser files, standalone builds/vet, production web/unit checks
+and native IME are not rerun or imported as passes. Existing opt-in skips are
+visible and can leave the overall outcome **INCOMPLETE** even when this
+selection has no failure. `-Followup` and `-Retest` are mutually exclusive.
+
+When a selected browser case fails, the ZIP also includes bounded
+`browser-<engine>-diagnostic-<number>.json` files extracted from its actual
+Playwright attachments. They record exception/request paths, page visibility,
+paint readiness and control geometry; no input contents, storage, credentials
+or traces. JSON-escaped run/profile paths are redacted too. The Linux fixture
+corrections do not themselves prove the Windows-specific WebKit cause fixed;
+return the ZIP even if the same test still fails.
+
 ## Remaining mode and interrupted-run recovery
 
 For the next run after the first returned report, download the updated script

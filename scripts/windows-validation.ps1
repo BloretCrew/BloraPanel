@@ -11,6 +11,7 @@ param(
     [switch]$InstallTools,
     [switch]$Remaining,
     [switch]$Retest,
+    [switch]$Followup,
     [switch]$InstallRaceCompiler,
     [switch]$CollectLatest,
     [string]$CollectRun = ''
@@ -19,7 +20,8 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows, not WSL or Linux.' }
 if ($Ref.StartsWith('-')) { throw 'Ref must be a branch, tag, or commit, not a Git option.' }
-if ($Retest) { $Remaining = $true }
+if ($Retest -and $Followup) { throw 'Choose either -Retest or -Followup.' }
+if ($Retest -or $Followup) { $Remaining = $true }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 function New-ReportZip([string]$Folder,[string]$Destination) {
     # Avoid Microsoft.PowerShell.Archive / Write-Progress host rendering entirely.
@@ -70,7 +72,11 @@ foreach ($item in Get-ChildItem Env:) {
 }
 function Clean([string]$text) {
     $text = $text.Replace($run, '<RUN>')
-    if ($env:USERPROFILE) { $text = $text.Replace($env:USERPROFILE, '<USER>') }
+    $text = $text.Replace($run.Replace('\','\\'), '<RUN>')
+    if ($env:USERPROFILE) {
+        $text = $text.Replace($env:USERPROFILE, '<USER>')
+        $text = $text.Replace($env:USERPROFILE.Replace('\','\\'), '<USER>')
+    }
     return $text
 }
 function Save-Text([string]$path, [string]$text) { [IO.File]::WriteAllText($path, $text, $utf8) }
@@ -195,8 +201,53 @@ function Get-RetestPlan {
     $goCases = @(); foreach ($package in $cases.Keys) { foreach ($test in $cases[$package]) { $goCases += [pscustomobject]@{package="blora.dev/panel/internal/$package";test=$test} } }
     return [pscustomobject]@{
         goCases = $goCases
+        browserCaseCount = 32
         browserFiles = @('tests/browser/desktop.spec.ts','tests/browser/accounts.spec.ts','tests/browser/control-bar.spec.ts','tests/browser/editor-history-budget.spec.ts','tests/browser/editor-multicursor.spec.ts','tests/browser/editor-save.spec.ts','tests/browser/editor-split.spec.ts','tests/browser/extensions.spec.ts','tests/browser/terminal.spec.ts')
         browserTitles = @('Monaco text, undo/redo and original view identity survive immediate reload and moving windows','committed Unicode, simultaneous multi-cursor edits and find state survive immediate reload','password changes clear hidden fields, exclude recovery and require a new login after confirmation','system and workspace reduced motion both keep the launcher stationary on entry','undo history keeps the same byte budget before and after refresh','multi-cursor edits remain one reversible protected history group after refresh','remote save task keeps captured body and never overwrites newer local input after reload','editor split panes share text while keeping both cursors and the split visible after refresh','independently packaged reference extension renders and restores its note','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (automatic renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, main checkpoints)')
+    }
+}
+function Get-FollowupPlan {
+    # Fourth returned report: only two Go modules changed; two browser files
+    # retain every original assertion and add isolated background transports
+    # plus failure-only runtime diagnostics. No old passes are imported.
+    return [pscustomobject]@{
+        goCases = @(
+            [pscustomobject]@{package='blora.dev/panel/internal/master';test='TestCancelAcceptedUploadBeforeNodePreparation'},
+            [pscustomobject]@{package='blora.dev/panel/internal/runlog';test='TestStdinSurvivesDaemonAndOutputEOF'},
+            [pscustomobject]@{package='blora.dev/panel/internal/runlog';test='TestFinishRechecksDurableRecordAfterHelperExit'}
+        )
+        browserCaseCount = 6
+        browserFiles = @('tests/browser/accounts.spec.ts','tests/browser/terminal.spec.ts')
+        browserTitles = @('rejected login clears submitted credentials immediately','account and permission confirmations restore while passwords never enter workspace recovery','password changes clear hidden fields, exclude recovery and require a new login after confirmation','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (automatic renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, main checkpoints)')
+    }
+}
+function Get-BrowserDiagnostics($Suites) {
+    foreach ($suite in @($Suites)) {
+        foreach ($spec in @($suite.specs)) {
+            foreach ($test in @($spec.tests)) {
+                foreach ($result in @($test.results)) {
+                    foreach ($attachment in @($result.attachments)) {
+                        if ($attachment.name -eq 'blora-runtime-diagnostics' -and $attachment.contentType -eq 'application/json' -and $attachment.body) { $attachment.body }
+                    }
+                }
+            }
+        }
+        if ($suite.suites) { Get-BrowserDiagnostics $suite.suites }
+    }
+}
+function Copy-BrowserDiagnostics([string]$Browser,$Suites) {
+    $index=0
+    foreach ($body in @(Get-BrowserDiagnostics $Suites)) {
+        if ($index -ge 24) { break }
+        if ($body.Length -gt 87384) { continue }
+        try {
+            $bytes=[Convert]::FromBase64String($body)
+            if ($bytes.Length -gt 65536) { continue }
+            $text=Clean ([Text.Encoding]::UTF8.GetString($bytes))
+            [void]($text | ConvertFrom-Json)
+        } catch { continue }
+        $index++
+        Save-Text (Join-Path $report "browser-$Browser-diagnostic-$index.json") $text
     }
 }
 function Get-BrowserPassTitles($Suites) {
@@ -209,7 +260,7 @@ function Get-BrowserPassTitles($Suites) {
         if ($suite.suites) { Get-BrowserPassTitles $suite.suites }
     }
 }
-$retestPlan = Get-RetestPlan
+$retestPlan = $(if ($Followup) { Get-FollowupPlan } else { Get-RetestPlan })
 $uncovered = @(
     'Existing Windows SCM/Task Scheduler tests enumerate read-only; service start/stop, task changes and firewall rollback require separate isolated lifecycle acceptance.',
     'Browser suites use API doubles with real browser/xterm/storage. The Linux /bin/sh devfixture and Linux-only real-browser scenarios are NOT Windows full-stack evidence.',
@@ -217,7 +268,10 @@ $uncovered = @(
     'Real Docker/Compose requires an explicitly authorized disposable Engine; opt-in Engine tests remain skipped here.',
     'Power loss, device cache loss, Engine disk exhaustion and remote certificate/network operations are not performed.'
 )
-if ($Retest) {
+if ($Followup) {
+    $uncovered += 'Followup mode covers the fourth returned report: three named Go regressions (three executions), eleven native checks, full race testing of Master/runlog only, SDK packages, and all six scenarios in the two affected browser files. WebKit runs each scenario three times; Chromium/Firefox once. Other Go packages/browser files, standalone vet/builds, production web/unit checks and native IME are intentionally omitted; prior passes are NOT imported.'
+    $uncovered += 'Local repetition reproduced the WebKit background-request diagnostic and occasional checkpoint delays; the Windows account pointer-stability cause remains unproven. Complete transport doubles and foreground/scroll preparation are followup fixture corrections, not proof of a Windows product fix. Original page-error, recovery, password exclusion, ACK and no-replay assertions remain active. Failure-only diagnostics contain error/request paths and paint/control geometry, never field contents or storage dumps.'
+} elseif ($Retest) {
     $uncovered += 'Retest mode reruns the returned failing Go cases, the native suite, and all cases in nine affected browser files (excluding the already-passed Chromium-only native IME scenario). Required case names are checked individually. Prior results are NOT imported as passes; full all-package race testing is attempted because it was previously blocked.'
     $uncovered += 'This targeted run omits standalone vet/builds, web production build/unit tests, unaffected browser files and unaffected non-race Go cases. Native IME injection in Firefox/WebKit remains a capability gap, not a passing test.'
 } elseif ($Remaining) {
@@ -246,9 +300,11 @@ try {
             }
         }
         [void](Invoke-Stage 'windows-native' 'go.exe' @('test','-json','-count=1','-timeout=15m','./internal/runtime','./internal/terminal','./internal/runlog','./internal/monitor','./internal/systeminfo','./internal/filesystem','-run','^TestWindows') $repo 3600 -GoEvents)
-        if ($Retest) {
+        if ($Retest -or $Followup) {
             $pattern = '^(' + (($retestPlan.goCases | ForEach-Object { [regex]::Escape($_.test) }) -join '|') + ')$'
-            [void](Invoke-Stage 'go-retest' 'go.exe' @('test','-json','-count=1','-p=2','-timeout=20m','./internal/backup','./internal/bridge','./internal/filesystem','./internal/protocol','./internal/terminal','./internal/master','-run',$pattern) $repo 3600 -GoEvents)
+            $packages = @($retestPlan.goCases | ForEach-Object { $_.package.Replace('blora.dev/panel/','./') } | Select-Object -Unique)
+            $count = $(if ($Followup) { '-count=3' } else { '-count=1' })
+            [void](Invoke-Stage 'go-retest' 'go.exe' (@('test','-json',$count,'-p=2','-timeout=20m') + $packages + @('-run',$pattern)) $repo 3600 -GoEvents)
         } else {
             [void](Invoke-Stage 'go-all' 'go.exe' @('test','-json','-count=1','-p=2','-timeout=20m','./...') $repo 7200 -GoEvents)
         }
@@ -265,7 +321,8 @@ try {
             $env:CGO_ENABLED='1'; $env:CC=(Get-Command gcc.exe).Source
             [void](Invoke-Stage 'gcc-version' 'gcc.exe' @('--version'))
             if (Invoke-Stage 'gcc-race-runtime' 'gcc.exe' @('--print-file-name','libsynchronization.a')) {
-                [void](Invoke-Stage 'go-race' 'go.exe' @('test','-race','-json','-count=1','-p=2','-timeout=20m','./...') $repo 7200 -GoEvents)
+                $racePackages = $(if ($Followup) { @('./internal/master','./internal/runlog') } else { @('./...') })
+                [void](Invoke-Stage 'go-race' 'go.exe' (@('test','-race','-json','-count=1','-p=2','-timeout=20m') + $racePackages) $repo 7200 -GoEvents)
             } else { Missing 'go-race' 'Compiler runtime probe failed.' }
             $env:CGO_ENABLED='0'
         } else { Missing 'go-race' 'No usable gcc.exe. Use -InstallRaceCompiler for a pinned, SHA-256-verified portable MinGW-w64 compiler in this run directory; no system installation is required.' }
@@ -295,7 +352,9 @@ try {
                             $env:BLORA_BROWSER=$browser
                             $env:PLAYWRIGHT_JSON_OUTPUT_NAME=Join-Path $report "$browser.json"
                             $browserArgs = @('node_modules/@playwright/test/cli.js','test','--workers=1','--reporter=line,json','--output',(Join-Path $run "browser-artifacts/$browser"))
-                            if ($Retest) { $browserArgs += @($retestPlan.browserFiles); $browserArgs += @('--grep-invert','native Chromium IME composition survives immediate reload') }
+                            if ($Retest -or $Followup) { $browserArgs += @($retestPlan.browserFiles) }
+                            if ($Retest) { $browserArgs += @('--grep-invert','native Chromium IME composition survives immediate reload') }
+                            if ($Followup -and $browser -eq 'webkit') { $browserArgs += '--repeat-each=3' }
                             [void](Invoke-Stage "browser-$browser" 'node.exe' $browserArgs $path 7200)
                         } else { Missing "browser-$browser" 'Matching browser download failed.' }
                     }
@@ -312,8 +371,9 @@ finally {
     $missingTests=@($required | Where-Object { $name=$_; !($events | Where-Object { $_.stage -eq 'windows-native' -and $_.test -eq $name -and $_.action -eq 'pass' }) })
     $skips=@($events | Where-Object action -eq 'skip')
     $missingRetests = @()
-    if ($Retest) {
-        $missingRetests = @($retestPlan.goCases | Where-Object { $case=$_; !($events | Where-Object { $_.stage -eq 'go-retest' -and $_.package -eq $case.package -and $_.test -eq $case.test -and $_.action -eq 'pass' }) })
+    if ($Retest -or $Followup) {
+        $requiredExecutions = $(if ($Followup) { 3 } else { 1 })
+        $missingRetests = @($retestPlan.goCases | Where-Object { $case=$_; @($events | Where-Object { $_.stage -eq 'go-retest' -and $_.package -eq $case.package -and $_.test -eq $case.test -and $_.action -eq 'pass' }).Count -lt $requiredExecutions })
         if ($missingRetests.Count) { Missing 'go-retest-coverage' "Required cases without PASS: $($missingRetests.Count). See report.json; an empty or incomplete selection is not a pass." }
     } elseif (!($events | Where-Object { $_.stage -eq 'go-all' -and $_.action -eq 'pass' })) { Missing 'go-all-coverage' 'No passing Go test events were collected for the full suite.' }
     if (!($events | Where-Object { $_.stage -eq 'go-race' -and $_.action -eq 'pass' })) { Missing 'go-race-coverage' 'No passing race test events were collected.' }
@@ -325,13 +385,17 @@ finally {
                 $text=Clean ([IO.File]::ReadAllText($file)); Save-Text $file $text
                 $data=$text | ConvertFrom-Json
                 $missingTitles = @()
-                if ($Retest) {
+                if ($Retest -or $Followup) {
                     $passedTitles = @(Get-BrowserPassTitles $data.suites)
-                    $missingTitles = @($retestPlan.browserTitles | Where-Object { $passedTitles -notcontains $_ })
+                    $requiredBrowserExecutions = $(if ($Followup -and $browser -eq 'webkit') { 3 } else { 1 })
+                    $missingTitles = @($retestPlan.browserTitles | Where-Object { $title=$_; @($passedTitles | Where-Object { $_ -eq $title }).Count -lt $requiredBrowserExecutions })
                     if ($missingTitles.Count) { Missing "browser-$browser-retest-coverage" "Required scenarios without PASS: $($missingTitles.Count). See browserSummary in report.json." }
                 }
-                $browserSummary+=@{browser=$browser;stats=$data.stats;requiredRetestTitlesMissing=$missingTitles}
+                $expectedCount = $(if ($Retest -or $Followup) { $retestPlan.browserCaseCount * $(if ($Followup -and $browser -eq 'webkit') { 3 } else { 1 }) } else { $null })
+                $browserSummary+=@{browser=$browser;stats=$data.stats;expectedCaseCount=$expectedCount;requiredRetestTitlesMissing=$missingTitles}
+                if ($null -ne $expectedCount -and $data.stats.expected -ne $expectedCount) { Missing "browser-$browser-case-count" "Expected $expectedCount passing executions; omitted or incomplete scenarios are not a pass." }
                 if (!$data.stats -or $data.stats.expected -lt 1 -or $data.stats.skipped -gt 0 -or $data.stats.unexpected -gt 0 -or $data.stats.flaky -gt 0) { Missing "browser-$browser-coverage" 'No successful tests, skips, unexpected or flaky outcomes; see JSON.' }
+                Copy-BrowserDiagnostics $browser $data.suites
             } catch { Missing "browser-$browser-report" 'Missing or invalid Playwright result data.' }
         } else { Missing "browser-$browser-report" 'No Playwright JSON report produced.' }
     }
@@ -339,14 +403,14 @@ finally {
     if ($fatal -or @($steps | Where-Object { $_.status -in @('FAIL','TIMEOUT') }).Count) { $outcome='FAILED' }
     elseif ($missingTests.Count -or $skips.Count -or @($steps | Where-Object status -eq 'BLOCKED').Count) { $outcome='INCOMPLETE' }
     $result=[ordered]@{schema=2;outcome=$outcome;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');commit=$commit;requestedRef=$Ref;windows=[Environment]::OSVersion.VersionString;architecture=$env:PROCESSOR_ARCHITECTURE;logicalProcessors=[Environment]::ProcessorCount;powershell=$PSVersionTable.PSVersion.ToString();fatal=$fatal;steps=@($steps.ToArray());requiredNativeTestsMissing=$missingTests;requiredGoRetestsMissing=$missingRetests;goTestEvents=@($events.ToArray());browserSummary=$browserSummary;notCovered=$uncovered}
-    $result['runMode'] = $(if ($Retest) { 'retest' } elseif ($Remaining) { 'remaining' } else { 'full' })
+    $result['runMode'] = $(if ($Followup) { 'followup' } elseif ($Retest) { 'retest' } elseif ($Remaining) { 'remaining' } else { 'full' })
     Save-Text (Join-Path $report 'report.json') ($result | ConvertTo-Json -Depth 30)
     $lines=@('# Blora Windows validation', '', "Result: **$outcome**", "Commit: $commit", "UTC: $($result.startedAt) to $($result.finishedAt)", '', 'This is an automated evidence bundle, not full Windows/platform acceptance.', '', '| Stage | Result | Seconds | Log |','|---|---|---:|---|')
     foreach ($s in $steps) { $lines+="| $($s.name) | $($s.status) | $($s.seconds) | $($s.log) |" }
     $lines+=@('', '## Required native tests without PASS', ($missingTests -join "`n"), '', '## Skipped Go tests')
     foreach ($s in $skips) { $lines+="- $($s.stage): $($s.package) / $($s.test)" }
     $lines+=@('', '## Not covered'); foreach ($gap in $uncovered) { $lines+="- $gap" }
-    if ($Retest) {
+    if ($Retest -or $Followup) {
         $lines+=@('', '## Required Go retests without PASS'); foreach ($case in $missingRetests) { $lines+="- $($case.package) / $($case.test)" }
         $lines+=@('', '## Required browser retests without PASS'); foreach ($summary in $browserSummary) { foreach ($title in $summary.requiredRetestTitlesMissing) { $lines+="- $($summary.browser): $title" } }
     }

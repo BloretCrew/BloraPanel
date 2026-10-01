@@ -1,5 +1,7 @@
 # Blora Panel 全范围验收矩阵
 
+2026-10-01 第四轮 Windows 实机证据：固定 `08db099` 的 27 项定向 Go 与 11 项必需原生全部通过，目录 metadata/ConPTY Unicode 实际执行、Windows 可移植生命周期与 source restart 已获得真机证据；Chromium/Firefox 各32/32，WebKit29/32。全race事件356pass/2fail/14skip，新增取消上传的调度竞争与日志收尾记录竞争已在本地修正，Master/runlog 完整race退出0；三项修正定向race连续8轮通过。最终浏览器夹具本地Chromium/Firefox各6/6、WebKit18/18通过，原始失败和首轮本地失败独立保留，不能因 Linux 通过提升 Windows 整项。`-Followup` 限定两个 Go 模块及两份浏览器文件，校验实际次数并带失败诊断；详见[第四轮报告](reports/windows-fourth-report-2026-10-01.md)。E08、完整 Windows/特权生命周期和外部环境缺口不提升为完成。
+
 2026-09-30 Windows首次用户实机证据：Job/keeper/daemon退出恢复、日志管道、监控、SCM/Task Scheduler查询等九项关键原生通过，ConPTY关键项失败；全Go仍有产品兼容缺陷和Linux夹具不兼容，浏览器尚未运行、race缺GCC。Web构建与76单测通过。首批修正及准确边界见[Windows首轮报告](reports/windows-first-report-2026-09-30.md)，本地Linux回归/Windows交叉编译不是修复后Windows运行证据，不提升Windows整体验收。
 
 2026-09-29 F06/RC34：复现旧连接异步解析失败污染新连接，增加连接代次/销毁保护；当前连接错误仍停止输入。Chromium/Firefox/WebKit定向组合各4/4通过；六包2,251条记录/三份Web、独立停机恢复及兼容RC33回退通过，见[报告](reports/terminal-generation-2026-09-29.md)。RC33完整复验49/51，两项扩展失败保留；补原生鼠标hover命中前置后RC34完整真实功能51/51通过897.040秒、无skip。玻璃遮挡裁剪像素等价检查失败未采用，UI未变；功能套件不含独立E08负载门禁，严格E08及原偶发/外部平台缺口保留。
