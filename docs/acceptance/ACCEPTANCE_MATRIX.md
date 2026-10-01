@@ -1,5 +1,7 @@
 # Blora Panel 全范围验收矩阵
 
+2026-10-01 第五轮 Windows 实机证据：固定 `3c7abb3` 的11必需原生检查、3项Go回归各3次通过；Master/runlog完整race87pass/0fail/4skip，前轮两处Go竞争修复已有真机PASS，WebKit账号场景也全部三轮通过。Chromium/Firefox各6/6，WebKit16/18，仅第三轮两种终端配置的后台任务汇总访问控制诊断仍失败。复现页面离开前读取未取消，任务查询及共享列表接入AbortSignal，在beforeunload/pagehide取消只读查询；最终本地Chromium8/8（79.608秒）、Firefox8/8（115.302秒）、WebKit24/24（263.222秒）通过，无skip/retry/flaky；80单测/类型检查/构建及PowerShell harness通过。新增 `-Followup -BrowsersOnly`，严格要求8/8/24执行，不重复已验证Go/GCC/SDK也不导入旧PASS；见[第五轮报告](reports/windows-fifth-report-2026-10-01.md)。Windows剩余诊断及完整平台/E08/外部环境缺口仍待验证，不能把Linux通过当真机修复通过。
+
 2026-10-01 第四轮 Windows 实机证据：固定 `08db099` 的 27 项定向 Go 与 11 项必需原生全部通过，目录 metadata/ConPTY Unicode 实际执行、Windows 可移植生命周期与 source restart 已获得真机证据；Chromium/Firefox 各32/32，WebKit29/32。全race事件356pass/2fail/14skip，新增取消上传的调度竞争与日志收尾记录竞争已在本地修正，Master/runlog 完整race退出0；三项修正定向race连续8轮通过。最终浏览器夹具本地Chromium/Firefox各6/6、WebKit18/18通过，原始失败和首轮本地失败独立保留，不能因 Linux 通过提升 Windows 整项。`-Followup` 限定两个 Go 模块及两份浏览器文件，校验实际次数并带失败诊断；详见[第四轮报告](reports/windows-fourth-report-2026-10-01.md)。E08、完整 Windows/特权生命周期和外部环境缺口不提升为完成。
 
 2026-09-30 Windows首次用户实机证据：Job/keeper/daemon退出恢复、日志管道、监控、SCM/Task Scheduler查询等九项关键原生通过，ConPTY关键项失败；全Go仍有产品兼容缺陷和Linux夹具不兼容，浏览器尚未运行、race缺GCC。Web构建与76单测通过。首批修正及准确边界见[Windows首轮报告](reports/windows-first-report-2026-09-30.md)，本地Linux回归/Windows交叉编译不是修复后Windows运行证据，不提升Windows整体验收。

@@ -7,14 +7,25 @@ import {decodeEnvelope,encodeEnvelope,MessageType} from '../../src/services/prot
 export const test=base.extend<{managementDiagnostics:void}>({
   managementDiagnostics:[async({page},use,testInfo)=>{
     const signals:unknown[]=[]
-    const record=(value:unknown)=>{if(signals.length<80)signals.push(value)}
+    const record=(value:Record<string,unknown>)=>{if(signals.length<120)signals.push({at:Date.now(),...value})}
+    const requests=new WeakMap<object,number>()
+    let requestId=0
+    page.on('request',request=>{
+      const path=new URL(request.url()).pathname
+      if(!/^\/api\/v1\/tasks(?:\/|$)/.test(path))return
+      requests.set(request,++requestId)
+      record({kind:'task-request',id:requestId,method:request.method(),path})
+    })
+    page.on('requestfinished',request=>{const id=requests.get(request);if(id!==undefined)record({kind:'task-request-finished',id})})
+    page.on('framenavigated',frame=>{if(frame===page.mainFrame())record({kind:'navigation',path:new URL(frame.url()).pathname})})
     page.on('pageerror',error=>record({kind:'playwright-pageerror',name:error.name,message:error.message,stack:error.stack?.slice(0,2000)}))
-    page.on('requestfailed',request=>record({kind:'requestfailed',method:request.method(),path:new URL(request.url()).pathname,error:request.failure()?.errorText}))
+    page.on('requestfailed',request=>record({kind:'requestfailed',id:requests.get(request),method:request.method(),path:new URL(request.url()).pathname,error:request.failure()?.errorText}))
     await page.exposeFunction('__bloraValidationError',(kind:string,message:string)=>record({kind,message:message.slice(0,2000)}))
     await page.addInitScript(()=>{
       const report=(kind:string,message:string)=>{void (window as unknown as {__bloraValidationError:(kind:string,message:string)=>Promise<void>}).__bloraValidationError(kind,message).catch(()=>{})}
       window.addEventListener('error',event=>{if(event instanceof ErrorEvent)report('window-error',event.message)})
       window.addEventListener('unhandledrejection',event=>report('unhandled-rejection',String(event.reason)))
+      for(const event of ['beforeunload','pagehide','pageshow'])window.addEventListener(event,()=>report('lifecycle',event))
     })
     await page.context().routeWebSocket(/\/api\/v1\/events\?/,ws=>{
       const send=(type:MessageType)=>ws.send(Buffer.from(encodeEnvelope({protocolVersion:1,generation:1,channel:1,type,sequence:0})))

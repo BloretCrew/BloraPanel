@@ -46,6 +46,39 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
+## Follow up the fifth returned report: browsers only
+
+The [fifth returned report](../acceptance/reports/windows-fifth-report-2026-10-01.md)
+confirmed all eleven native checks and the three named Go regressions on Windows,
+with no Master/runlog race failures. Two WebKit terminal executions still failed
+the unchanged page-error assertions. For the next focused run, download the
+runner from the **same pinned commit** supplied in the conversation, then use:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref <commit> -Followup -BrowsersOnly
+```
+
+This mode needs Git and Node.js, makes a fresh checkout, installs `web`
+dependencies and the matching browsers, and runs all eight scenarios in
+`accounts.spec.ts`, `terminal.spec.ts` and `query-navigation.spec.ts`.
+Chromium and Firefox require **8/8** each; WebKit repeats every scenario three
+times and requires **24/24**. Actual execution counts and each required title
+must pass, without retries, skips or expected failures. The new controlled
+checks cover aborting a pending task summary before a real refresh while
+restoring the latest filter, and continuing polling after a prevented
+`beforeunload` event. The latter is not native confirmation-dialog or bfcache
+acceptance. Original password exclusion, checkpoint, ACK/credit, no-replay and
+page-error assertions remain active.
+
+Go/native/race, compiler downloads, SDK packages and unrelated browser files
+are deliberately omitted. No Go installation or `-InstallRaceCompiler` is needed
+for this selection. The report records `runMode=followup-browser` and
+`goChecksSelected`, `nativeChecksSelected`, `sdkChecksSelected` as `false`;
+it does not import earlier passes as new evidence. `-BrowsersOnly` requires
+`-Followup`. Progress, stage deadlines, failure diagnostics and report ZIP
+creation still work in this mode; return `Blora-Windows-Report.zip` even if a
+test fails. Local passes do not establish resolution of the Windows diagnostic.
+
 ## Retest the returned Windows failures
 
 After the third returned report, use the updated runner with:
@@ -95,9 +128,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref <commit> -F
 Followup makes a fresh checkout and builds the SDK packages. It requires three
 executions of each of the two new Go failures and the new durable-finish
 interleaving regression, all eleven native checks, and full race regression
-of **Master and runlog**. It also runs all six scenarios in `accounts.spec.ts`
-and `terminal.spec.ts`: once each on Chromium/Firefox, three times on WebKit
-(6 / 6 / 18 passing executions required). These browser tests still use real
+of **Master and runlog**. The original `3c7abb3` runner selected six browser
+scenarios (6 / 6 / 18). The current runner adds two query-navigation regressions,
+so it selects eight scenarios in `accounts.spec.ts`, `terminal.spec.ts` and
+`query-navigation.spec.ts`: once each on Chromium/Firefox, three times on WebKit
+(8 / 8 / 24 passing executions required). These browser tests still use real
 trusted actions, actual xterm/Monaco/storage and the original strict recovery,
 password exclusion, ACK/credit and no-replay assertions. They use transport
 doubles, including the independent notification stream, not a Windows
@@ -112,8 +147,9 @@ selection has no failure. `-Followup` and `-Retest` are mutually exclusive.
 When a selected browser case fails, the ZIP also includes bounded
 `browser-<engine>-diagnostic-<number>.json` files extracted from its actual
 Playwright attachments. They record exception/request paths, page visibility,
-paint readiness and control geometry; no input contents, storage, credentials
-or traces. JSON-escaped run/profile paths are redacted too. The Linux fixture
+paint readiness and control geometry, plus bounded task-request and page
+lifecycle timing; no input contents, storage, credentials or traces.
+JSON-escaped run/profile paths are redacted too. The Linux fixture
 corrections do not themselves prove the Windows-specific WebKit cause fixed;
 return the ZIP even if the same test still fails.
 

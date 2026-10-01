@@ -14,20 +14,20 @@ const props=defineProps<{viewTabId:string}>(),desktop=useDesktop(),error=ref('')
 const resuming=ref<string>()
 const view=computed(()=>desktop.state!.views[props.viewTabId]!),filter=computed({get:()=>String(view.value.state.filter||''),set:value=>desktop.commit([{kind:'set',path:['views',props.viewTabId,'state','filter'],value},{kind:'set',path:['views',props.viewTabId,'state','taskHistoryBefore'],value:0},{kind:'set',path:['views',props.viewTabId,'state','taskHistoryStack'],value:[]}])})
 const before=computed(()=>Number(view.value.state.taskHistoryBefore||0)),history=computed<number[]>(()=>view.value.state.taskHistoryStack as number[]||[])
-const tasks=useQuery({queryKey:computed(()=>['tasks','view',view.value.resourceRef?.id||'',before.value,filter.value]),queryFn:async()=>{
+const tasks=useQuery({queryKey:computed(()=>['tasks','view',view.value.resourceRef?.id||'',before.value,filter.value]),queryFn:async({signal})=>{
   const resource=view.value.resourceRef
   if(resource){
-    const result=await api<{task?:Task}>(`/tasks/${encodeURIComponent(resource.id)}`)
+    const result=await api<{task?:Task}>(`/tasks/${encodeURIComponent(resource.id)}`,{signal})
     if(result.task?.taskId)return {items:[result.task],nextBefore:-1}
     // Keep a malformed or stale detail response from poisoning the reactive
     // list with `undefined`; the history endpoint is also authoritative for
     // the same user and lets a lost detail response recover the task.
-    const history=await api<{items:Task[];nextBefore:number}>(`/tasks?before=0&limit=1000&state=`)
+    const history=await api<{items:Task[];nextBefore:number}>(`/tasks?before=0&limit=1000&state=`,{signal})
     const task=history.items.find(item=>item?.taskId===resource.id)
     if(task)return {items:[task],nextBefore:-1}
     throw new Error('任务不存在或未授权')
   }
-  return api<{items:Task[];nextBefore:number}>(`/tasks?before=${before.value}&limit=100&state=${encodeURIComponent(filter.value)}`)
+  return api<{items:Task[];nextBefore:number}>(`/tasks?before=${before.value}&limit=100&state=${encodeURIComponent(filter.value)}`,{signal})
 },refetchInterval:2000})
 const nextBefore=computed(()=>tasks.data.value?.nextBefore??-1)
 const canReadEarlier=computed(()=>nextBefore.value>=0&&!tasks.isFetching.value)

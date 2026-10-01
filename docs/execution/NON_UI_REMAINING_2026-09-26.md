@@ -2,6 +2,8 @@
 
 更新：2026-10-01，补充用户 Windows 回传报告及本地修复，当前发行仍为 RC34（当时完整功能回归51/51通过）。保留原路径供已有链接使用，以下为当前状态；早期过程和失败记录见[执行进度](PROGRESS.md)、[验收矩阵](../acceptance/ACCEPTANCE_MATRIX.md)和 Git 历史。
 
+第五轮 Windows 增量：[固定3c7abb3的报告](../acceptance/reports/windows-fifth-report-2026-10-01.md)确认11必需原生、3项Go回归各3次通过，Master/runlog race87pass/0fail/4skip；前轮两处Go竞争及账号恢复已获得真机通过证据。Chromium/Firefox各6/6，WebKit16/18，剩两次任务汇总请求诊断。任务读取与共享列表已补离开前取消与AbortSignal；最终本地Chromium/Firefox各8/8、WebKit24/24及80单测/类型检查/构建通过，Windows实效仍待验证。下一次仅运行 `-Followup -BrowsersOnly` 的8/8/24浏览器补测，不再重复Go/GCC/SDK；不代表Windows全范围通过。
+
 第四轮 Windows 增量：[固定08db099的报告](../acceptance/reports/windows-fourth-report-2026-10-01.md)已确认27定向Go/11原生项全部通过、Chromium/Firefox各32/32，原来的目录metadata和ConPTY已有真机PASS。全race两项新竞争已在本地修正并通过受影响模块完整race；浏览器夹具修正后本地Chromium/Firefox各6/6、WebKit18/18通过。新修复仍待 -Followup 真机复测，不代表Windows全范围通过。
 
 UI、完整通透材质及 p95 ≤ 50ms 的目标保持不变。证据只覆盖实际验证范围，不代表全范围完成。
@@ -24,7 +26,7 @@ UI、完整通透材质及 p95 ≤ 50ms 的目标保持不变。证据只覆盖�
 | E08严格延迟 | 完整材质正式Chromium/Firefox/WebKit p95为1003.9/1108/545ms，均失败。[诊断](../acceptance/reports/local-diagnostics-2026-09-29.md)表明软件合成为主要瓶颈，显式SwiftShader更慢未采用 | 保持原UI/负载/阈值，验证可区分热点的新方案，或取得硬件合成设备补测。再次检查本机无`/dev/dri`；不保证硬件环境一定达标 |
 | Vim刷新偶发额外字节 | RC25曾失败，严格逐字节复验及后续套件未再现；已补连接/阶段/字节附件 | 取得新失败附件或确定复现，辨明旧连接、回放或恢复后原生查询来源；不放宽断言或过滤合法live应答 |
 | 单次权限撤销超时 | [RC30](../acceptance/reports/terminal-protocol-state-2026-09-29.md)首轮6/7，原限时串行复核7/7，后续通过；首次原因未定位 | 再次失败或新可区分证据后定向排查；不把连续通过等同根因修复 |
-| Windows运行 | [第四轮真机报告](../acceptance/reports/windows-fourth-report-2026-10-01.md)：27/27定向Go、11/11必需原生项、Chromium/Firefox各32/32通过，便携GCC及全race实际执行成功；全race仍有2失败/14跳过，WebKit29通过/3失败。本地修复和最终跨引擎定向回归已通过，新修复仍待真机验证 | 用户Windows设备运行新版[补测脚本](../operations/WINDOWS_VALIDATION.md)的 -Followup 并回传ZIP；原生系统通知、服务/任务变更及防火墙回滚等仍须对应隔离验收。Linux容器不能替代Windows |
+| Windows运行 | [第五轮真机报告](../acceptance/reports/windows-fifth-report-2026-10-01.md)：11必需原生/3项Go回归各3次通过，Master/runlog race87pass/0fail/4skip；Chromium/Firefox各6/6，WebKit16/18，账号全部通过，剩两次终端后台查询诊断。第四轮已验证的27项Go/32项Chromium和Firefox结果保留为原版本证据；第五轮不冒充全包全浏览器回归。页面离开取消查询修复仍待真机验证 | 用户Windows设备运行新版[补测脚本](../operations/WINDOWS_VALIDATION.md)的 `-Followup -BrowsersOnly` 并回传ZIP；原生系统通知、服务/任务变更及防火墙回滚等仍须对应隔离验收。Linux容器不能替代Windows |
 | 跨主机运维 | 本机Docker/Compose、loopback TLS、私有netem、注册源两版本/CA轮换已有证据 | 独立主机/Engine/网络/注册源，补跨主机长时故障与证书运维；loopback不是远端验证 |
 | 设备故障 | ENOSPC、SIGKILL、SQLite重开、归档/恢复/调度不重放已有证据 | 可回滚的一次性环境，补写入中断电、缓存丢失、Engine主机存储耗尽；不能触碰生产磁盘或以进程退出替代掉电 |
 | 其他桌面与长期组合 | Linux X11和本地24h已覆盖，其他平台/更长期组合未覆盖 | 对应隔离环境及实际持续时间；模拟时钟/短测不能替代 |

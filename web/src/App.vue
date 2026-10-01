@@ -26,7 +26,12 @@ async function logout() {
     await recovery?.clearAccount()
   }catch(e){error.value='退出清理未完成：'+String(e)}finally{session.ready=true}
 }
-useEventListener(window,'beforeunload',(event:BeforeUnloadEvent)=> { if(desktop.recovery && !desktop.recovery.status.protected) { event.preventDefault(); event.returnValue = '' } })
+// Cancel read-only task polling while this document can still abort fetches.
+// Leave task mutations and terminal/input recovery owned by their existing
+// lifecycles. A cancelled navigation keeps the normal polling intervals.
+const cancelTaskReads=()=>{void query.cancelQueries({queryKey:['tasks']})}
+useEventListener(window,'beforeunload',(event:BeforeUnloadEvent)=> { if(desktop.recovery && !desktop.recovery.status.protected) { event.preventDefault(); event.returnValue = '' };cancelTaskReads() })
+useEventListener(window,'pagehide',cancelTaskReads)
 </script>
 <template>
   <main v-if="!session.user" class="login-screen">
