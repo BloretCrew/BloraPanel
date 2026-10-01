@@ -1,5 +1,9 @@
 # Blora Panel 执行进度与续接记录
 
+2026-10-01 第三轮 Windows 本地修复与回归完成：见[修复报告](../acceptance/reports/windows-report-fixes-2026-10-01.md)。目录属性/ConPTY 标准句柄、可移植真实子进程夹具、Windows 权限与锁定根边界、ZIP 膨胀/协议截止夹具、Monaco 身份编辑/历史游标、浏览器 UA 键位、扩展即时检查点/真实焦点、网络结果未确认均已处理。新增实测连接 EOF 分类及查找栏延迟抢焦点修复；完整 Go race 退出0（Master296.382s）、四项定向race连续三轮通过；最终 Unicode/多光标/查找/撤销场景 Chromium/Firefox/WebKit 各3/3（34.1/41.6/43.5s）；前序九文件 Chromium33/33、Firefox32pass/1nativeIMEskip、WebKit31pass/1fail/1skip及后续修复单独记录，不拼成虚构全套结果。最后80单测/构建、Go vet、四包Windows交叉编译、两次PowerShell harness与文档链接/差异检查均通过；所有本轮测试会话已退出，无运行句柄。新版 -Retest 选27个Go回归、11必需原生项、每引擎32个浏览器场景，并用哈希验证的便携GCC补原来阻塞的全race。下一动作提交推送并交付固定提交版本命令，等待用户Windows真机ZIP；Windows目录属性/ConPTY及新夹具运行仍未验证，不提升整个平台验收；UI冻结/E08和外部环境缺口保持。
+
+2026-09-30 第三轮 Windows 报告：见[详细记录](../acceptance/reports/windows-third-report-2026-09-30.md)。Go/SDK 打包执行成功；Chromium120/120，Firefox116通过3失败1跳过，WebKit112通过7失败1跳过；全Go事件330pass/22fail/15skip，原生关键9/10仍ConPTY失败。Compose检查点/容器日志归档通过，目录metadata仍Access denied，不能称修复通过。GCC缺失race阻塞。下一动作本地定位目录metadata权限、编辑器恢复和Windows夹具等后再定向复测，不再让用户无变化重复44分钟全套。
+
 2026-09-30 第二轮 Windows 报告已分析，见[报告](../acceptance/reports/windows-second-report-2026-09-30.md)。Go PATH 缺失导致原生/全 Go 未运行，SDK WASI 包失败；浏览器 Chromium118/119、Firefox115/119、WebKit111/119，进度与 ZIP 已恢复。修正 Go 探测刷新/缺依赖记录、字号断言舍入、CDP IME 与跨浏览器恢复测试分离；PowerShell harness 与字号 Firefox 定向通过。仍须核查编辑器恢复、WebKit 超时/任务请求、ConPTY 等；不得算 Windows Go 修复复测通过。
 
 2026-09-30 新版脚本交付验证：PowerShell 7.4 隔离容器 harness 退出 0，覆盖 remaining 模式记录、参数、损坏进度宿主、失败/跳过/截止、三类报告结果、ZIP 边界和旧报告恢复。实际 Windows 行为仍待回传；本次不把脚本测试算作 Windows 产品通过。

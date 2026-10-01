@@ -102,6 +102,11 @@ func (nativeBackend) Spawn(ctx context.Context, s SpawnSpec) (Process, error) {
 	si := windows.StartupInfoEx{}
 	si.Cb = uint32(unsafe.Sizeof(si))
 	si.ProcThreadAttributeList = attrs.List()
+	// With redirected daemon/test stdio, Windows can otherwise copy the
+	// parent's pipe handles despite HPCON. Explicit null standard handles make
+	// the console subsystem connect stdin/stdout/stderr to this pseudoconsole.
+	// https://github.com/microsoft/terminal/discussions/15814
+	si.Flags = windows.STARTF_USESTDHANDLES
 	executable, err := exec.LookPath(s.Command[0])
 	if err != nil {
 		return nil, err

@@ -635,3 +635,17 @@ See [second Windows report](reports/windows-second-report-2026-09-30.md): three
 browser suites executed with 118/119, 115/119 and 111/119 passes respectively;
 Go unavailable meant native and full Go checks did not run. Windows acceptance
 remains incomplete; prior native results are not new validation.
+
+## Third report corrections (2026-10-01)
+
+The [third Windows report](reports/windows-third-report-2026-09-30.md) ran
+Chromium 120/120, Firefox 116 pass / 3 fail / 1 skip, WebKit 112 pass / 7 fail /
+1 skip; Go events were 330 pass / 22 fail / 15 skip. Nine of ten required native
+checks passed, while ConPTY failed and race was blocked by a missing compiler.
+See [corrections and local regression evidence](reports/windows-report-fixes-2026-10-01.md)
+for directory handle access, ConPTY stdio, portable real-process fixtures,
+editor history, browser input and network/transfer outcome fixes. Local Go race,
+frontend units and Windows cross-compilation pass; Windows runtime retest is
+still pending. The new runner checks 27 named regressions, 11 native cases and
+affected browser scenarios, and can supply a verified portable race compiler.
+No entire matrix item is promoted to complete from these local results.

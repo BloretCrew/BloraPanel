@@ -217,7 +217,16 @@ function useComparedVersion(){if(!conflict.value||!draft.value||savePending.valu
 function exportText(){if(!draft.value)return;const url=URL.createObjectURL(new Blob([documentBody(draft.value.text,draft.value.encoding)],{type:'text/plain;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=draft.value.path?.split('/').pop()||'未命名.txt';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function undo(){const target=activeEditor||editor;if(!effectiveReadonly.value)void target?.getModel()?.undo();target?.focus()}
 function redo(){const target=activeEditor||editor;if(!effectiveReadonly.value)void target?.getModel()?.redo();target?.focus()}
-function showFind(){findOpen.value=true;requestAnimationFrame(()=>{findInput.value?.focus();findInput.value?.select()})}
+async function showFind(){
+  const previousFocus=document.activeElement
+  findOpen.value=true
+  await nextTick()
+  // Wait only for the input's DOM to exist. A delayed animation-frame focus
+  // could steal typing after the user already moved to the replacement field.
+  if(disposed||!findOpen.value||!findInput.value)return
+  if(document.activeElement!==previousFocus&&document.activeElement!==document.body&&document.activeElement!==findInput.value)return
+  findInput.value.focus();findInput.value.select()
+}
 function matches(){try{const result=editor?.getModel()?.findMatches(findText.value,false,findRegex.value,findCase.value,null,true)||[];findMessage.value=`${result.length} 处匹配`;return result}catch(e){findMessage.value=String(e);return []}}
 function findNext(){const target=activeEditor||editor,found=matches();if(!found.length)return;const position=target?.getSelection()?.getEndPosition()||new monaco.Position(1,1);const next=found.find(match=>monaco.Position.isBeforeOrEqual(position,match.range.getStartPosition()))||found[0]!;target?.setSelection(next.range);target?.revealRangeInCenterIfOutsideViewport(next.range)}
 function replaceAll(){const target=activeEditor||editor;if(effectiveReadonly.value)return;const found=matches();if(!found.length)return;target?.pushUndoStop();target?.executeEdits('blora.replace',found.map(match=>({range:match.range,text:replaceText.value})));target?.pushUndoStop();target?.focus()}

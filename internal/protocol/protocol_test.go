@@ -428,15 +428,12 @@ func TestCancelledReadKeepsSessionAndCancelledSendDoesNotSubmit(t *testing.T) {
 }
 
 func TestBulkRateWaitHonorsWriteDeadline(t *testing.T) {
-	server, client := wssPair(t, Options{Generation: 1, Channel: ChannelBulk, BulkBytesPerSecond: 1, WriteTimeout: 20 * time.Millisecond})
-	client.SetReadLimit(MaxMessageSize)
-	// The first two 600 KiB OPEN payloads exceed the bucket's 1 MiB burst.
+	server, _ := wssPair(t, Options{Generation: 1, Channel: ChannelBulk, BulkBytesPerSecond: 1, WriteTimeout: 20 * time.Millisecond})
+	// Consume the initial burst without timing a TLS setup write. The next
+	// Send still uses the actual writer's 20ms budget including rate wait.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := server.Send(ctx, Envelope{Type: TypeOpen, Payload: make([]byte, 600*1024)}); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := client.Read(ctx); err != nil {
+	if err := server.awaitRate(ctx, 600*1024); err != nil {
 		t.Fatal(err)
 	}
 	started := time.Now()

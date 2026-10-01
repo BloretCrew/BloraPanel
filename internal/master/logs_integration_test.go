@@ -21,7 +21,7 @@ import (
 
 func TestLogSlowConsumerDeadlineAndCursorReattach(t *testing.T) {
 	f := newFileFixture(t)
-	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "slow-deadline", "config": model.InstanceConfig{Mode: "native", Command: []string{"/bin/sh", "-c", "printf 'first-marker\\n'; sleep 2; printf 'second-marker\\n'; sleep 60"}, StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
+	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "slow-deadline", "config": model.InstanceConfig{Mode: "native", Command: nativeTestCommand(t, "log-markers"), Environment: nativeTestEnvironment(), StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
 	var instance model.Instance
 	if err := json.Unmarshal(created["instance"], &instance); err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func TestLogSlowConsumerDeadlineAndCursorReattach(t *testing.T) {
 
 func TestConsoleInputHasOneDeliveryAndGracefulStopUsesIndependentStdin(t *testing.T) {
 	f := newFileFixture(t)
-	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "console-input", "config": model.InstanceConfig{Mode: "native", Directory: f.roots[0], Command: []string{"/bin/sh", "-c", "printf 'ready\\n'; while IFS= read -r line; do case \"$line\" in quit) printf stopped > graceful-stop; exit 0;; *) printf x >> input-count; printf 'CONSOLE:%s\\n' \"$line\";; esac; done"}, StopInput: "quit\n", StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
+	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "console-input", "config": model.InstanceConfig{Mode: "native", Directory: f.roots[0], Command: nativeTestCommand(t, "console"), Environment: nativeTestEnvironment(), StopInput: "quit\n", StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
 	var i model.Instance
 	if err := json.Unmarshal(created["instance"], &i); err != nil {
 		t.Fatal(err)
@@ -165,14 +165,14 @@ func TestNativeLogArchiveDoesNotLetSlowBrowserBlockStop(t *testing.T) {
 		}
 		soakSeconds = parsed
 	}
-	producerDelay := ".001"
+	producerDelay := "1ms"
 	if soakSeconds > 0 {
 		// Keep sustained pressure material but avoid generating gigabytes during
 		// an opt-in long consumer stall.
-		producerDelay = ".01"
+		producerDelay = "10ms"
 	}
 	f := newFileFixture(t)
-	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "continuous-log", "config": model.InstanceConfig{Mode: "native", Command: []string{"/bin/sh", "-c", "printf '中文日志-ready\\n'; while :; do printf '%04096d\\n' 0; sleep " + producerDelay + "; done"}, StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
+	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "continuous-log", "config": model.InstanceConfig{Mode: "native", Command: nativeTestCommand(t, "continuous-log", producerDelay), Environment: nativeTestEnvironment(), StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
 	var i model.Instance
 	if err := json.Unmarshal(created["instance"], &i); err != nil {
 		t.Fatal(err)

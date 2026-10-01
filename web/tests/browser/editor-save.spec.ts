@@ -1,3 +1,4 @@
+import {pressEditorKey} from '../helpers/editor-key'
 import {test,expect} from '@playwright/test'
 
 test('remote save task keeps captured body and never overwrites newer local input after reload',async({page})=>{
@@ -30,9 +31,9 @@ test('remote save task keeps captured body and never overwrites newer local inpu
   await page.goto('/');await page.locator('[data-app="blora.instances"]').click();await page.getByRole('button',{name:'文件测试实例',exact:true}).click();await page.getByRole('button',{name:'文件',exact:true}).click();await page.getByRole('button',{name:'在文件管理器打开',exact:true}).click();await page.getByRole('button',{name:'config.txt',exact:true}).click()
   await expect(page.locator('.editor-toolbar')).toContainText('文件测试节点 · config.txt · 可读写')
   await expect(page.locator('.editor-status')).toContainText('UTF-8 BOM · CRLF · 上限 4 MiB')
-  const editor=page.getByRole('textbox',{name:'文件正文编辑器'});await editor.focus();await page.keyboard.press('Control+End');await page.keyboard.insertText('，本次提交');await page.getByRole('button',{name:'保存到服务器',exact:true}).click()
+  const editor=page.getByRole('textbox',{name:'文件正文编辑器'});await editor.focus();await pressEditorKey(page,'End');await page.keyboard.insertText('，本次提交');await page.getByRole('button',{name:'保存到服务器',exact:true}).click()
   expect(writes[0]!.text.startsWith('\ufeff')).toBe(true);expect(writes[0]!.text).toContain('\r\n')
-  await editor.focus();await page.keyboard.press('Control+End');await page.keyboard.insertText('，并行新输入');await page.reload();await expect(page.locator('.editor-status')).toContainText('UTF-8 BOM · CRLF · 上限 4 MiB')
+  await editor.focus();await pressEditorKey(page,'End');await page.keyboard.insertText('，并行新输入');await page.reload();await expect(page.locator('.editor-status')).toContainText('UTF-8 BOM · CRLF · 上限 4 MiB')
   await expect(page.locator('.monaco-editor .view-lines')).toContainText('并行新输入');expect(writes).toHaveLength(1);expect(writes[0]!.text).not.toContain('并行新输入');expect(reads).toBe(1)
   saved=true;await expect(page.getByRole('button',{name:'保存到服务器',exact:true})).toBeEnabled();await expect(page.locator('.editor-status')).toContainText('服务器尚未保存');await expect(page.locator('.monaco-editor .view-lines')).toContainText('并行新输入')
   await page.getByRole('button',{name:'保存到服务器',exact:true}).click();await expect.poll(()=>writes.length).toBe(2);expect(writes[1]!.version).toBe('saved-version-2');expect(writes[1]!.text).toContain('并行新输入');expect(errors).toEqual([])

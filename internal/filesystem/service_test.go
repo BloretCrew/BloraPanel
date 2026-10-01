@@ -3,8 +3,10 @@ package filesystem
 import (
 	"archive/zip"
 	"bytes"
+	"compress/flate"
 	"context"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -250,6 +252,7 @@ func makeZip(t *testing.T, root, name string, headers []zip.FileHeader, bodies [
 	t.Helper()
 	var buf bytes.Buffer
 	w := zip.NewWriter(&buf)
+	w.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) { return flate.NewWriter(out, flate.BestCompression) })
 	for i, h := range headers {
 		out, e := w.CreateHeader(&h)
 		if e != nil {
@@ -311,6 +314,15 @@ func TestArchiveRejectsTraversalLinksDuplicatesAndBombs(t *testing.T) {
 		t.Fatal(e)
 	}
 	makeZip(t, root, "bomb.zip", []zip.FileHeader{{Name: "large", Method: zip.Deflate}}, []string{strings.Repeat("0", 2<<20)})
+	z, err := zip.OpenReader(filepath.Join(root, "bomb.zip"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ratio := z.File[0].UncompressedSize64 / max(1, z.File[0].CompressedSize64)
+	z.Close()
+	if ratio <= 1000 {
+		t.Fatalf("bomb fixture compression ratio %d does not exceed the production bound", ratio)
+	}
 	if _, e := s.Extract(context.Background(), "bomb.zip", "out", version(t, s, "bomb.zip"), ExtractOptions{TargetVersion: MissingVersion}); !errors.Is(e, ErrLimit) {
 		t.Fatal(e)
 	}

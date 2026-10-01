@@ -23,10 +23,14 @@ open a new terminal, and rerun. Network access to GitHub, Go/npm registries and
 Playwright browser downloads is required. Allow several GB for the checkout,
 dependencies, browser engines and logs; execution can take an hour or more.
 
-Windows Go race testing additionally requires a compatible **mingw-w64 GCC** on
-PATH. The runner automatically uses `gcc.exe` when available. Without it, the
-normal/native tests still run and race testing is explicitly **BLOCKED**. A
-broken or incompatible compiler records a failure, never a pass.
+Windows Go race testing additionally requires a compatible **mingw-w64 GCC**.
+Pass `-InstallRaceCompiler` to download a pinned, SHA-256-verified portable
+WinLibs compiler into this run's directory on Windows x64 (about 261 MB download;
+allow additional extraction space). It does not install a system compiler,
+change the registry, or persist PATH changes. Otherwise the runner uses an
+existing `gcc.exe` on PATH. A missing compiler is **BLOCKED**, and a broken or
+incompatible compiler records a failure, never a pass. The archive version and
+official release digest are pinned in `scripts/windows-race-compiler.ps1`.
 
 Optional parameters:
 
@@ -42,7 +46,42 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Recover an interrupted run
+## Retest the returned Windows failures
+
+After the third returned report, use the updated runner with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Retest -InstallRaceCompiler
+```
+
+This mode creates a fresh checkout and runs:
+
+- The 27 named Go regressions: all 22 failures from that report, a new Windows
+  directory-attribute check, the previously Unix-only two-node lifecycle, and
+  three connection-loss / transfer-resumption checks.
+- Eleven required native checks, including ConPTY command execution and the
+  new file/directory readonly attributes and timestamp check.
+- All-package Go race tests, previously blocked by the missing compiler.
+- All scenarios in nine affected browser files on Chromium, Firefox and
+  WebKit, including editor history/save/split, account recovery, reduced motion,
+  extensions and terminal recovery. The unchanged Chromium-only native IME
+  injection test is excluded from this targeted run; cross-browser committed
+  Unicode and multicursor tests remain included.
+- SDK builds and all three independent reference packages needed by these tests.
+
+Each required Go case must emit PASS in its correct package. Each browser must
+pass every named required regression without retries, skips or expected-failure
+substitution. A nonempty but incomplete selection is **INCOMPLETE**. The report
+records `runMode=retest`, the missing case names, and every intentional omission.
+Previous results are not imported as new passes. This is a focused regression
+run, not complete Windows platform acceptance. Full race testing may still
+report legitimate opt-in/environment skips, which are kept visible.
+
+Use `-Ref <commit>` to pin the source revision supplied in the conversation;
+download the runner from that same revision. `-InstallTools` is optional if Git,
+Go or Node.js is missing. Normal test objects are isolated in the new work root.
+
+## Remaining mode and interrupted-run recovery
 
 For the next run after the first returned report, download the updated script
 and use `-Remaining`:
@@ -78,6 +117,7 @@ the run may have been interrupted. Do not collect a run that is still active.
 - Windows Master, Daemon and extension signing tool builds; Go vet.
 - Explicit native Job/keeper/daemon-exit, ConPTY Unicode/resize/close, log pipe
   recovery, monitoring/process identity and SCM/Task Scheduler enumeration tests.
+  File/directory readonly attributes, timestamps and object identity are checked.
   The report checks that each expected native test actually emitted PASS.
 - All Go package tests without cached results, then all race tests if GCC exists.
 - SDK and independent reference extension builds/packages.

@@ -64,7 +64,8 @@ func TestInstanceSettingsAreVersionedAndRootsRemainSeparate(t *testing.T) {
 	}
 	// A real running process keeps its launch configuration; changing the
 	// graceful-stop command is effective for the next explicit stop request.
-	i.Config.Command = []string{"/bin/sh", "-c", "while IFS= read -r line; do if [ \"$line\" = quit ]; then printf stopped > stop-policy; exit 0; fi; done"}
+	i.Config.Command = nativeTestCommand(t, "stop-policy")
+	i.Config.Environment = nativeTestEnvironment(i.Config.Environment)
 	i = settingsResult(t, f.admin.request("PATCH", url, map[string]any{"revision": i.ConfigRevision, "config": i.Config}, model.ID(), 200))
 	control := func(action string) model.Task {
 		return parseFileTask(t, f.admin.request("POST", url+"/actions", map[string]string{"action": action}, model.ID(), 202))
@@ -92,7 +93,8 @@ func TestAutostartRunsOncePerDaemonStartupAndRechecksOwner(t *testing.T) {
 		f.admin.request("POST", "/grants", model.Grant{UserID: f.readerUser.ID, Resource: instanceRef(i), Action: action}, model.ID(), 200)
 	}
 	f.admin.request("POST", "/grants", model.Grant{UserID: f.readerUser.ID, Resource: model.ResourceRef{Kind: "node", ID: i.NodeID}, Action: "host.manage"}, model.ID(), 200)
-	i.Config.Command = []string{"/bin/sh", "-c", "trap 'exit 0' TERM; while :; do sleep .1; done"}
+	i.Config.Command = nativeTestCommand(t, "idle")
+	i.Config.Environment = nativeTestEnvironment(i.Config.Environment)
 	i.Config.Escalate = true
 	i.Config.Autostart = true
 	i = settingsResult(t, f.reader.request("PATCH", "/instances/"+i.ID, map[string]any{"revision": i.ConfigRevision, "config": i.Config}, model.ID(), 200))

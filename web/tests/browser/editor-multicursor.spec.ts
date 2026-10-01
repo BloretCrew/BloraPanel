@@ -1,3 +1,4 @@
+import {pressEditorKey} from '../helpers/editor-key'
 import {test,expect} from '@playwright/test'
 
 test('multi-cursor edits remain one reversible protected history group after refresh',async({page})=>{
@@ -14,6 +15,6 @@ test('multi-cursor edits remain one reversible protected history group after ref
   await page.getByRole('textbox',{name:'查找内容',exact:true}).fill('o');await page.getByRole('button',{name:'选择全部匹配',exact:true}).click();await page.keyboard.insertText('!')
   await expect(content).toContainText('!ne tw!')
   await page.reload();await expect(content).toContainText('!ne tw!')
-  await editor.focus();await page.keyboard.press('Control+Z');await expect(content).toContainText('one two');await expect(content).not.toContainText('!ne tw!')
-  await page.keyboard.press('Control+Y');await expect(content).toContainText('!ne tw!');expect(errors).toEqual([])
+  await editor.focus();await pressEditorKey(page,'Z');await expect(content).toContainText('one two');await expect(content).not.toContainText('!ne tw!')
+  await pressEditorKey(page,'Y');await expect(content).toContainText('!ne tw!');expect(errors).toEqual([])
 })

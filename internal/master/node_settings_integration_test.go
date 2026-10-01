@@ -19,7 +19,7 @@ func TestNodeMaintenancePreservesRuntimeAndSettingsAcrossHeartbeat(t *testing.T)
 	}
 	stale := node
 	f.reader.request("PATCH", "/nodes/"+nodeID, map[string]any{"quota": 3, "revision": node.ConfigRevision}, model.ID(), 403)
-	result := f.admin.request("POST", "/instances", map[string]any{"nodeId": nodeID, "name": "maintenance-process", "config": model.InstanceConfig{Mode: "native", Command: []string{"/bin/sh", "-c", "sleep 600"}, StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
+	result := f.admin.request("POST", "/instances", map[string]any{"nodeId": nodeID, "name": "maintenance-process", "config": model.InstanceConfig{Mode: "native", Command: nativeTestCommand(t, "idle"), Environment: nativeTestEnvironment(), StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
 	var instance model.Instance
 	if err := json.Unmarshal(result["instance"], &instance); err != nil {
 		t.Fatal(err)

@@ -25,7 +25,9 @@ function replayEdits(model:monaco.editor.ITextModel,draft:Draft){
   for(const [index,step] of draft.history.entries()){
     const operations=step.forward.map(edit=>({range:monaco.Range.fromPositions(model.getPositionAt(edit.offset),model.getPositionAt(edit.offset+edit.length)),text:edit.text}))
     model.pushEditOperations([],operations,()=>[])
-    if(!step.group||step.group!==draft.history[index+1]?.group)model.pushStackElement()
+    // A native undo can stop inside a recorded group (including old records
+    // with identity edits). Keep the persisted cursor a stack boundary.
+    if(index+1===draft.cursor||!step.group||step.group!==draft.history[index+1]?.group)model.pushStackElement()
   }
 }
 async function restoreHistory(model:monaco.editor.ITextModel,draft:Draft){
@@ -76,6 +78,9 @@ export async function documentModel(recovery:RecoveryService,draftId:string) {
     else {
       const previousHistoryEpoch=current.historyEpoch||0
       const forward=event.changes.map(change=>({offset:change.rangeOffset,length:change.rangeLength,text:change.text}))
+      // Firefox's textarea input path may emit an identity replacement after
+      // the semantic edit. It must not truncate redo history or form an undo step.
+      if(editText(current.text,forward)===current.text)return
       entry.group ||= id('edit')
       recovery.commit([{kind:'edit',draftId,forward,reverse:inverseEdits(current.text,forward),group:entry.group}])
       if((recovery.state.drafts[draftId]!.historyEpoch||0)!==previousHistoryEpoch)entry.historyRebuildPending=true

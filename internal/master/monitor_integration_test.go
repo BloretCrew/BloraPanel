@@ -26,7 +26,8 @@ func TestMetricsUseLiveNodeAndOwnedProcessScope(t *testing.T) {
 	}
 	// A live native process is the sole process whose RSS may be reported by
 	// the instance route; stopped instances cannot be mapped to host PID data.
-	i.Config.Command = []string{"/bin/sh", "-c", "while :; do sleep .1; done"}
+	i.Config.Command = nativeTestCommand(t, "idle")
+	i.Config.Environment = nativeTestEnvironment(i.Config.Environment)
 	i.Config.Escalate = true
 	i = settingsResult(t, f.admin.request("PATCH", "/instances/"+i.ID, map[string]any{"revision": i.ConfigRevision, "config": i.Config}, model.ID(), 200))
 	task := parseFileTask(t, f.admin.request("POST", "/instances/"+i.ID+"/actions", map[string]string{"action": "start"}, model.ID(), 202))
@@ -52,7 +53,8 @@ func TestMetricsUseLiveNodeAndOwnedProcessScope(t *testing.T) {
 func TestInstanceMetricDisconnectAndRunReplacement(t *testing.T) {
 	f := newFileFixture(t)
 	i := f.instances[0]
-	i.Config.Command = []string{"/bin/sh", "-c", "while :; do sleep .1; done"}
+	i.Config.Command = nativeTestCommand(t, "idle")
+	i.Config.Environment = nativeTestEnvironment(i.Config.Environment)
 	i.Config.Escalate = true
 	i = settingsResult(t, f.admin.request("PATCH", "/instances/"+i.ID, map[string]any{"revision": i.ConfigRevision, "config": i.Config}, model.ID(), 200))
 	action := func(action string) {
@@ -102,7 +104,8 @@ func TestInstanceMetricDisconnectAndRunReplacement(t *testing.T) {
 func TestMetricsAggregateOwnedDescendants(t *testing.T) {
 	f := newFileFixture(t)
 	i := f.instances[0]
-	i.Config.Command = []string{"/bin/sh", "-c", "(while :; do :; done) & sleep 30 & wait"}
+	i.Config.Command = nativeTestCommand(t, "descendants")
+	i.Config.Environment = nativeTestEnvironment(i.Config.Environment)
 	i.Config.Escalate = true
 	i = settingsResult(t, f.admin.request("PATCH", "/instances/"+i.ID, map[string]any{"revision": i.ConfigRevision, "config": i.Config}, model.ID(), 200))
 	action := func(action string) {

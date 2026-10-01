@@ -1,3 +1,4 @@
+import {pressEditorKey} from '../helpers/editor-key'
 import {test,expect,type Page} from '@playwright/test'
 
 const budget=1024
@@ -35,7 +36,7 @@ test('undo history keeps the same byte budget before and after refresh',async({p
   await page.goto('/');await page.locator('[data-app="blora.instances"]').click();await page.getByRole('button',{name:'历史实例',exact:true}).click();await page.getByRole('button',{name:'文件',exact:true}).click();await page.getByRole('button',{name:'在文件管理器打开',exact:true}).click();await page.getByRole('button',{name:'budget.txt',exact:true}).click()
   const editor=page.getByRole('textbox',{name:'文件正文编辑器',exact:true});await editor.focus()
   for(const letter of 'ABCDEFGHIJKL'){
-    await page.keyboard.press('Control+A');await page.keyboard.type(letter)
+    await pressEditorKey(page,'A');await page.keyboard.type(letter)
     await expect.poll(async()=>({letter:(await persistedDraft(page))?.last,protected:(await page.locator('.editor-status').innerText()).includes('本地工作现场已保护')}),{timeout:15000}).toEqual({letter,protected:true})
   }
   const current=await persistedDraft(page)

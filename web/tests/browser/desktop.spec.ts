@@ -1,3 +1,4 @@
+import {pressEditorKey} from '../helpers/editor-key'
 import {test,expect} from '@playwright/test'
 // API fixtures are exclusively a browser test boundary. Production uses fetch against Master.
 test.beforeEach(async({page})=>{
@@ -8,14 +9,14 @@ test('Monaco text, undo/redo and original view identity survive immediate reload
   await page.goto('/');await page.locator('[data-app="blora.editor"]').click();await expect(page.locator('.monaco-editor')).toBeVisible()
   // Monaco uses native EditContext in Chromium. Its hidden readonly IME textarea
   // is not the editor input; focus the accessible editing surface instead.
-  const editor=page.getByRole('textbox',{name:'文件正文编辑器'});await editor.focus();await page.keyboard.insertText('中文输入\nalpha');await page.keyboard.insertText('β');await page.keyboard.press('Control+z')
+  const editor=page.getByRole('textbox',{name:'文件正文编辑器'});await editor.focus();await page.keyboard.insertText('中文输入\nalpha');await page.keyboard.insertText('β');await pressEditorKey(page,'z')
   const original=await page.locator('[data-view-tab]').first().getAttribute('data-view-tab')
   await page.reload()
   await expect(page.locator('.monaco-editor')).toBeVisible();await expect(page.locator('.monaco-editor .view-lines')).toContainText('alpha');await expect(page.locator('.monaco-editor .view-lines')).not.toContainText('β')
-  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await page.keyboard.press('Control+y');await expect(page.locator('.monaco-editor .view-lines')).toContainText('β')
+  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await pressEditorKey(page,'y');await expect(page.locator('.monaco-editor .view-lines')).toContainText('β')
   await page.locator('[aria-label^="标签菜单"]').click();await page.getByRole('button',{name:'移到新窗口',exact:true}).click();await page.reload()
   await expect(page.locator(`[data-view-tab="${original}"]`)).toHaveCount(1);await expect(page.locator('.monaco-editor .view-lines')).toContainText('β')
-  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await page.keyboard.press('Control+z');await expect(page.locator('.monaco-editor .view-lines')).not.toContainText('β');expect(errors).toEqual([])
+  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await pressEditorKey(page,'z');await expect(page.locator('.monaco-editor .view-lines')).not.toContainText('β');expect(errors).toEqual([])
 })
 test('window geometry and independent form drafts survive immediate reload',async({page})=>{
   await page.goto('/');await page.locator('[data-app="blora.instances"]').click();const win=page.locator('.app-window').first(),title=win.locator('.window-titlebar');const rect=await title.boundingBox();await page.mouse.move(rect!.x+240,rect!.y+15);await page.mouse.down();await page.mouse.move(rect!.x+370,rect!.y+60,{steps:5});await page.mouse.up();const transform=await win.evaluate(el=>(el as HTMLElement).style.transform);await win.getByRole('searchbox',{name:'搜索实例'}).fill('未提交筛选');await page.reload();await expect(page.locator('.app-window')).toHaveCSS('transform',/matrix/);expect(await page.locator('.app-window').evaluate(el=>(el as HTMLElement).style.transform)).toBe(transform);await expect(page.getByRole('searchbox',{name:'搜索实例'})).toHaveValue('未提交筛选')
@@ -262,7 +263,7 @@ test('workspaces keep independent windows and model bodies through copy, switch 
   const original=await page.locator('[data-view-tab]').getAttribute('data-view-tab')
   await page.getByRole('button',{name:'切换工作区'}).click();await page.getByRole('textbox',{name:'新工作区名称'}).fill('独立副本');await page.getByRole('button',{name:'复制当前现场'}).click()
   await expect(page.getByRole('dialog',{name:'工作区'})).toBeHidden()
-  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await page.keyboard.press('Control+End');await page.keyboard.insertText('，副本新输入')
+  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await pressEditorKey(page,'End');await page.keyboard.insertText('，副本新输入')
   await page.reload();await expect(page.locator('.monaco-editor .view-lines')).toContainText('副本新输入')
   await page.getByRole('button',{name:'切换工作区'}).click();await page.getByRole('dialog',{name:'工作区'}).getByRole('button',{name:'个人桌面',exact:true}).click()
   await expect(page.locator(`[data-view-tab="${original}"]`)).toHaveCount(1);await expect(page.locator('.monaco-editor .view-lines')).toContainText('原工作区草稿');await expect(page.locator('.monaco-editor .view-lines')).not.toContainText('副本新输入')
@@ -293,7 +294,7 @@ test('copying a browser tab creates an isolated branch and immediate typing keep
   await duplicate.addInitScript(values=>{if(!sessionStorage.getItem('branch-seeded')){for(const [key,value] of Object.entries(values))sessionStorage.setItem(key,value);sessionStorage.setItem('branch-seeded','1')}},storage)
   await duplicate.goto('/');await expect(duplicate.locator('.monaco-editor .view-lines')).toContainText('来源草稿')
   expect(await duplicate.evaluate(()=>sessionStorage.getItem('blora:tab'))).not.toBe(await page.evaluate(()=>sessionStorage.getItem('blora:tab')))
-  await duplicate.getByRole('textbox',{name:'文件正文编辑器'}).focus();await duplicate.keyboard.press('Control+End');await duplicate.keyboard.insertText('分支输入');await duplicate.reload();await expect(duplicate.locator('.monaco-editor .view-lines')).toContainText('分支输入')
+  await duplicate.getByRole('textbox',{name:'文件正文编辑器'}).focus();await pressEditorKey(duplicate,'End');await duplicate.keyboard.insertText('分支输入');await duplicate.reload();await expect(duplicate.locator('.monaco-editor .view-lines')).toContainText('分支输入')
   await page.reload();await expect(page.locator('.monaco-editor .view-lines')).not.toContainText('分支输入');await duplicate.close()
 })
 
@@ -313,12 +314,19 @@ test('committed Unicode, simultaneous multi-cursor edits and find state survive 
   await page.keyboard.insertText('\nmatch\nmatch')
   await page.reload();await expect(page.locator('.monaco-editor .view-lines')).toContainText('中文组合')
   await page.getByRole('button',{name:'查找',exact:true}).click();await page.getByRole('textbox',{name:'查找内容',exact:true}).fill('match');await page.getByRole('textbox',{name:'替换内容',exact:true}).fill('替换草稿')
+  await expect(page.getByRole('textbox',{name:'查找内容',exact:true})).toHaveValue('match');await expect(page.getByRole('textbox',{name:'替换内容',exact:true})).toHaveValue('替换草稿')
   await page.getByRole('button',{name:'选择全部匹配',exact:true}).click();await page.keyboard.insertText('双光标')
   // Native EditContext can emit one semantic edit per character for a multi-cursor
   // insertion. Compare the actual available undo history before and after reload.
-  await page.keyboard.press('Control+z');const priorUndo=await page.locator('.monaco-editor .view-lines').innerText();await page.keyboard.press('Control+y')
+  const lines=page.locator('.monaco-editor .view-lines')
+  await expect(lines).toContainText('双光标');const beforeUndo=await lines.innerText()
+  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await pressEditorKey(page,'z')
+  // Monaco paints asynchronously in WebKit. Reading innerText immediately
+  // after the key can capture the pre-undo frame as the expected undo result.
+  await expect(lines).not.toHaveText(beforeUndo,{useInnerText:true});const priorUndo=await lines.innerText()
+  await pressEditorKey(page,'y');await expect(lines).toHaveText(beforeUndo,{useInnerText:true})
   await page.reload();await expect(page.locator('.monaco-editor .view-lines')).toContainText('中文组合');await expect(page.locator('.monaco-editor .view-lines')).toContainText('双光标')
   await expect(page.getByRole('textbox',{name:'查找内容',exact:true})).toHaveValue('match');await expect(page.getByRole('textbox',{name:'替换内容',exact:true})).toHaveValue('替换草稿')
-  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await page.keyboard.press('Control+z');await expect(page.locator('.monaco-editor .view-lines')).toHaveText(priorUndo,{useInnerText:true})
-  await page.keyboard.press('Control+y');await expect(page.locator('.monaco-editor .view-lines')).toContainText('双光标');expect(errors).toEqual([])
+  await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await pressEditorKey(page,'z');await expect(page.locator('.monaco-editor .view-lines')).toHaveText(priorUndo,{useInnerText:true})
+  await pressEditorKey(page,'y');await expect(page.locator('.monaco-editor .view-lines')).toContainText('双光标');expect(errors).toEqual([])
 })

@@ -1,6 +1,6 @@
 import {test, expect} from '@playwright/test'
 import {readFileSync} from 'node:fs'
-import {clickPaintedExtensionButton} from '../extension-paint'
+import {clickPaintedExtensionButton,clickPaintedExtensionControl} from '../extension-paint'
 
 test('focusing an extension window preserves its iframe and uncommitted local input',async({page})=>{
   const manifest={appId:'example.focus',packageVersion:'1.0.0',hostApiVersion:1,title:'焦点扩展',icon:'✦',color:'#fff',permissions:[],entrypoints:['overview'],resourceHandlers:[],capabilities:['window.open'],dependencies:{},windowPolicy:'multiple',tabPolicy:{types:['overview'],movable:true},stateSchemaVersion:1}
@@ -189,9 +189,12 @@ test('independently packaged reference extension renders and restores its note',
   await page.getByRole('button',{name:'打开',exact:true}).click()
   const frame=page.frameLocator('iframe[title="扩展 example.reference"]')
   await expect(frame.getByRole('heading',{name:'参考扩展'})).toBeVisible()
+  await expect(frame.getByLabel('工作笔记')).toBeEnabled()
+  await clickPaintedExtensionControl(page,frame.getByLabel('工作笔记'))
   await frame.getByLabel('工作笔记').fill('独立包中的未保存笔记')
   await page.reload()
   await expect(frame.getByLabel('工作笔记')).toHaveValue('独立包中的未保存笔记')
+  await clickPaintedExtensionControl(page,frame.getByLabel('节点标识'))
   await frame.getByLabel('节点标识').fill('node-test')
   await clickPaintedExtensionButton(page,frame.getByRole('button',{name:'打开节点工作窗口'}))
   const frames=page.locator('iframe[title="扩展 example.reference"]')
@@ -207,7 +210,7 @@ test('independently packaged reference extension renders and restores its note',
   expect(createdTasks).toBe(1)
   failTaskRead=true
   await clickPaintedExtensionButton(page,resourceFrame.getByRole('button',{name:'刷新任务状态'}))
-  await expect(resourceFrame.getByRole('status')).toContainText('fetch')
+  await expect(resourceFrame.getByRole('status')).toContainText('网络连接失败')
   await expect(resourceFrame.getByRole('button',{name:'取消任务',exact:true})).toBeDisabled()
   failTaskRead=false
   await clickPaintedExtensionButton(page,resourceFrame.getByRole('button',{name:'刷新任务状态'}))

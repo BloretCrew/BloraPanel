@@ -14,7 +14,12 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     headers.set('X-CSRF-Token', session.csrfToken)
     if (!headers.has('Idempotency-Key')) headers.set('Idempotency-Key', crypto.randomUUID())
   }
-  const response = await fetch(`/api/v1${path}`, { ...options, headers, credentials: 'same-origin' })
+  let response:Response
+  try { response = await fetch(`/api/v1${path}`, { ...options, headers, credentials: 'same-origin' }) }
+  catch(error) {
+    if(options.signal?.aborted)throw error
+    throw new APIError('网络连接失败，操作结果尚未确认；请刷新状态后再重试','NETWORK_ERROR',0)
+  }
   const value = response.status === 204 ? {} : await response.json().catch(() => ({}))
   if (!response.ok) {
     if (response.status === 401 && path !== '/login' && session.user?.userId===requestUserId) session.user = undefined

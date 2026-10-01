@@ -5,6 +5,8 @@ package terminal
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -20,6 +22,7 @@ func TestWindowsConPTYRealCommandResizeAndJobClose(t *testing.T) {
 	r := testRequest()
 	r.Backend = "native"
 	r.Command = []string{"cmd.exe", "/Q", "/D"}
+	r.Directory = t.TempDir()
 	s, err := m.Create(ctx, r)
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +36,9 @@ func TestWindowsConPTYRealCommandResizeAndJobClose(t *testing.T) {
 	if err = m.Resize(ctx, s.ID, "owner", "view", 132, 42); err != nil {
 		t.Fatal(err)
 	}
-	if err = m.WriteInput(ctx, s.ID, "owner", "view", []byte("chcp 65001\r\necho 中文-ConPTY-marker\r\n")); err != nil {
+	// The expected marker is computed by cmd, never present verbatim in input.
+	// A console that only echoes keystrokes cannot satisfy the output assertion.
+	if err = m.WriteInput(ctx, s.ID, "owner", "view", []byte("chcp 65001\r\necho executed>conpty-executed.txt\r\nset \"suffix=marker\"\r\necho 中文-ConPTY-%suffix%\r\n")); err != nil {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(8 * time.Second)
@@ -55,6 +60,13 @@ func TestWindowsConPTYRealCommandResizeAndJobClose(t *testing.T) {
 	}
 	if !bytes.Contains(out, []byte("中文-ConPTY-marker")) {
 		t.Fatalf("ConPTY Unicode output missing: %q", out)
+	}
+	// Seeing echoed keystrokes alone is not proof that cmd read and executed
+	// them. The runner redirects this test's own stdio; the child must still
+	// consume input and produce output exclusively through its ConPTY.
+	body, err := os.ReadFile(filepath.Join(r.Directory, "conpty-executed.txt"))
+	if err != nil || !bytes.Equal(bytes.TrimSpace(body), []byte("executed")) {
+		t.Fatalf("ConPTY input was not executed: %q %v", body, err)
 	}
 	closeCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()

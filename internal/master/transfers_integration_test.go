@@ -495,6 +495,10 @@ func TestTransferDirectoryMergeChecksFileBaselinesAndKeepsExtraFiles(t *testing.
 	if err := os.Chmod(filepath.Join(f.roots[1], "existing"), 0700); err != nil {
 		t.Fatal(err)
 	}
+	baseline, err := os.Stat(filepath.Join(f.roots[1], "existing"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	request := model.TransferRequest{Source: model.TransferEndpoint{InstanceID: f.instances[0].ID, Path: "source", Version: f.stat(t, 0, "source").Version}, Target: model.TransferEndpoint{InstanceID: f.instances[1].ID, Path: "existing", Version: f.stat(t, 1, "existing").Version}}
 	task := parseFileTask(t, f.admin.request("POST", "/transfers", request, model.ID(), 202))
 	awaitTransfer(t, f, task, model.Succeeded)
@@ -502,7 +506,7 @@ func TestTransferDirectoryMergeChecksFileBaselinesAndKeepsExtraFiles(t *testing.
 	assertDisk(t, f.roots[1], "existing/nested/value.txt", "nested value")
 	assertDisk(t, f.roots[1], "existing/nested/keep.txt", "not part of source")
 	info, err := os.Stat(filepath.Join(f.roots[1], "existing"))
-	if err != nil || info.Mode().Perm() != 0700 {
+	if err != nil || info.Mode().Perm() != baseline.Mode().Perm() {
 		t.Fatalf("existing directory metadata replaced: %v", err)
 	}
 }

@@ -10,6 +10,8 @@ param(
     [string]$Ref = 'main',
     [switch]$InstallTools,
     [switch]$Remaining,
+    [switch]$Retest,
+    [switch]$InstallRaceCompiler,
     [switch]$CollectLatest,
     [string]$CollectRun = ''
 )
@@ -17,6 +19,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows, not WSL or Linux.' }
 if ($Ref.StartsWith('-')) { throw 'Ref must be a branch, tag, or commit, not a Git option.' }
+if ($Retest) { $Remaining = $true }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 function New-ReportZip([string]$Folder,[string]$Destination) {
     # Avoid Microsoft.PowerShell.Archive / Write-Progress host rendering entirely.
@@ -57,6 +60,7 @@ $active = $null
 $stage = 0
 $fatal = ''
 $savedEnvironment = @{}
+$savedPath = $env:Path
 # Do not inherit E2E switches/endpoints or helper modes from another session.
 foreach ($item in Get-ChildItem Env:) {
     if ($item.Name -match '^(BLORA_|GOOS$|GOARCH$|GOFLAGS$|CGO_ENABLED$|GORACE$|CC$|CI$|PLAYWRIGHT_)') {
@@ -177,6 +181,35 @@ function Tool([string]$command,[string]$package) {
     Missing "tool-$command" "Install $package, reopen PowerShell, then rerun. -InstallTools can use winget."
     return $false
 }
+function Get-RetestPlan {
+    # Every failing named case in the third returned report, plus the new
+    # directory attributes, portable lifecycle and connection-loss regressions.
+    $cases = [ordered]@{
+        backup = @('TestBackupRoundTripMetadataAndExplicitOverwrite')
+        bridge = @('TestSendPreservesClosedTransportIdentity','TestRemoteOperationErrorIsNotTransportLoss')
+        filesystem = @('TestWindowsMetadataAttributesAndTimes','TestMetadataVersionCancellationAndLinkBoundary','TestUploadMetadataIsBoundToDurableIdentity','TestRelationFailsWhenCanonicalRootOrSourceObjectIsReplaced','TestArchiveRejectsTraversalLinksDuplicatesAndBombs')
+        protocol = @('TestBulkRateWaitHonorsWriteDeadline')
+        terminal = @('TestWindowsConPTYRealCommandResizeAndJobClose')
+        master = @('TestInstanceSettingsAreVersionedAndRootsRemainSeparate','TestAutostartRunsOncePerDaemonStartupAndRechecksOwner','TestFailedStopBlocksReplacementButOtherNodeRemainsUsable','TestRestartTaskSurvivesMasterAndDatabaseReopen','TestLogSlowConsumerDeadlineAndCursorReattach','TestConsoleInputHasOneDeliveryAndGracefulStopUsesIndependentStdin','TestNativeLogArchiveDoesNotLetSlowBrowserBlockStop','TestMetricsUseLiveNodeAndOwnedProcessScope','TestInstanceMetricDisconnectAndRunReplacement','TestMetricsAggregateOwnedDescendants','TestNodeMaintenancePreservesRuntimeAndSettingsAcrossHeartbeat','TestSchedulesAcceptRealLifecycleConsoleAndFreshBackup','TestTransferRealDirectoryCopyMoveAndMetadata','TestTransferDirectoryMergeChecksFileBaselinesAndKeepsExtraFiles','TestTransferSameNodeSeparateInstancesAndActualOverlapRejection','TestTwoNodesAuthorizationAndDurableLifecycle','TestTransferSourceDaemonRestartRebuildsProof')
+    }
+    $goCases = @(); foreach ($package in $cases.Keys) { foreach ($test in $cases[$package]) { $goCases += [pscustomobject]@{package="blora.dev/panel/internal/$package";test=$test} } }
+    return [pscustomobject]@{
+        goCases = $goCases
+        browserFiles = @('tests/browser/desktop.spec.ts','tests/browser/accounts.spec.ts','tests/browser/control-bar.spec.ts','tests/browser/editor-history-budget.spec.ts','tests/browser/editor-multicursor.spec.ts','tests/browser/editor-save.spec.ts','tests/browser/editor-split.spec.ts','tests/browser/extensions.spec.ts','tests/browser/terminal.spec.ts')
+        browserTitles = @('Monaco text, undo/redo and original view identity survive immediate reload and moving windows','committed Unicode, simultaneous multi-cursor edits and find state survive immediate reload','password changes clear hidden fields, exclude recovery and require a new login after confirmation','system and workspace reduced motion both keep the launcher stationary on entry','undo history keeps the same byte budget before and after refresh','multi-cursor edits remain one reversible protected history group after refresh','remote save task keeps captured body and never overwrites newer local input after reload','editor split panes share text while keeping both cursors and the split visible after refresh','independently packaged reference extension renders and restores its note','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (automatic renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, main checkpoints)')
+    }
+}
+function Get-BrowserPassTitles($Suites) {
+    foreach ($suite in @($Suites)) {
+        foreach ($spec in @($suite.specs)) {
+            # Do not accept expected failures, retries or skipped executions as
+            # regression evidence. Each selected engine must pass the case.
+            if ($spec.ok -and @($spec.tests).Count -gt 0 -and !@($spec.tests | Where-Object { $_.expectedStatus -ne 'passed' -or $_.status -ne 'expected' -or !@($_.results | Where-Object status -eq 'passed').Count -or @($_.results | Where-Object { $_.status -ne 'passed' }).Count }).Count) { $spec.title }
+        }
+        if ($suite.suites) { Get-BrowserPassTitles $suite.suites }
+    }
+}
+$retestPlan = Get-RetestPlan
 $uncovered = @(
     'Existing Windows SCM/Task Scheduler tests enumerate read-only; service start/stop, task changes and firewall rollback require separate isolated lifecycle acceptance.',
     'Browser suites use API doubles with real browser/xterm/storage. The Linux /bin/sh devfixture and Linux-only real-browser scenarios are NOT Windows full-stack evidence.',
@@ -184,7 +217,10 @@ $uncovered = @(
     'Real Docker/Compose requires an explicitly authorized disposable Engine; opt-in Engine tests remain skipped here.',
     'Power loss, device cache loss, Engine disk exhaustion and remote certificate/network operations are not performed.'
 )
-if ($Remaining) {
+if ($Retest) {
+    $uncovered += 'Retest mode reruns the returned failing Go cases, the native suite, and all cases in nine affected browser files (excluding the already-passed Chromium-only native IME scenario). Required case names are checked individually. Prior results are NOT imported as passes; full all-package race testing is attempted because it was previously blocked.'
+    $uncovered += 'This targeted run omits standalone vet/builds, web production build/unit tests, unaffected browser files and unaffected non-race Go cases. Native IME injection in Firefox/WebKit remains a capability gap, not a passing test.'
+} elseif ($Remaining) {
     $uncovered += 'Remaining mode intentionally omits Go vet, standalone Go builds, web production build and web unit tests; prior results are NOT imported as passes. SDK build/package, native checks, full Go regression, available race checks and all three browsers run again.'
 }
 try {
@@ -209,14 +245,30 @@ try {
                 [void](Invoke-Stage "build-$component" 'go.exe' @('build','-trimpath','-o',(Join-Path $run "bin/blora-$component.exe"),"./cmd/$component"))
             }
         }
-        [void](Invoke-Stage 'windows-native' 'go.exe' @('test','-json','-count=1','-timeout=15m','./internal/runtime','./internal/terminal','./internal/runlog','./internal/monitor','./internal/systeminfo','-run','^TestWindows') $repo 3600 -GoEvents)
-        [void](Invoke-Stage 'go-all' 'go.exe' @('test','-json','-count=1','-p=2','-timeout=20m','./...') $repo 7200 -GoEvents)
-        if (Get-Command gcc.exe -ErrorAction SilentlyContinue) {
+        [void](Invoke-Stage 'windows-native' 'go.exe' @('test','-json','-count=1','-timeout=15m','./internal/runtime','./internal/terminal','./internal/runlog','./internal/monitor','./internal/systeminfo','./internal/filesystem','-run','^TestWindows') $repo 3600 -GoEvents)
+        if ($Retest) {
+            $pattern = '^(' + (($retestPlan.goCases | ForEach-Object { [regex]::Escape($_.test) }) -join '|') + ')$'
+            [void](Invoke-Stage 'go-retest' 'go.exe' @('test','-json','-count=1','-p=2','-timeout=20m','./internal/backup','./internal/bridge','./internal/filesystem','./internal/protocol','./internal/terminal','./internal/master','-run',$pattern) $repo 3600 -GoEvents)
+        } else {
+            [void](Invoke-Stage 'go-all' 'go.exe' @('test','-json','-count=1','-p=2','-timeout=20m','./...') $repo 7200 -GoEvents)
+        }
+        $gcc = Get-Command gcc.exe -ErrorAction SilentlyContinue
+        if ($InstallRaceCompiler) {
+            $compilerRoot = Join-Path $run 'race-compiler'
+            $shell = Join-Path $PSHOME 'powershell.exe'; if (!(Test-Path $shell)) { $shell = Join-Path $PSHOME 'pwsh.exe' }
+            if (Invoke-Stage 'install-race-compiler' $shell @('-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',(Join-Path $repo 'scripts/windows-race-compiler.ps1'),'-Destination',$compilerRoot) $repo 2400) {
+                $env:Path=(Join-Path $compilerRoot 'mingw64/bin')+';'+$env:Path
+                $gcc = Get-Command gcc.exe -ErrorAction SilentlyContinue
+            } else { $gcc = $null }
+        }
+        if ($gcc) {
             $env:CGO_ENABLED='1'; $env:CC=(Get-Command gcc.exe).Source
             [void](Invoke-Stage 'gcc-version' 'gcc.exe' @('--version'))
-            [void](Invoke-Stage 'go-race' 'go.exe' @('test','-race','-json','-count=1','-p=2','-timeout=20m','./...') $repo 7200 -GoEvents)
+            if (Invoke-Stage 'gcc-race-runtime' 'gcc.exe' @('--print-file-name','libsynchronization.a')) {
+                [void](Invoke-Stage 'go-race' 'go.exe' @('test','-race','-json','-count=1','-p=2','-timeout=20m','./...') $repo 7200 -GoEvents)
+            } else { Missing 'go-race' 'Compiler runtime probe failed.' }
             $env:CGO_ENABLED='0'
-        } else { Missing 'go-race' 'No gcc.exe on PATH. Windows race needs a compatible mingw-w64 C compiler; normal and native tests still run.' }
+        } else { Missing 'go-race' 'No usable gcc.exe. Use -InstallRaceCompiler for a pinned, SHA-256-verified portable MinGW-w64 compiler in this run directory; no system installation is required.' }
     }
     $goChecksRun=$false
     if ($nodeReady) {
@@ -242,7 +294,9 @@ try {
                         if (Invoke-Stage "install-$browser" 'node.exe' @('node_modules/@playwright/test/cli.js','install',$browser) $path 1800) {
                             $env:BLORA_BROWSER=$browser
                             $env:PLAYWRIGHT_JSON_OUTPUT_NAME=Join-Path $report "$browser.json"
-                            [void](Invoke-Stage "browser-$browser" 'node.exe' @('node_modules/@playwright/test/cli.js','test','--workers=1','--reporter=line,json','--output',(Join-Path $run "browser-artifacts/$browser")) $path 7200)
+                            $browserArgs = @('node_modules/@playwright/test/cli.js','test','--workers=1','--reporter=line,json','--output',(Join-Path $run "browser-artifacts/$browser"))
+                            if ($Retest) { $browserArgs += @($retestPlan.browserFiles); $browserArgs += @('--grep-invert','native Chromium IME composition survives immediate reload') }
+                            [void](Invoke-Stage "browser-$browser" 'node.exe' $browserArgs $path 7200)
                         } else { Missing "browser-$browser" 'Matching browser download failed.' }
                     }
                 }
@@ -254,10 +308,15 @@ try {
 } catch { $fatal=Clean $_.Exception.Message; Write-Host $fatal -ForegroundColor Red }
 finally {
     # Must see actual terminal PASS events, not merely a successful empty filter.
-    $required=@('TestWindowsJobKeepsDescendantsAfterParentExits','TestWindowsJobCrashRecoveryPreservesRun','TestWindowsDaemonExitReopenAndStop','TestWindowsKeeperBirthMismatchFailsClosed','TestWindowsKeeperStartupFailureCleansEmptyJob','TestWindowsConPTYRealCommandResizeAndJobClose','TestWindowsDaemonExitDoesNotCloseBusinessPipe','TestWindowsNativeMetricsAndProcessIdentity','TestWindowsNativeServiceEnumeration','TestWindowsTaskSchedulerEnumeration')
+    $required=@('TestWindowsJobKeepsDescendantsAfterParentExits','TestWindowsJobCrashRecoveryPreservesRun','TestWindowsDaemonExitReopenAndStop','TestWindowsKeeperBirthMismatchFailsClosed','TestWindowsKeeperStartupFailureCleansEmptyJob','TestWindowsConPTYRealCommandResizeAndJobClose','TestWindowsDaemonExitDoesNotCloseBusinessPipe','TestWindowsNativeMetricsAndProcessIdentity','TestWindowsNativeServiceEnumeration','TestWindowsTaskSchedulerEnumeration','TestWindowsMetadataAttributesAndTimes')
     $missingTests=@($required | Where-Object { $name=$_; !($events | Where-Object { $_.stage -eq 'windows-native' -and $_.test -eq $name -and $_.action -eq 'pass' }) })
     $skips=@($events | Where-Object action -eq 'skip')
-    if (!($events | Where-Object { $_.stage -eq 'go-all' -and $_.action -eq 'pass' })) { Missing 'go-all-coverage' 'No passing Go test events were collected for the full suite.' }
+    $missingRetests = @()
+    if ($Retest) {
+        $missingRetests = @($retestPlan.goCases | Where-Object { $case=$_; !($events | Where-Object { $_.stage -eq 'go-retest' -and $_.package -eq $case.package -and $_.test -eq $case.test -and $_.action -eq 'pass' }) })
+        if ($missingRetests.Count) { Missing 'go-retest-coverage' "Required cases without PASS: $($missingRetests.Count). See report.json; an empty or incomplete selection is not a pass." }
+    } elseif (!($events | Where-Object { $_.stage -eq 'go-all' -and $_.action -eq 'pass' })) { Missing 'go-all-coverage' 'No passing Go test events were collected for the full suite.' }
+    if (!($events | Where-Object { $_.stage -eq 'go-race' -and $_.action -eq 'pass' })) { Missing 'go-race-coverage' 'No passing race test events were collected.' }
     $browserSummary=@()
     foreach ($browser in @('chromium','firefox','webkit')) {
         $file=Join-Path $report "$browser.json"
@@ -265,7 +324,13 @@ finally {
             try {
                 $text=Clean ([IO.File]::ReadAllText($file)); Save-Text $file $text
                 $data=$text | ConvertFrom-Json
-                $browserSummary+=@{browser=$browser;stats=$data.stats}
+                $missingTitles = @()
+                if ($Retest) {
+                    $passedTitles = @(Get-BrowserPassTitles $data.suites)
+                    $missingTitles = @($retestPlan.browserTitles | Where-Object { $passedTitles -notcontains $_ })
+                    if ($missingTitles.Count) { Missing "browser-$browser-retest-coverage" "Required scenarios without PASS: $($missingTitles.Count). See browserSummary in report.json." }
+                }
+                $browserSummary+=@{browser=$browser;stats=$data.stats;requiredRetestTitlesMissing=$missingTitles}
                 if (!$data.stats -or $data.stats.expected -lt 1 -or $data.stats.skipped -gt 0 -or $data.stats.unexpected -gt 0 -or $data.stats.flaky -gt 0) { Missing "browser-$browser-coverage" 'No successful tests, skips, unexpected or flaky outcomes; see JSON.' }
             } catch { Missing "browser-$browser-report" 'Missing or invalid Playwright result data.' }
         } else { Missing "browser-$browser-report" 'No Playwright JSON report produced.' }
@@ -273,14 +338,18 @@ finally {
     $outcome='AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS'
     if ($fatal -or @($steps | Where-Object { $_.status -in @('FAIL','TIMEOUT') }).Count) { $outcome='FAILED' }
     elseif ($missingTests.Count -or $skips.Count -or @($steps | Where-Object status -eq 'BLOCKED').Count) { $outcome='INCOMPLETE' }
-    $result=[ordered]@{schema=1;outcome=$outcome;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');commit=$commit;requestedRef=$Ref;windows=[Environment]::OSVersion.VersionString;architecture=$env:PROCESSOR_ARCHITECTURE;logicalProcessors=[Environment]::ProcessorCount;powershell=$PSVersionTable.PSVersion.ToString();fatal=$fatal;steps=@($steps.ToArray());requiredNativeTestsMissing=$missingTests;goTestEvents=@($events.ToArray());browserSummary=$browserSummary;notCovered=$uncovered}
-    $result['runMode'] = $(if ($Remaining) { 'remaining' } else { 'full' })
+    $result=[ordered]@{schema=2;outcome=$outcome;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');commit=$commit;requestedRef=$Ref;windows=[Environment]::OSVersion.VersionString;architecture=$env:PROCESSOR_ARCHITECTURE;logicalProcessors=[Environment]::ProcessorCount;powershell=$PSVersionTable.PSVersion.ToString();fatal=$fatal;steps=@($steps.ToArray());requiredNativeTestsMissing=$missingTests;requiredGoRetestsMissing=$missingRetests;goTestEvents=@($events.ToArray());browserSummary=$browserSummary;notCovered=$uncovered}
+    $result['runMode'] = $(if ($Retest) { 'retest' } elseif ($Remaining) { 'remaining' } else { 'full' })
     Save-Text (Join-Path $report 'report.json') ($result | ConvertTo-Json -Depth 30)
     $lines=@('# Blora Windows validation', '', "Result: **$outcome**", "Commit: $commit", "UTC: $($result.startedAt) to $($result.finishedAt)", '', 'This is an automated evidence bundle, not full Windows/platform acceptance.', '', '| Stage | Result | Seconds | Log |','|---|---|---:|---|')
     foreach ($s in $steps) { $lines+="| $($s.name) | $($s.status) | $($s.seconds) | $($s.log) |" }
     $lines+=@('', '## Required native tests without PASS', ($missingTests -join "`n"), '', '## Skipped Go tests')
     foreach ($s in $skips) { $lines+="- $($s.stage): $($s.package) / $($s.test)" }
     $lines+=@('', '## Not covered'); foreach ($gap in $uncovered) { $lines+="- $gap" }
+    if ($Retest) {
+        $lines+=@('', '## Required Go retests without PASS'); foreach ($case in $missingRetests) { $lines+="- $($case.package) / $($case.test)" }
+        $lines+=@('', '## Required browser retests without PASS'); foreach ($summary in $browserSummary) { foreach ($title in $summary.requiredRetestTitlesMissing) { $lines+="- $($summary.browser): $title" } }
+    }
     if ($fatal) { $lines+=@('', '## Fatal error', $fatal) }
     $lines+=@('', 'Only this report folder is zipped. Source, browser traces, credentials, environment dumps and test state are excluded.', 'Before sharing, review the logs for local paths or identifiers emitted by failed tests. Timeout/abort cleanup requires inspection; do not terminate unrelated services.')
     Save-Text (Join-Path $report 'README.md') ($lines -join "`r`n")
@@ -292,6 +361,7 @@ finally {
     catch { Write-Host "ZIP creation failed: $($_.Exception.Message). Report files remain at $report" -ForegroundColor Red; $outcome='FAILED' }
     foreach ($item in Get-ChildItem Env:) { if ($item.Name -match '^(BLORA_|GOOS$|GOARCH$|GOFLAGS$|CGO_ENABLED$|GORACE$|CC$|CI$|PLAYWRIGHT_)') { [Environment]::SetEnvironmentVariable($item.Name,$null,'Process') } }
     foreach ($key in $savedEnvironment.Keys) { [Environment]::SetEnvironmentVariable($key,$savedEnvironment[$key],'Process') }
+    $env:Path=$savedPath
     Write-Host "`nResult: $outcome`nSummary: $(Join-Path $report 'README.md')" -ForegroundColor Cyan
     if ($zipReady) { Write-Host "Send this ZIP: $zip" -ForegroundColor Cyan }
 }

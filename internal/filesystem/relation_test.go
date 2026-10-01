@@ -6,7 +6,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -76,8 +78,24 @@ func TestRelationFailsWhenCanonicalRootOrSourceObjectIsReplaced(t *testing.T) {
 		t.Fatalf("same-content replacement deletion: %v", err)
 	}
 	content(t, root, "file", "same content")
+	current := relation(t, s, "file")
 	if err := os.Rename(root, root+"-renamed"); err != nil {
-		t.Fatal(err)
+		if runtime.GOOS != "windows" || (!errors.Is(err, os.ErrPermission) && !errors.Is(err, syscall.Errno(32))) {
+			t.Fatal(err)
+		}
+		// Windows retains a non-delete-shared root handle: replacement is
+		// prevented by the OS. Confirm the same object remains visible, and that
+		// releasing our own handle permits the rename (not a generic ACL error).
+		if after := relation(t, s, "file"); after.ObjectID != current.ObjectID {
+			t.Fatal("blocked root replacement changed object identity")
+		}
+		if err := s.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(root, root+"-renamed"); err != nil {
+			t.Fatal("root rename still blocked after releasing the service", err)
+		}
+		return
 	}
 	if err := os.Mkdir(root, 0700); err != nil {
 		t.Fatal(err)

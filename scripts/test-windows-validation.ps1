@@ -17,6 +17,7 @@ $steps=New-Object System.Collections.Generic.List[object]
 $events=New-Object System.Collections.Generic.List[object]
 $active=$null; $stage=0
 $started=[DateTime]::UtcNow; $commit='test-only'; $Ref='test'; $fatal=''; $savedEnvironment=@{}
+$savedPath=$env:Path; $Retest=$false; $retestPlan=Get-RetestPlan
 $uncovered=@('harness only'); $ProgressPreference='SilentlyContinue'
 $Remaining=$true
 # Test only: the timeout case runs the Start-Sleep cmdlet in the owned shell,
@@ -50,6 +51,7 @@ try {
     $steps.Add([pscustomobject]@{name='harness-pass';status='PASS';exitCode=0;seconds=0;detail='';log=''})
     foreach ($name in $requiredNames) { $events.Add([pscustomobject]@{stage='windows-native';test=$name;package='harness';action='pass';elapsed=0}) }
     $events.Add([pscustomobject]@{stage='go-all';test='TestHarness';package='harness';action='pass';elapsed=0})
+    $events.Add([pscustomobject]@{stage='go-race';test='TestHarness';package='harness';action='pass';elapsed=0})
     foreach ($browser in @('chromium','firefox','webkit')) { Save-Text (Join-Path $report "$browser.json") '{"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0}}' }
     Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
@@ -60,6 +62,47 @@ try {
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE') { throw 'Skip did not prevent success' }
+    # Retest mode cannot claim success from a nonempty but incomplete filter,
+    # another package's identically named case, or browser aggregate counts.
+    $steps.Clear(); $events.Clear(); $Retest=$true
+    $steps.Add([pscustomobject]@{name='harness-pass';status='PASS';exitCode=0;seconds=0;detail='';log=''})
+    foreach ($name in $requiredNames) { $events.Add([pscustomobject]@{stage='windows-native';test=$name;package='harness';action='pass';elapsed=0}) }
+    foreach ($case in $retestPlan.goCases) { $events.Add([pscustomobject]@{stage='go-retest';test=$case.test;package=$case.package;action='pass';elapsed=0}) }
+    $events.Add([pscustomobject]@{stage='go-race';test='TestHarness';package='harness';action='pass';elapsed=0})
+    $browserData=@{stats=@{expected=$retestPlan.browserTitles.Count;unexpected=0;flaky=0;skipped=0};suites=@(@{title='nested file';suites=@(@{title='nested group';specs=@($retestPlan.browserTitles | ForEach-Object { @{title=$_;ok=$true;tests=@(@{expectedStatus='passed';status='expected';results=@(@{status='passed'})})} })})})}
+    foreach ($browser in @('chromium','firefox','webkit')) { Save-Text (Join-Path $report "$browser.json") ($browserData | ConvertTo-Json -Depth 20) }
+    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.runMode -ne 'retest' -or $result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS' -or $result.requiredGoRetestsMissing.Count -or @($result.browserSummary | Where-Object { $_.requiredRetestTitlesMissing.Count }).Count) { throw 'Valid retest summary incorrect' }
+    $events[($events.Count-2)].package='wrong-package'
+    $browserData.suites[0].suites[0].specs[0].tests[0].results=@(@{status='failed'},@{status='passed'})
+    Save-Text (Join-Path $report 'firefox.json') ($browserData | ConvertTo-Json -Depth 20)
+    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.outcome -ne 'INCOMPLETE' -or $result.requiredGoRetestsMissing.Count -ne 1 -or @($result.browserSummary | Where-Object browser -eq 'firefox')[0].requiredRetestTitlesMissing.Count -ne 1) { throw 'Incomplete retest or flaky browser accepted as pass' }
+    # Verify compiler extraction with tiny fixtures; no compiler is downloaded
+    # or executed by the harness. Validate the helper's complete syntax too.
+    $compilerAst=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'windows-race-compiler.ps1'),[ref]$tokens,[ref]$errors)
+    if ($errors.Count) { throw ($errors | Out-String) }
+    foreach ($f in $compilerAst.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst]},$false)) { Invoke-Expression $f.Extent.Text }
+    function New-CompilerFixture([string]$File,[string]$Entry) {
+        $zip=[IO.Compression.ZipFile]::Open($File,[IO.Compression.ZipArchiveMode]::Create)
+        try { $stream=New-Object IO.StreamWriter($zip.CreateEntry($Entry).Open()); try { $stream.Write('not executable, test fixture') } finally { $stream.Dispose() } } finally { $zip.Dispose() }
+    }
+    $fixture=Join-Path $run 'compiler-fixture.zip'; New-CompilerFixture $fixture 'mingw64/bin/gcc.exe'
+    $digest=(Get-FileHash $fixture -Algorithm SHA256).Hash
+    $compilerRoot=Join-Path $run 'compiler-output'
+    $rejected=$false
+    try { Expand-CompilerArchive $fixture $compilerRoot ('0'*64) } catch { $rejected=$true }
+    if (!$rejected -or (Test-Path $compilerRoot)) { throw 'Bad compiler checksum extracted files' }
+    Expand-CompilerArchive $fixture $compilerRoot $digest
+    if (![IO.File]::ReadAllText((Join-Path $compilerRoot 'mingw64/bin/gcc.exe')).Contains('test fixture')) { throw 'Verified compiler extraction failed' }
+    $badFixture=Join-Path $run 'compiler-traversal.zip'; New-CompilerFixture $badFixture 'mingw64/../../escaped.txt'
+    $rejected=$false
+    try { Expand-CompilerArchive $badFixture (Join-Path $run 'bad-compiler-output') (Get-FileHash $badFixture -Algorithm SHA256).Hash } catch { $rejected=$true }
+    if (!$rejected -or (Test-Path (Join-Path $run 'escaped.txt'))) { throw 'Compiler traversal allowed' }
     $previousOS=$env:OS
     try {
         $env:OS='Windows_NT'
@@ -79,5 +122,5 @@ try {
         & $shell -NoProfile -File $source -WorkRoot $collection -CollectLatest
         if ($LASTEXITCODE -ne 0 -or @(Get-ChildItem (Join-Path $collection '20260102-010101-new') -Filter '*.zip').Count -ne 1 -or @(Get-ChildItem (Join-Path $collection '20260101-010101-old') -Filter '*.zip').Count -ne 0) { throw 'CollectLatest selected the wrong run' }
     } finally { $env:OS=$previousOS }
-    Write-Host 'PASS: failing progress host, child progress suppression, arguments, failure/skip/timeout, report outcomes, ZIP boundaries and old-run recovery.'
+    Write-Host 'PASS: failing progress host, child progress suppression, literal arguments, failure/skip/timeout, full/remaining/retest coverage gates, compiler checksum/traversal, ZIP boundaries and old-run recovery.'
 } finally { Remove-Item -LiteralPath $run -Recurse -Force }

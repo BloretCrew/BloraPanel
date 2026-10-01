@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -22,7 +23,11 @@ func TestMetadataVersionCancellationAndLinkBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0710 || !info.ModTime().Equal(stamp) {
+	wantMode := os.FileMode(0710)
+	if runtime.GOOS == "windows" {
+		wantMode = 0777
+	} // Windows writable directory; not POSIX ACLs.
+	if info.Mode().Perm() != wantMode || !info.ModTime().Equal(stamp) {
 		t.Fatalf("%v %v", info.Mode(), info.ModTime())
 	}
 	if _, err = s.Metadata(ctx, "dir", v, 0777, stamp); !errors.Is(err, ErrConflict) {
@@ -74,7 +79,11 @@ func TestUploadMetadataIsBoundToDurableIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0750 || info.ModTime().UnixNano() != spec.SourceModifiedNano {
+	wantMode := os.FileMode(0750)
+	if runtime.GOOS == "windows" {
+		wantMode = 0666
+	}
+	if info.Mode().Perm() != wantMode || info.ModTime().UnixNano() != spec.SourceModifiedNano {
 		t.Fatalf("committed metadata %v %v", info.Mode(), info.ModTime())
 	}
 }

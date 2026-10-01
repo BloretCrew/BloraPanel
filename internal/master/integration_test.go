@@ -114,16 +114,16 @@ func eventually(t *testing.T, timeout time.Duration, check func() bool) {
 
 func TestFailedStopBlocksReplacementButOtherNodeRemainsUsable(t *testing.T) {
 	f := newFileFixture(t)
-	create := func(index int, command string) model.Instance {
-		value := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[index].NodeID, "name": "stop-boundary", "config": model.InstanceConfig{Mode: "native", Directory: f.roots[index], Command: []string{"/bin/sh", "-c", command}, StopSeconds: 1, KillSeconds: 1, Escalate: false}}, model.ID(), 201)
+	create := func(index int, mode string) model.Instance {
+		value := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[index].NodeID, "name": "stop-boundary", "config": model.InstanceConfig{Mode: "native", Directory: f.roots[index], Command: nativeTestCommand(t, mode), Environment: nativeTestEnvironment(), StopSeconds: 1, KillSeconds: 1, Escalate: false}}, model.ID(), 201)
 		var instance model.Instance
 		if err := json.Unmarshal(value["instance"], &instance); err != nil {
 			t.Fatal(err)
 		}
 		return instance
 	}
-	stubborn := create(0, "printf x >> starts; trap '' TERM; touch ready; sleep 60 & wait")
-	other := create(1, "sleep 60")
+	stubborn := create(0, "stubborn")
+	other := create(1, "idle")
 	action := func(instance model.Instance, name string) model.Task {
 		return parseFileTask(t, f.admin.request("POST", "/instances/"+instance.ID+"/actions", map[string]string{"action": name}, model.ID(), 202))
 	}
@@ -182,7 +182,7 @@ func TestTaskCancellationReplayAfterTerminalKeepsReceipt(t *testing.T) {
 
 func TestRestartTaskSurvivesMasterAndDatabaseReopen(t *testing.T) {
 	f, reopen := newRestartTransferFixture(t)
-	config := model.InstanceConfig{Mode: "native", Directory: f.roots[0], Command: []string{"/bin/sh", "-c", "printf x >> generations; trap '' TERM; sleep 60 & wait"}, StopSeconds: 2, KillSeconds: 2, Escalate: true}
+	config := model.InstanceConfig{Mode: "native", Directory: f.roots[0], Command: nativeTestCommand(t, "generations"), Environment: nativeTestEnvironment(), StopSeconds: 2, KillSeconds: 2, Escalate: true}
 	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "master-reopen-run", "config": config}, model.ID(), 201)
 	var instance model.Instance
 	if err := json.Unmarshal(created["instance"], &instance); err != nil {
@@ -225,9 +225,6 @@ func TestRestartTaskSurvivesMasterAndDatabaseReopen(t *testing.T) {
 }
 
 func TestTwoNodesAuthorizationAndDurableLifecycle(t *testing.T) {
-	if _, err := os.Stat("/bin/sh"); err != nil {
-		t.Skip("Linux real process fixture requires /bin/sh")
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	root := t.TempDir()
@@ -300,7 +297,7 @@ func TestTwoNodesAuthorizationAndDurableLifecycle(t *testing.T) {
 	b.request("GET", "/nodes", nil, "", 200)
 	var instances []model.Instance
 	for index, d := range daemons {
-		config := model.InstanceConfig{Mode: "native", Command: []string{"/bin/sh", "-c", "trap '' TERM; sleep 600 & wait"}, StopSeconds: 1, KillSeconds: 2, Escalate: true}
+		config := model.InstanceConfig{Mode: "native", Command: nativeTestCommand(t, "stubborn-idle"), Environment: nativeTestEnvironment(), StopSeconds: 1, KillSeconds: 2, Escalate: true}
 		result := a.request("POST", "/instances", map[string]any{"nodeId": d.NodeID(), "name": []string{"instance-a", "instance-b"}[index], "config": config}, model.ID(), 201)
 		var instance model.Instance
 		if err := json.Unmarshal(result["instance"], &instance); err != nil {

@@ -11,6 +11,7 @@
     parent.postMessage({type: 'blora-extension-call', id, method, payload}, '*')
   })
   addEventListener('message', async event => {
+    if (event.source !== parent) return
     if (event.data?.type === 'blora-extension-result') {
       const item = pending.get(event.data.id)
       if (!item) return

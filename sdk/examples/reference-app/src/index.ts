@@ -65,8 +65,13 @@ export async function start(transport:(method:string,payload:any)=>Promise<any>)
   let writes=Promise.resolve()
   const persist=()=>{
     const state={schemaVersion:manifest.stateSchemaVersion,state:{nodeId:node.value,note:note.value,lastTaskId,cancelRequests:{...cancelRequests},instanceName:instanceName.value,...(taskPending?{taskPending}:{}) ,...(metadataPending?{metadataPending:metadataPending as any}:{})}}
-    writes=writes.catch(()=>undefined).then(()=>host.restore(state))
-    void writes.catch(error=>{status.textContent=String(error)})
+    // Send the checkpoint in this input event, rather than queueing it behind
+    // another round trip. The host serializes messages from this iframe and
+    // acknowledges only after its synchronous recovery journal is protected.
+    status.textContent='正在保护本地笔记…'
+    writes=host.restore(state)
+    const pending=writes
+    void pending.then(()=>{if(writes===pending&&status.textContent==='正在保护本地笔记…')status.textContent='本地笔记已保护'},error=>{if(writes===pending)status.textContent=String(error)})
   }
   node.addEventListener('input',persist)
   note.addEventListener('input',persist)

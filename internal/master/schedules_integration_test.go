@@ -184,7 +184,7 @@ func TestSchedulesAcceptRealLifecycleConsoleAndFreshBackup(t *testing.T) {
 	f := newFileFixture(t)
 	f.app.closeSchedules()
 	ctx := context.Background()
-	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "scheduled-runtime", "config": model.InstanceConfig{Mode: "native", Directory: f.roots[0], Command: []string{"/bin/sh", "-c", "while IFS= read -r line; do printf '%s\\n' \"$line\" >> scheduled-input; done"}, StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
+	created := f.admin.request("POST", "/instances", map[string]any{"nodeId": f.instances[0].NodeID, "name": "scheduled-runtime", "config": model.InstanceConfig{Mode: "native", Directory: f.roots[0], Command: nativeTestCommand(t, "scheduled-input"), Environment: nativeTestEnvironment(), StopSeconds: 1, KillSeconds: 1, Escalate: true}}, model.ID(), 201)
 	var i model.Instance
 	if err := json.Unmarshal(created["instance"], &i); err != nil {
 		t.Fatal(err)

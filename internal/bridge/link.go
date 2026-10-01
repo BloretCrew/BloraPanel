@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"net"
 	"sync"
 	"time"
 
@@ -133,6 +135,16 @@ func (l *Link) send(ctx context.Context, f frame) error {
 	}
 	if err == nil {
 		l.sent = sequence
+	} else {
+		var networkError net.Error
+		if l.conn.Err() == nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, net.ErrClosed) && !errors.As(err, &networkError) {
+			return err
+		}
+		// A socket may fail before read() closes the Link. Keep that failure
+		// identifiable as a lost management connection even in this interval,
+		// without retrying the request or hiding its original cause. Durable
+		// callers must reconcile their existing operation identity after reconnect.
+		return errors.Join(protocol.ErrClosed, err)
 	}
 	return err
 }
