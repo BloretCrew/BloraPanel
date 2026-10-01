@@ -13,6 +13,7 @@ param(
     [switch]$Retest,
     [switch]$Followup,
     [switch]$BrowsersOnly,
+    [switch]$WebKitOnly,
     [switch]$InstallRaceCompiler,
     [switch]$CollectLatest,
     [string]$CollectRun = ''
@@ -23,6 +24,7 @@ if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows, not WSL or Li
 if ($Ref.StartsWith('-')) { throw 'Ref must be a branch, tag, or commit, not a Git option.' }
 if ($Retest -and $Followup) { throw 'Choose either -Retest or -Followup.' }
 if ($BrowsersOnly -and !$Followup) { throw 'Use -BrowsersOnly with -Followup.' }
+if ($WebKitOnly -and (!$Followup -or !$BrowsersOnly)) { throw 'Use -WebKitOnly with -Followup -BrowsersOnly.' }
 if ($Retest -or $Followup) { $Remaining = $true }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 function New-ReportZip([string]$Folder,[string]$Destination) {
@@ -218,10 +220,32 @@ function Get-FollowupPlan {
             [pscustomobject]@{package='blora.dev/panel/internal/runlog';test='TestStdinSurvivesDaemonAndOutputEOF'},
             [pscustomobject]@{package='blora.dev/panel/internal/runlog';test='TestFinishRechecksDurableRecordAfterHelperExit'}
         )
-        browserCaseCount = 8
+        browserCaseCount = 9
         browserFiles = @('tests/browser/accounts.spec.ts','tests/browser/terminal.spec.ts','tests/browser/query-navigation.spec.ts')
-        browserTitles = @('rejected login clears submitted credentials immediately','account and permission confirmations restore while passwords never enter workspace recovery','password changes clear hidden fields, exclude recovery and require a new login after confirmation','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (automatic renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, main checkpoints)','pending task summary reads cancel before refresh while the latest task filter restores','cancelled navigation keeps task summary polling and its last confirmed state')
+        browserTitles = @('rejected login clears submitted credentials immediately','account and permission confirmations restore while passwords never enter workspace recovery','password changes clear hidden fields, exclude recovery and require a new login after confirmation','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (automatic renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, worker checkpoints)','xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, main checkpoints)','pending task summary reads cancel before refresh while the latest task filter restores','cancelled navigation keeps task summary polling and its last confirmed state','queued task polling cannot start new reads during beforeunload and resumes in the surviving document')
     }
+}
+function Get-WebKitFollowupPlan {
+    # The sixth returned report verified the other seven cases on Windows.
+    # Select the remaining terminal case plus all three navigation regressions;
+    # every selected case must pass three executions, with no retries or skips.
+    return [pscustomobject]@{
+        goCases = @()
+        browserCaseCount = 4
+        browserFiles = @('tests/browser/terminal.spec.ts','tests/browser/query-navigation.spec.ts')
+        browserTitles = @('xterm checkpoints resume the same session, ACK parsed bytes and never replay input (fallback renderer, worker checkpoints)','pending task summary reads cancel before refresh while the latest task filter restores','cancelled navigation keeps task summary polling and its last confirmed state','queued task polling cannot start new reads during beforeunload and resumes in the surviving document')
+    }
+}
+function Get-SelectedBrowsers {
+    if ($WebKitOnly) { return @('webkit') }
+    return @('chromium','firefox','webkit')
+}
+function Get-BrowserTitlePattern($Plan) {
+    # Playwright grep includes the file name (and optional project prefix),
+    # not just the leaf test title. Keep both file and title boundaries exact.
+    $files = @($Plan.browserFiles | ForEach-Object { [regex]::Escape([IO.Path]::GetFileName($_)) })
+    $titles = @($Plan.browserTitles | ForEach-Object { [regex]::Escape($_) })
+    return '^(?:.* )?(?:' + ($files -join '|') + ') (?:' + ($titles -join '|') + ')$'
 }
 function Get-BrowserDiagnostics($Suites) {
     foreach ($suite in @($Suites)) {
@@ -262,7 +286,7 @@ function Get-BrowserPassTitles($Suites) {
         if ($suite.suites) { Get-BrowserPassTitles $suite.suites }
     }
 }
-$retestPlan = $(if ($Followup) { Get-FollowupPlan } else { Get-RetestPlan })
+$retestPlan = $(if ($WebKitOnly) { Get-WebKitFollowupPlan } elseif ($Followup) { Get-FollowupPlan } else { Get-RetestPlan })
 $uncovered = @(
     'Existing Windows SCM/Task Scheduler tests enumerate read-only; service start/stop, task changes and firewall rollback require separate isolated lifecycle acceptance.',
     'Browser suites use API doubles with real browser/xterm/storage. The Linux /bin/sh devfixture and Linux-only real-browser scenarios are NOT Windows full-stack evidence.',
@@ -271,12 +295,14 @@ $uncovered = @(
     'Power loss, device cache loss, Engine disk exhaustion and remote certificate/network operations are not performed.'
 )
 if ($Followup) {
-    if ($BrowsersOnly) {
-        $uncovered += 'Browser-only followup runs all eight scenarios in three affected browser files: Chromium/Firefox once, WebKit three times. Go/native/race, GCC download, SDK packages, standalone builds/vet, production web/unit checks, other browser files and native IME are deliberately NOT selected. The fifth returned report verified the previous Go corrections; those passes are NOT imported into this run.'
+    if ($WebKitOnly) {
+        $uncovered += 'WebKit-only followup selects four scenarios in two browser files, each repeated three times (12 required executions): the remaining fallback-renderer/worker terminal case and all three task-read navigation regressions. Chromium/Firefox, account scenarios, the other terminal configurations, Go/native/race, GCC download, SDK packages, standalone builds/vet, production web/unit checks, other browser files and native IME are deliberately NOT selected. Previous reports are NOT imported as passes and omitted engines do not require a new JSON report.'
+    } elseif ($BrowsersOnly) {
+        $uncovered += 'Browser-only followup runs all nine scenarios in three affected browser files: Chromium/Firefox once, WebKit three times. Go/native/race, GCC download, SDK packages, standalone builds/vet, production web/unit checks, other browser files and native IME are deliberately NOT selected. The fifth returned report verified the previous Go corrections; those passes are NOT imported into this run.'
     } else {
-        $uncovered += 'Followup mode runs three named Go regressions (three executions), eleven native checks, full race testing of Master/runlog only, SDK packages, and all eight scenarios in three affected browser files. WebKit runs each scenario three times; Chromium/Firefox once. Other Go packages/browser files, standalone vet/builds, production web/unit checks and native IME are intentionally omitted; prior passes are NOT imported.'
+        $uncovered += 'Followup mode runs three named Go regressions (three executions), eleven native checks, full race testing of Master/runlog only, SDK packages, and all nine scenarios in three affected browser files. WebKit runs each scenario three times; Chromium/Firefox once. Other Go packages/browser files, standalone vet/builds, production web/unit checks and native IME are intentionally omitted; prior passes are NOT imported.'
     }
-    $uncovered += 'The fifth returned report passed all selected Go/native checks and account confirmations, but two WebKit terminal executions still reported background task-summary access-control diagnostics without native JS exceptions. Production task reads now consume cancellation signals and cancel before document departure; a controlled refresh reproduced the missing cancellation locally. The Windows diagnostic cause and resolution still require this run. Original page-error, recovery, password exclusion, ACK and no-replay assertions remain active. Failure-only diagnostics add bounded request/navigation timing, never field contents or storage dumps. The prevented-beforeunload case is not native dialog or bfcache acceptance.'
+    $uncovered += 'The sixth returned report passed Chromium/Firefox 8/8 and WebKit 23/24. Its one terminal diagnostic followed beforeunload by 8ms, before pagehide. Local queued QueryObserver callbacks reproduced new task-list/summary reads after cancellation. Production now gates subsequent task reads until the surviving document paints or pageshow resumes it; departing pagehide still cancels reads. The Windows diagnostic resolution still requires this run. Original page-error, recovery, password exclusion, ACK and no-replay assertions remain active. Failure-only diagnostics add bounded request/navigation timing, never field contents or storage dumps. Prevented-beforeunload/queued-callback cases are not native dialog or bfcache acceptance.'
 } elseif ($Retest) {
     $uncovered += 'Retest mode reruns the returned failing Go cases, the native suite, and all cases in nine affected browser files (excluding the already-passed Chromium-only native IME scenario). Required case names are checked individually. Prior results are NOT imported as passes; full all-package race testing is attempted because it was previously blocked.'
     $uncovered += 'This targeted run omits standalone vet/builds, web production build/unit tests, unaffected browser files and unaffected non-race Go cases. Native IME injection in Firefox/WebKit remains a capability gap, not a passing test.'
@@ -355,12 +381,13 @@ try {
                 if ($directory -eq 'web') {
                     if (!$Remaining) { [void](Invoke-Stage 'web-unit' 'npm.cmd' @('test') $path 1800) }
                     $env:CI='1'; $env:BLORA_E2E_FRESH_SERVER='1'
-                    foreach ($browser in @('chromium','firefox','webkit')) {
+                    foreach ($browser in @(Get-SelectedBrowsers)) {
                         if (Invoke-Stage "install-$browser" 'node.exe' @('node_modules/@playwright/test/cli.js','install',$browser) $path 1800) {
                             $env:BLORA_BROWSER=$browser
                             $env:PLAYWRIGHT_JSON_OUTPUT_NAME=Join-Path $report "$browser.json"
                             $browserArgs = @('node_modules/@playwright/test/cli.js','test','--workers=1','--reporter=line,json','--output',(Join-Path $run "browser-artifacts/$browser"))
                             if ($Retest -or $Followup) { $browserArgs += @($retestPlan.browserFiles) }
+                            if ($WebKitOnly) { $browserArgs += @('--grep',(Get-BrowserTitlePattern $retestPlan)) }
                             if ($Retest) { $browserArgs += @('--grep-invert','native Chromium IME composition survives immediate reload') }
                             if ($Followup -and $browser -eq 'webkit') { $browserArgs += '--repeat-each=3' }
                             [void](Invoke-Stage "browser-$browser" 'node.exe' $browserArgs $path 7200)
@@ -389,7 +416,7 @@ finally {
         if (!($events | Where-Object { $_.stage -eq 'go-race' -and $_.action -eq 'pass' })) { Missing 'go-race-coverage' 'No passing race test events were collected.' }
     }
     $browserSummary=@()
-    foreach ($browser in @('chromium','firefox','webkit')) {
+    foreach ($browser in @(Get-SelectedBrowsers)) {
         $file=Join-Path $report "$browser.json"
         if (Test-Path $file) {
             try {
@@ -414,7 +441,8 @@ finally {
     if ($fatal -or @($steps | Where-Object { $_.status -in @('FAIL','TIMEOUT') }).Count) { $outcome='FAILED' }
     elseif ($missingTests.Count -or $skips.Count -or @($steps | Where-Object status -eq 'BLOCKED').Count) { $outcome='INCOMPLETE' }
     $result=[ordered]@{schema=2;outcome=$outcome;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');commit=$commit;requestedRef=$Ref;windows=[Environment]::OSVersion.VersionString;architecture=$env:PROCESSOR_ARCHITECTURE;logicalProcessors=[Environment]::ProcessorCount;powershell=$PSVersionTable.PSVersion.ToString();fatal=$fatal;steps=@($steps.ToArray());requiredNativeTestsMissing=$missingTests;requiredGoRetestsMissing=$missingRetests;goTestEvents=@($events.ToArray());browserSummary=$browserSummary;notCovered=$uncovered}
-    $result['runMode'] = $(if ($BrowsersOnly) { 'followup-browser' } elseif ($Followup) { 'followup' } elseif ($Retest) { 'retest' } elseif ($Remaining) { 'remaining' } else { 'full' })
+    $result['runMode'] = $(if ($WebKitOnly) { 'followup-webkit' } elseif ($BrowsersOnly) { 'followup-browser' } elseif ($Followup) { 'followup' } elseif ($Retest) { 'retest' } elseif ($Remaining) { 'remaining' } else { 'full' })
+    $result['selectedBrowsers'] = @(Get-SelectedBrowsers)
     $result['goChecksSelected'] = !$BrowsersOnly
     $result['nativeChecksSelected'] = !$BrowsersOnly
     $result['sdkChecksSelected'] = !$BrowsersOnly

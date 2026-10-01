@@ -3,6 +3,7 @@ import {computed,ref} from 'vue'
 import {useNow} from '@vueuse/core'
 import {useQuery} from '@tanstack/vue-query'
 import {api,session,type Task} from '../services/api'
+import {readTaskQuery} from '../services/task-query-lifecycle'
 import {useDesktop} from '../desktop/store'
 import TransferDetails from './TransferDetails.vue'
 import TaskStages from './TaskStages.vue'
@@ -14,7 +15,7 @@ const props=defineProps<{viewTabId:string}>(),desktop=useDesktop(),error=ref('')
 const resuming=ref<string>()
 const view=computed(()=>desktop.state!.views[props.viewTabId]!),filter=computed({get:()=>String(view.value.state.filter||''),set:value=>desktop.commit([{kind:'set',path:['views',props.viewTabId,'state','filter'],value},{kind:'set',path:['views',props.viewTabId,'state','taskHistoryBefore'],value:0},{kind:'set',path:['views',props.viewTabId,'state','taskHistoryStack'],value:[]}])})
 const before=computed(()=>Number(view.value.state.taskHistoryBefore||0)),history=computed<number[]>(()=>view.value.state.taskHistoryStack as number[]||[])
-const tasks=useQuery({queryKey:computed(()=>['tasks','view',view.value.resourceRef?.id||'',before.value,filter.value]),queryFn:async({signal})=>{
+const tasks=useQuery({queryKey:computed(()=>['tasks','view',view.value.resourceRef?.id||'',before.value,filter.value]),queryFn:({signal})=>readTaskQuery(signal,async()=>{
   const resource=view.value.resourceRef
   if(resource){
     const result=await api<{task?:Task}>(`/tasks/${encodeURIComponent(resource.id)}`,{signal})
@@ -28,7 +29,7 @@ const tasks=useQuery({queryKey:computed(()=>['tasks','view',view.value.resourceR
     throw new Error('任务不存在或未授权')
   }
   return api<{items:Task[];nextBefore:number}>(`/tasks?before=${before.value}&limit=100&state=${encodeURIComponent(filter.value)}`,{signal})
-},refetchInterval:2000})
+}),refetchInterval:2000})
 const nextBefore=computed(()=>tasks.data.value?.nextBefore??-1)
 const canReadEarlier=computed(()=>nextBefore.value>=0&&!tasks.isFetching.value)
 function navigateHistory(direction:'next'|'previous'|'first'){

@@ -2,6 +2,7 @@
 import {computed,ref} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {api,type Node,type Task} from '../services/api'
+import {readTaskQuery} from '../services/task-query-lifecycle'
 import {useDesktop} from '../desktop/store'
 const props=defineProps<{viewTabId:string}>(),desktop=useDesktop(),view=computed(()=>desktop.state!.views[props.viewTabId]!),nodeId=computed(()=>String(view.value.state.nodeId||view.value.resourceRef?.nodeId||view.value.resourceRef?.id||''))
 const desired=computed({get:()=>String(view.value.state.firewallDesired||''),set:value=>{preview.value=undefined;desktop.patchView(props.viewTabId,'firewallDesired',value)}}),preview=ref<{current:string[];add:string[];remove:string[];zone:string;planHash:string;permanentAdd:string[];permanentRemove:string[]}>(),previewError=ref('')
@@ -15,7 +16,7 @@ const nodes=useQuery({queryKey:['nodes'],queryFn:()=>api<{items:Node[]}>('/nodes
 const available=(value?:string)=>!!value&&value!=='unavailable'&&value!=='unsupported'
 const servicesAvailable=computed(()=>available(caps.data.value?.services)),firewallAvailable=computed(()=>available(caps.data.value?.firewall)),tasksAvailable=computed(()=>available(caps.data.value?.scheduledTasks))
 const services=useQuery({queryKey:['system-services',nodeId,serviceAfter],queryFn:()=>api<{items:{name:string;state:string;description?:string}[];nextAfter?:string}>(`/nodes/${encodeURIComponent(nodeId.value)}/system/services?limit=100&after=${encodeURIComponent(serviceAfter.value)}`),enabled:computed(()=>!!nodeId.value&&servicesAvailable.value)}),firewall=useQuery({queryKey:['system-firewall',nodeId],queryFn:()=>api<{backend:string;state:string;detail?:string}>(`/nodes/${encodeURIComponent(nodeId.value)}/system/firewall`),enabled:computed(()=>!!nodeId.value)}),tasks=useQuery({queryKey:['system-tasks',nodeId,taskAfter],queryFn:()=>api<{items:{name:string;state:string;schedule?:string}[];nextAfter?:string}>(`/nodes/${encodeURIComponent(nodeId.value)}/system/tasks?after=${encodeURIComponent(taskAfter.value)}`),enabled:computed(()=>!!nodeId.value&&tasksAvailable.value)})
-const firewallTask=useQuery({queryKey:['system-firewall-task',firewallTaskId],queryFn:()=>api<{task:Task}>(`/tasks/${encodeURIComponent(firewallTaskId.value)}`),enabled:computed(()=>!!firewallTaskId.value),refetchInterval:2000})
+const firewallTask=useQuery({queryKey:['tasks','system-firewall',firewallTaskId],queryFn:({signal})=>readTaskQuery(signal,()=>api<{task:Task}>(`/tasks/${encodeURIComponent(firewallTaskId.value)}`,{signal})),enabled:computed(()=>!!firewallTaskId.value),refetchInterval:2000})
 const mutationRequests=computed<Record<string,string>>({get:()=>((view.value.state.systemMutationRequests||{}) as Record<string,string>),set:value=>desktop.patchView(props.viewTabId,'systemMutationRequests',value)})
 function mutationKey(scope:string){return mutationRequests.value[scope]||(mutationRequests.value={...mutationRequests.value,[scope]:crypto.randomUUID()},mutationRequests.value[scope])}
 function mutationDone(scope:string){const next={...mutationRequests.value};delete next[scope];mutationRequests.value=next}

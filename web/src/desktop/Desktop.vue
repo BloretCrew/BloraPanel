@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/vue-query'
 import { motion } from 'motion-v'
 import { apps } from '../app-host/registry'
 import { session, api, APIError, type Instance } from '../services/api'
+import {readTaskQuery} from '../services/task-query-lifecycle'
 import { useDesktop } from './store'
 import { json } from '../recovery/state'
 import WindowFrame from './WindowFrame.vue'
@@ -56,7 +57,7 @@ const dockMetrics=computed(()=>{
   return {inset,style:{'--dock-inset':`${inset}px`,'--dock-hit-padding':`${hitPadding}px`,'--dock-icon-size':`${icon}px`,'--dock-gap':`${gap}px`,'--dock-divider-margin':`${(divider-1)/2}px`}}
 })
 const activeAppTitle=computed(()=>apps.get(desktop.state!.windows[desktop.state!.activeWindowId||'']?.appId||'')?.manifest.title||'桌面')
-const taskSummary=useQuery({queryKey:['tasks','summary'],queryFn:({signal})=>api<{active:number;states:Record<string,number>}>('/tasks/summary',{signal}),refetchInterval:3000})
+const taskSummary=useQuery({queryKey:['tasks','summary'],queryFn:({signal})=>readTaskQuery(signal,()=>api<{active:number;states:Record<string,number>}>('/tasks/summary',{signal})),refetchInterval:3000})
 const shortcutResources=useQuery({queryKey:['instances'],enabled:computed(()=>Object.values(desktop.state!.shortcuts).some(shortcut=>shortcut.resourceRef.kind==='instance')),queryFn:()=>api<{items:Instance[]}>('/instances'),refetchInterval:3000})
 function shortcutInstance(shortcut:Shortcut){return shortcut.resourceRef.kind==='instance'?shortcutResources.data.value?.items.find(instance=>instance.instanceId===shortcut.resourceRef.id&&instance.nodeId===shortcut.resourceRef.nodeId):undefined}
 function shortcutTitle(shortcut:Shortcut){return shortcut.customTitle?shortcut.title:shortcutInstance(shortcut)?.name||shortcut.title}

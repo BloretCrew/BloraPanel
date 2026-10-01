@@ -2,13 +2,14 @@
 import {computed,ref} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {api,type Task} from '../services/api'
+import {readTaskQuery} from '../services/task-query-lifecycle'
 import {useDesktop} from '../desktop/store'
 import {copy,json} from '../recovery/state'
 export interface BatchTarget {instanceId:string;nodeId:string;name:string;requestId:string;taskId?:string;error?:string}
 interface Batch {action:string;targets:BatchTarget[]}
 const props=defineProps<{viewTabId:string}>(),desktop=useDesktop(),recovery=desktop.recovery!,busy=ref(false)
 const batch=computed<Batch|undefined>(()=>recovery.state.views[props.viewTabId]?.state.batchConfirmation as unknown as Batch|undefined)
-const tasks=useQuery({queryKey:['tasks'],queryFn:({signal})=>api<{items:Task[]}>('/tasks',{signal}),refetchInterval:2000})
+const tasks=useQuery({queryKey:['tasks'],queryFn:({signal})=>readTaskQuery(signal,()=>api<{items:Task[]}>('/tasks',{signal})),refetchInterval:2000})
 function patch(value?:Batch){if(recovery.state.views[props.viewTabId])recovery.commit([{kind:'set',path:['views',props.viewTabId,'state','batchConfirmation'],value:json(value||null)}])}
 async function submit(){if(!batch.value||busy.value)return;busy.value=true;const fixed=copy(batch.value);try{for(const target of fixed.targets){if(target.taskId)continue;try{const known=tasks.data.value?.items.find(task=>task.requestId===target.requestId);const task=known||(await api<{task:Task}>(`/instances/${encodeURIComponent(target.instanceId)}/actions`,{method:'POST',headers:{'Idempotency-Key':target.requestId},body:JSON.stringify({action:fixed.action})})).task;target.taskId=task.taskId;target.error=undefined}catch(e){target.error=String(e)}patch(copy(fixed))}await tasks.refetch()}finally{busy.value=false}}
 </script>

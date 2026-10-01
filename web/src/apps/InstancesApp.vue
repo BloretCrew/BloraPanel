@@ -3,6 +3,7 @@ import UIIcon from '../app-host/UIIcon.vue'
 import { computed, ref } from 'vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { api, session, type Instance, type Node, type Task } from '../services/api'
+import {readTaskQuery} from '../services/task-query-lifecycle'
 import { useDesktop } from '../desktop/store'
 import InstanceConsole from './InstanceConsole.vue'
 import InstanceSettings from './InstanceSettings.vue'
@@ -15,7 +16,7 @@ const instanceViewMode=computed<'list'|'cards'>({get:()=>view.value.state.instan
 const instances=useQuery({queryKey:['instances'],queryFn:()=>api<{items:Instance[]}>('/instances'),refetchInterval:3000})
 const nodes=useQuery({queryKey:['nodes'],queryFn:()=>api<{items:Node[]}>('/nodes'),refetchInterval:5000})
 const creatable=useQuery({queryKey:['nodes','creatable'],queryFn:()=>api<{items:Node[]}>('/nodes/creatable')})
-const tasks=useQuery({queryKey:['tasks'],queryFn:({signal})=>api<{items:Task[]}>('/tasks',{signal}),refetchInterval:3000})
+const tasks=useQuery({queryKey:['tasks'],queryFn:({signal})=>readTaskQuery(signal,()=>api<{items:Task[]}>('/tasks',{signal})),refetchInterval:3000})
 const stateFilter=computed({get:()=>String(view.value.state.stateFilter||''),set:value=>desktop.patchView(props.viewTabId,'stateFilter',value)}),groupFilter=computed({get:()=>String(view.value.state.groupFilter||''),set:value=>desktop.patchView(props.viewTabId,'groupFilter',value)}),tagFilter=computed({get:()=>String(view.value.state.tagFilter||''),set:value=>desktop.patchView(props.viewTabId,'tagFilter',value)})
 const nodeChoices=computed(()=>[...new Map((instances.data.value?.items||[]).map(instance=>[instance.nodeId,{nodeId:instance.nodeId,name:instance.nodeName||nodes.data.value?.items.find(node=>node.nodeId===instance.nodeId)?.name||instance.nodeId}])).values()])
 const groupChoices=computed(()=>[...new Set((instances.data.value?.items||[]).map(instance=>instance.group).filter(Boolean))]),tagChoices=computed(()=>[...new Set((instances.data.value?.items||[]).flatMap(instance=>instance.tags||[]))]),stateChoices=computed(()=>[...new Set((instances.data.value?.items||[]).map(instance=>instance.state))])

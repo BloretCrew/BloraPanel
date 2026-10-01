@@ -2,11 +2,12 @@
 import {computed} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {api} from '../services/api'
+import {readTaskQuery} from '../services/task-query-lifecycle'
 import {useDesktop} from '../desktop/store'
 const props=defineProps<{taskId:string;viewTabId:string}>(),desktop=useDesktop()
 interface Stage{revision:number;recordedAt:number;state:string;phase:string;error?:string;truncated:boolean}
 const before=computed(()=>Number(desktop.state?.views[props.viewTabId]?.state.taskStageBefore||0))
-const stages=useQuery({queryKey:computed(()=>['tasks',props.taskId,'stages',before.value]),queryFn:({signal})=>api<{items:Stage[];nextBefore:number}>(`/tasks/${encodeURIComponent(props.taskId)}/events?before=${before.value}&limit=50`,{signal}),refetchInterval:computed(()=>before.value?false:3000)})
+const stages=useQuery({queryKey:computed(()=>['tasks',props.taskId,'stages',before.value]),queryFn:({signal})=>readTaskQuery(signal,()=>api<{items:Stage[];nextBefore:number}>(`/tasks/${encodeURIComponent(props.taskId)}/events?before=${before.value}&limit=50`,{signal})),refetchInterval:computed(()=>before.value?false:3000)})
 const canEarlier=computed(()=>!stages.isFetching.value&&(stages.data.value?.nextBefore??-1)>=0)
 function change(cursor:number){desktop.patchView(props.viewTabId,'taskStageBefore',cursor)}
 </script>

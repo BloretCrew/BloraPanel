@@ -46,12 +46,55 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the fifth returned report: browsers only
+## Follow up the sixth returned report: remaining WebKit checks
+
+The [sixth returned report](../acceptance/reports/windows-sixth-report-2026-10-01.md)
+passed Chromium and Firefox **8/8** each, and WebKit **23/24**. One WebKit
+fallback-renderer/worker terminal execution reported a task-list fetch diagnostic
+between `beforeunload` and `pagehide`. Cancelling existing reads did not prevent
+a queued polling callback from starting another read; a controlled local test
+now reproduces and guards that boundary.
+
+Download the runner from the **same pinned commit** supplied in the conversation,
+then use this narrower selection:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref <commit> -Followup -BrowsersOnly -WebKitOnly
+```
+
+It needs Git and Node.js, creates a fresh checkout, installs only `web`
+dependencies and the matching WebKit engine, and selects these four cases:
+
+- Fallback-renderer/worker terminal checkpoint recovery, parsed-byte ACKs and
+  no input replay: the scenario with the one remaining Windows failure.
+- Pending task-summary cancellation before a real refresh, with the latest
+  task filter restored.
+- Last confirmed task count and continued polling after prevented navigation.
+- Real queued QueryObserver polling callbacks cannot start task-list/summary
+  reads during departure; a surviving document resumes them.
+
+Every case runs **three times**, requiring **12/12** actual passing executions.
+The file/title selection is anchored; the report checks every required title
+and aggregate count. Retries, skips, expected failures and missing results
+cannot count as passes. Original terminal/page-error assertions remain active.
+The controlled prevented-navigation checks do not prove native dialog or
+bfcache behavior. Linux results do not establish resolution on Windows.
+
+Chromium/Firefox, account scenarios, the other terminal configurations,
+Go/native/race, compiler downloads and SDK packages are deliberately omitted.
+No Go installation or `-InstallRaceCompiler` is needed. The report records
+`runMode=followup-webkit`, `selectedBrowsers=["webkit"]` and the three
+Go/native/SDK selection flags as `false`. It does not import earlier passes or
+require JSON reports from omitted engines. `-WebKitOnly` requires both
+`-Followup` and `-BrowsersOnly`. Progress, deadlines, failure diagnostics and
+ZIP creation remain enabled; return `Blora-Windows-Report.zip` even on failure.
+
+## Broader browser-only followup
 
 The [fifth returned report](../acceptance/reports/windows-fifth-report-2026-10-01.md)
 confirmed all eleven native checks and the three named Go regressions on Windows,
 with no Master/runlog race failures. Two WebKit terminal executions still failed
-the unchanged page-error assertions. For the next focused run, download the
+the unchanged page-error assertions. To rerun all affected engines, download the
 runner from the **same pinned commit** supplied in the conversation, then use:
 
 ```powershell
@@ -59,10 +102,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref <commit> -F
 ```
 
 This mode needs Git and Node.js, makes a fresh checkout, installs `web`
-dependencies and the matching browsers, and runs all eight scenarios in
+dependencies and the matching browsers, and runs all nine current scenarios in
 `accounts.spec.ts`, `terminal.spec.ts` and `query-navigation.spec.ts`.
-Chromium and Firefox require **8/8** each; WebKit repeats every scenario three
-times and requires **24/24**. Actual execution counts and each required title
+Chromium and Firefox require **9/9** each; WebKit repeats every scenario three
+times and requires **27/27**. The original `f98b078` selection required 8/8/24;
+the current version adds the queued-polling regression. Actual counts and titles
 must pass, without retries, skips or expected failures. The new controlled
 checks cover aborting a pending task summary before a real refresh while
 restoring the latest filter, and continuing polling after a prevented
@@ -129,10 +173,11 @@ Followup makes a fresh checkout and builds the SDK packages. It requires three
 executions of each of the two new Go failures and the new durable-finish
 interleaving regression, all eleven native checks, and full race regression
 of **Master and runlog**. The original `3c7abb3` runner selected six browser
-scenarios (6 / 6 / 18). The current runner adds two query-navigation regressions,
-so it selects eight scenarios in `accounts.spec.ts`, `terminal.spec.ts` and
+scenarios (6 / 6 / 18). The `f98b078` runner added two query-navigation cases
+(8 / 8 / 24). The current runner adds the queued-polling regression, so it
+selects nine scenarios in `accounts.spec.ts`, `terminal.spec.ts` and
 `query-navigation.spec.ts`: once each on Chromium/Firefox, three times on WebKit
-(8 / 8 / 24 passing executions required). These browser tests still use real
+(9 / 9 / 27 passing executions required). These browser tests still use real
 trusted actions, actual xterm/Monaco/storage and the original strict recovery,
 password exclusion, ACK/credit and no-replay assertions. They use transport
 doubles, including the independent notification stream, not a Windows

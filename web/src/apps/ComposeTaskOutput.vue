@@ -3,9 +3,10 @@ import {computed} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {useDesktop} from '../desktop/store'
 import {dockerQuery} from '../services/containers'
+import {readTaskQuery} from '../services/task-query-lifecycle'
 const props=defineProps<{nodeId:string;taskId:string;viewTabId:string}>(),desktop=useDesktop()
 const offset=computed(()=>Number(desktop.state?.views[props.viewTabId]?.state.composeOutputOffset||0))
-const output=useQuery({queryKey:computed(()=>['tasks',props.taskId,'compose-output',offset.value]),queryFn:({signal})=>dockerQuery(props.nodeId,{kind:'operation-output',taskId:props.taskId,outputOffset:offset.value},signal),refetchInterval:3000})
+const output=useQuery({queryKey:computed(()=>['tasks',props.taskId,'compose-output',offset.value]),queryFn:({signal})=>readTaskQuery(signal,()=>dockerQuery(props.nodeId,{kind:'operation-output',taskId:props.taskId,outputOffset:offset.value},signal)),refetchInterval:3000})
 const canNext=computed(()=>!output.isFetching.value&&(output.data.value?.nextOutput??-1)>=0)
 function change(value:number){desktop.patchView(props.viewTabId,'composeOutputOffset',value)}
 function text(value?:string|null){return new TextDecoder().decode(Uint8Array.from(atob(value||''),character=>character.charCodeAt(0)))}
