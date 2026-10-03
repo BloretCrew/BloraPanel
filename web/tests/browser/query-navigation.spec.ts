@@ -137,3 +137,83 @@ test('queued task polling cannot start new reads during beforeunload and resumes
   expect(writes).toEqual([])
   expect(errors).toEqual([])
 })
+
+test('instance log polling cancels pending reads, gates queued polls and resumes without input replay',async({page})=>{
+  const errors:string[]=[],writes:string[]=[]
+  page.on('pageerror',error=>errors.push(error.message))
+  await page.addInitScript(()=>{
+    const callbacks=new Map<number,()=>void>(),blocked:string[]=[],aborts:string[]=[]
+    const interval=window.setInterval.bind(window),clear=window.clearInterval.bind(window),fetch=window.fetch.bind(window)
+    let leaving=false
+    window.setInterval=((handler:TimerHandler,delay?:number,...args:unknown[])=>{
+      const id=interval(handler,delay,...args)
+      if(typeof handler==='function'&&delay===3000)callbacks.set(id,()=>handler(...args))
+      return id
+    }) as typeof window.setInterval
+    window.clearInterval=((id?:number)=>{if(id!==undefined)callbacks.delete(id);clear(id)}) as typeof window.clearInterval
+    window.addEventListener('beforeunload',()=>{leaving=true;requestAnimationFrame(()=>{leaving=false})})
+    window.fetch=(input:RequestInfo|URL,init?:RequestInit)=>{
+      const url=typeof input==='string'?input:input instanceof URL?input.href:input.url,path=new URL(url,location.href).pathname
+      if(path==='/api/v1/instances/poll-instance/logs'){
+        if(leaving)blocked.push(path)
+        init?.signal?.addEventListener('abort',()=>aborts.push(leaving?'beforeunload':'other'),{once:true})
+      }
+      return fetch(input,init)
+    }
+    Object.assign(window,{__bloraQueuedLogPolls:{callbacks,blocked,aborts}})
+  })
+  let reads=0,waiting=false,release:()=>void=()=>{}
+  const held=new Promise<void>(resolve=>{release=resolve})
+  await page.context().route('**/api/v1/**',async route=>{
+    const path=new URL(route.request().url()).pathname
+    if(route.request().method()!=='GET')writes.push(path)
+    if(path.endsWith('/instances/poll-instance/logs')){
+      if(++reads===2){waiting=true;await held;return}
+      return route.fulfill({json:{items:[{runId:'poll-run',startedAt:'2026-10-03T00:00:00Z',backend:'test-boundary'},...(reads>2?[{runId:'later-run',startedAt:'2026-10-03T01:00:00Z',backend:'test-boundary'}]:[])]}})
+    }
+    return route.fulfill({json:path.endsWith('/session')?{user:{userId:'log-poll',name:'日志轮询测试',admin:true},csrfToken:'test-only'}:path.endsWith('/instances')?{items:[{instanceId:'poll-instance',nodeId:'poll-node',name:'轮询实例',state:'RUNNING',runId:'poll-run',config:{mode:'native'},revision:1}]}:{items:[]}})
+  })
+  // This case isolates HTTP polling; the separate log/terminal suites exercise
+  // real binary stream processing, ACKs, checkpoints and command delivery.
+  await page.context().routeWebSocket(/\/instances\/poll-instance\/logs\/poll-run\/stream/,()=>{})
+  try{
+    await page.goto('/')
+    await page.locator('[data-app="blora.instances"]').click()
+    await page.getByRole('button',{name:'轮询实例',exact:true}).click()
+    await page.getByRole('button',{name:'控制台',exact:true}).click()
+    const runs=page.getByRole('combobox',{name:'选择日志运行代次'})
+    await expect(runs).toHaveValue('poll-run')
+    await page.getByRole('textbox',{name:'尚未发送的实例命令'}).fill('保留草稿，不发送')
+    await expect.poll(()=>waiting).toBe(true)
+    const observation=await page.evaluate(()=>{
+      const state=(window as unknown as {__bloraQueuedLogPolls:{callbacks:Map<number,()=>void>;blocked:string[];aborts:string[]}}).__bloraQueuedLogPolls
+      const queued=[...state.callbacks.values()]
+      const event=new Event('beforeunload',{cancelable:true});event.preventDefault();window.dispatchEvent(event)
+      queued.forEach(callback=>callback())
+      return{callbacks:queued.length,blocked:[...state.blocked],aborts:[...state.aborts]}
+    })
+    expect(observation.callbacks).toBeGreaterThanOrEqual(2)
+    expect(observation.blocked).toEqual([])
+    expect(observation.aborts).toEqual(['beforeunload'])
+    await expect(runs).toHaveValue('poll-run')
+    await expect(runs.locator('option[value="later-run"]')).toHaveCount(1)
+    // Repeat the queued-callback boundary after the previous pending read has
+    // completed, so the component's overlap guard cannot mask a new fetch.
+    const queuedAfterResume=await page.evaluate(()=>{
+      const state=(window as unknown as {__bloraQueuedLogPolls:{callbacks:Map<number,()=>void>;blocked:string[]}}).__bloraQueuedLogPolls
+      const event=new Event('beforeunload',{cancelable:true});event.preventDefault();window.dispatchEvent(event)
+      state.callbacks.forEach(callback=>callback())
+      return[...state.blocked]
+    })
+    expect(queuedAfterResume).toEqual([])
+    await expect.poll(()=>reads).toBeGreaterThanOrEqual(4)
+    expect(await page.evaluate(()=>(window as unknown as {__bloraQueuedLogPolls:{blocked:string[]}}).__bloraQueuedLogPolls.blocked)).toEqual([])
+    await expect(page.locator('.instance-console [role="alert"]')).toHaveCount(0)
+    release()
+    await page.reload()
+    await expect(page.getByRole('textbox',{name:'尚未发送的实例命令'})).toHaveValue('保留草稿，不发送')
+    await expect(runs).toHaveValue('poll-run')
+    expect(writes).toEqual([])
+    expect(errors).toEqual([])
+  }finally{release()}
+})

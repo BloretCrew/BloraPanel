@@ -15,9 +15,22 @@ const runId=computed(()=>String(view.value.state.logRunId||'')),checkpoint=compu
 const paused=computed({get:()=>!!view.value.state.logPaused,set:value=>patch('logPaused',value)}),search=computed({get:()=>String(view.value.state.logSearch||''),set:value=>{patch('logSearch',value);patch('logScroll',0)}}),commandDraft=computed({get:()=>String(view.value.state.consoleCommand||''),set:value=>patch('consoleCommand',value)})
 const newline=computed({get:()=>view.value.state.consoleNewline!==false,set:value=>patch('consoleNewline',value)}),attempt=computed(()=>view.value.state.consoleAttempt as unknown as CommandAttempt|undefined)
 const commandPending=computed(()=>!!attempt.value&&!['SUCCEEDED','FAILED','CANCELLED','INTERRUPTED'].includes(attempt.value.state))
+const reads=new AbortController()
+let refreshing=false,reconciling=false
 function storeAttempt(value:CommandAttempt){if(!attempt.value||attempt.value.requestId===value.requestId)patch('consoleAttempt',value)}
 function commandResult(fixed:CommandAttempt,task:Task){storeAttempt({...fixed,taskId:task.taskId,state:task.state,error:task.error,bytesWritten:typeof task.result?.bytesWritten==='number'?task.result.bytesWritten:undefined});if(task.state==='SUCCEEDED'&&commandDraft.value===fixed.draft)commandDraft.value=''}
-async function reconcileCommand(){const fixed=attempt.value;if(!fixed||sending.value)return;try{const task=fixed.taskId?(await api<{task:Task}>(`/tasks/${encodeURIComponent(fixed.taskId)}`)).task:(await api<{items:Task[]}>('/tasks')).items.find(task=>task.requestId===fixed.requestId&&task.action==='console.input');if(task)commandResult(fixed,task);else storeAttempt({...fixed,state:'UNKNOWN',error:'尚未查到接收记录。可显式使用原请求核对；刷新不会再次发送。'})}catch(e){storeAttempt({...fixed,error:String(e)})}}
+async function reconcileCommand(){
+  const fixed=attempt.value
+  if(!fixed||sending.value||disposed||reconciling)return
+  reconciling=true
+  try{
+    const task=fixed.taskId?(await api<{task:Task}>(`/tasks/${encodeURIComponent(fixed.taskId)}`,{signal:reads.signal})).task:(await api<{items:Task[]}>('/tasks',{signal:reads.signal})).items.find(task=>task.requestId===fixed.requestId&&task.action==='console.input')
+    if(disposed)return
+    if(task)commandResult(fixed,task)
+    else storeAttempt({...fixed,state:'UNKNOWN',error:'尚未查到接收记录。可显式使用原请求核对；刷新不会再次发送。'})
+  }catch(e){if(!disposed)storeAttempt({...fixed,error:String(e)})}
+  finally{reconciling=false}
+}
 async function sendCommand(retry=false){
   if(sending.value||(!retry&&(!inputAvailable.value||!commandDraft.value||commandPending.value)))return
   const fixed:CommandAttempt=retry?{...attempt.value!}:{instanceId:props.instance.instanceId,runId:runId.value,requestId:crypto.randomUUID(),data:commandDraft.value+(newline.value?'\n':''),draft:commandDraft.value,state:'SUBMITTING'}
@@ -27,7 +40,17 @@ async function sendCommand(retry=false){
 }
 const scroll=computed(()=>Number(view.value.state.logScroll||0)),allLines=computed(()=>logText(checkpoint.value.text).split('\n').map((text,index)=>({text,number:index+checkpoint.value.discardedLines+1}))),lines=computed(()=>search.value?allLines.value.filter(line=>line.text.toLowerCase().includes(search.value.toLowerCase())):allLines.value),first=computed(()=>Math.max(0,Math.floor(scroll.value/20)-4)),visibleLines=computed(()=>lines.value.slice(first.value,first.value+Math.min(100,Math.ceil(height.value/20)+10)))
 let socket:WebSocket|undefined,generation=0,disposed=false,reconnect:ReturnType<typeof setTimeout>|undefined,refresh:ReturnType<typeof setInterval>|undefined,observer:ResizeObserver|undefined,autoScroll=false
-async function refreshRuns(){try{const {items}=await api<{items:RunLog[]}>(`/instances/${encodeURIComponent(props.instance.instanceId)}/logs`);if(disposed)return;runs.value=items.sort((a,b)=>Date.parse(b.startedAt)-Date.parse(a.startedAt));if(!runId.value){const initial=items.find(run=>run.runId===props.instance.runId)||items[0];if(initial)attach(initial.runId);else status.value='此实例尚无运行日志'}}catch(e){error.value=String(e)}}
+async function refreshRuns(){
+  if(disposed||refreshing)return
+  refreshing=true
+  try{
+    const {items}=await api<{items:RunLog[]}>(`/instances/${encodeURIComponent(props.instance.instanceId)}/logs`,{signal:reads.signal})
+    if(disposed)return
+    runs.value=items.sort((a,b)=>Date.parse(b.startedAt)-Date.parse(a.startedAt))
+    if(!runId.value){const initial=items.find(run=>run.runId===props.instance.runId)||items[0];if(initial)attach(initial.runId);else status.value='此实例尚无运行日志'}
+  }catch(e){if(!disposed)error.value=String(e)}
+  finally{refreshing=false}
+}
 function stop(){generation++;clearTimeout(reconnect);socket?.close();socket=undefined;connected.value=false;inputAvailable.value=false}
 function persist(next:LogCheckpoint){const removed=next.discardedLines-checkpoint.value.discardedLines;patch('logCheckpoint',next);if(paused.value&&removed>0)patch('logScroll',Math.max(0,scroll.value-removed*20))}
 async function attach(id:string){
@@ -56,7 +79,7 @@ function toggleFollow(){paused.value=!paused.value;if(!paused.value)void positio
 async function copyLog(){try{await navigator.clipboard.writeText(logText(checkpoint.value.text));status.value='当前保留日志已复制'}catch(e){error.value=String(e)}}
 watch(()=>lines.value.length,()=>void position());watch(search,()=>void position());watch(()=>props.visible,visible=>{if(visible)void position()});watch(()=>props.instance.runId,()=>void refreshRuns())
 onMounted(()=>{void refreshRuns();void reconcileCommand();if(runId.value)void attach(runId.value);observer=new ResizeObserver(()=>{height.value=viewport.value?.clientHeight||280});if(viewport.value)observer.observe(viewport.value);void position();refresh=setInterval(()=>{void refreshRuns();if(commandPending.value)void reconcileCommand()},3000)})
-onBeforeUnmount(()=>{disposed=true;stop();clearInterval(refresh);observer?.disconnect()})
+onBeforeUnmount(()=>{disposed=true;reads.abort();stop();clearInterval(refresh);observer?.disconnect()})
 </script>
 <template>
   <section class="instance-console">

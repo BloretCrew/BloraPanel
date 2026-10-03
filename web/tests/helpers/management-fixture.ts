@@ -12,11 +12,12 @@ export const test=base.extend<{managementDiagnostics:void}>({
     let requestId=0
     page.on('request',request=>{
       const path=new URL(request.url()).pathname
-      if(!/^\/api\/v1\/tasks(?:\/|$)/.test(path))return
+      const task=/^\/api\/v1\/tasks(?:\/|$)/.test(path),log=/^\/api\/v1\/instances\/[^/]+\/logs(?:\/|$)/.test(path)
+      if(!task&&!log)return
       requests.set(request,++requestId)
-      record({kind:'task-request',id:requestId,method:request.method(),path})
+      record({kind:task?'task-request':'log-request',id:requestId,method:request.method(),path})
     })
-    page.on('requestfinished',request=>{const id=requests.get(request);if(id!==undefined)record({kind:'task-request-finished',id})})
+    page.on('requestfinished',request=>{const id=requests.get(request);if(id!==undefined)record({kind:new URL(request.url()).pathname.startsWith('/api/v1/tasks')?'task-request-finished':'log-request-finished',id})})
     page.on('framenavigated',frame=>{if(frame===page.mainFrame())record({kind:'navigation',path:new URL(frame.url()).pathname})})
     page.on('pageerror',error=>record({kind:'playwright-pageerror',name:error.name,message:error.message,stack:error.stack?.slice(0,2000)}))
     page.on('requestfailed',request=>record({kind:'requestfailed',id:requests.get(request),method:request.method(),path:new URL(request.url()).pathname,error:request.failure()?.errorText}))

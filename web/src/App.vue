@@ -3,7 +3,7 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { useQueryClient } from '@tanstack/vue-query'
 import { useEventListener } from '@vueuse/core'
 import { api, checkSession, login, session } from './services/api'
-import { pauseTaskReadsUntilPaint, resumeTaskReads } from './services/task-query-lifecycle'
+import { hideDocumentReads, pauseDocumentReadsUntilPaint, resumeDocumentReads } from './services/read-lifecycle'
 import { useDesktop } from './desktop/store'
 import Desktop from './desktop/Desktop.vue'
 const desktop = useDesktop(), query=useQueryClient(), name = ref(''), password = ref(''), busy = ref(false), error = ref(''), initialized = ref('')
@@ -27,14 +27,13 @@ async function logout() {
     await recovery?.clearAccount()
   }catch(e){error.value='退出清理未完成：'+String(e)}finally{session.ready=true}
 }
-// Cancel read-only task polling while this document can still abort fetches.
-// Leave task mutations and terminal/input recovery owned by their existing
-// lifecycles. Gate new reads from timer callbacks already queued at departure.
-// A surviving document resumes on paint or pageshow after restoration.
+// All read-only HTTP polling shares the document gate. Task queries additionally
+// revert cancelled results to their last confirmed cache state. Mutations and
+// terminal/input recovery keep their existing lifecycles.
 const cancelTaskReads=()=>{void query.cancelQueries({queryKey:['tasks']})}
-useEventListener(window,'beforeunload',(event:BeforeUnloadEvent)=> { pauseTaskReadsUntilPaint();if(desktop.recovery && !desktop.recovery.status.protected) { event.preventDefault(); event.returnValue = '' };cancelTaskReads() })
-useEventListener(window,'pagehide',cancelTaskReads)
-useEventListener(window,'pageshow',resumeTaskReads)
+useEventListener(window,'beforeunload',(event:BeforeUnloadEvent)=> { pauseDocumentReadsUntilPaint();if(desktop.recovery && !desktop.recovery.status.protected) { event.preventDefault(); event.returnValue = '' };cancelTaskReads() })
+useEventListener(window,'pagehide',()=>{hideDocumentReads();cancelTaskReads()})
+useEventListener(window,'pageshow',resumeDocumentReads)
 </script>
 <template>
   <main v-if="!session.user" class="login-screen">
