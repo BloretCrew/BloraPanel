@@ -3,7 +3,7 @@ import {decodeEnvelope,encodeEnvelope,encodeJSON,MessageType} from '../../src/se
 
 // Transport doubles are confined to this test. The xterm parser, serializer,
 // browser recovery storage and binary protocol implementation are real.
-for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[true,true]])test(`xterm checkpoints resume the same session, ACK parsed bytes and never replay input (${forceFallback?'fallback':'automatic'} renderer, ${forceSnapshotFallback?'main':'worker'} checkpoints)`,async({page})=>{
+for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[true,true]])test(`xterm checkpoints resume the same session, ACK parsed bytes and never replay input (${forceFallback?'fallback':'automatic'} renderer, ${forceSnapshotFallback?'main':'worker'} checkpoints)`,async({page,validationPhase})=>{
   if(forceSnapshotFallback)await page.addInitScript(()=>{
     const Original=Worker
     window.Worker=class extends Original{
@@ -54,7 +54,9 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
     if(index===1)releaseReplay=()=>send(MessageType.Resume)
     else send(MessageType.Resume)
   })
-  await page.goto('/');await page.locator('[data-app="blora.instances"]').click();await page.getByRole('button',{name:'终端测试实例',exact:true}).click();await page.getByRole('button',{name:'控制台',exact:true}).click();await page.getByRole('button',{name:'打开终端会话管理',exact:true}).click()
+  validationPhase('navigate desktop')
+  await page.goto('/');validationPhase('open instance center');await page.locator('[data-app="blora.instances"]').click();validationPhase('open instance');await page.getByRole('button',{name:'终端测试实例',exact:true}).click();validationPhase('open console');await page.getByRole('button',{name:'控制台',exact:true}).click();validationPhase('open terminal management');await page.getByRole('button',{name:'打开终端会话管理',exact:true}).click()
+  validationPhase('attach terminal and check replay ACK')
   await page.getByRole('button',{name:/terminal-fixture · RUNNING/}).click()
   await expect.poll(()=>received.filter(message=>message.type===MessageType.Ack).length).toBe(1)
   expect(received.filter(message=>message.type===MessageType.Data)).toEqual([])
@@ -62,23 +64,28 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   releaseReplay();await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-writable','true')
   await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-checkpoint',forceSnapshotFallback?'main':'worker')
   if(forceFallback)await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-renderer','default')
+  validationPhase('live input and incremental output')
   await page.locator('.xterm-helper-textarea').focus();await page.keyboard.type('abc')
   await expect.poll(()=>received.filter(message=>message.type===MessageType.Data).map(message=>message.text).join('')).toBe('abc')
   liveOutput(2,'追加增量');await expect.poll(()=>received.filter(message=>message.type===MessageType.Ack).length).toBe(2)
+  validationPhase('first refresh and durable checkpoint')
   await page.reload();await expect(page.getByText('已连接 · 只读观察',{exact:true})).toBeVisible();expect(resumeCursors.at(-1)).toBe(2)
   await expect.poll(()=>page.evaluate(async()=>{
     const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('blora-workspaces',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})
     const snapshots=await new Promise<any[]>((resolve,reject)=>{const request=db.transaction('snapshots').objectStore('snapshots').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});db.close()
     return snapshots.some(snapshot=>Object.values(snapshot.terminals||{}).some((value:any)=>value.sequence===2&&value.screen.includes('追加增量')))
   })).toBe(true)
+  validationPhase('read-only input and control takeover')
   await page.locator('.xterm-helper-textarea').focus();await page.keyboard.type('blocked');await page.getByRole('button',{name:'申请接管'}).click();await expect(page.getByText('已连接 · 输入控制者',{exact:true})).toBeVisible()
   expect(received.filter(message=>message.type===MessageType.Data).map(message=>message.text).join('')).toBe('abc')
   // Cross the incremental journal and synchronous tail budgets with actual
   // parsed output. ACK must await the durable full snapshot when necessary.
+  validationPhase('large scrollback and durable ACK budget')
   for(let sequence=3;sequence<=26;sequence++){
     liveOutput(sequence,(sequence===3?'\u001b[?1049l':'')+`${'scrollback '.padEnd(100,'x')}\r\n`.repeat(160)+`checkpoint-${sequence}\r\n`)
     await expect.poll(()=>received.filter(message=>message.type===MessageType.Ack).length).toBe(sequence)
   }
+  validationPhase('move original terminal view to another window')
   const viewId=await page.locator('.app-window.focused [data-view-tab]').getAttribute('data-view-tab')
   await page.locator('.app-window.focused [aria-label^="标签菜单"]').click();await page.getByRole('button',{name:'移到新窗口',exact:true}).click();await expect(page.locator(`[data-view-tab="${viewId}"]`)).toHaveCount(1)
   await expect.poll(()=>connection).toBe(3);expect(resumeCursors.at(-1)).toBe(26);expect(creates).toBe(0);expect(received.filter(message=>message.type===MessageType.Data).map(message=>message.text).join('')).toBe('abc');expect(errors).toEqual([])
@@ -89,6 +96,7 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   })).toBe(true)
   // A burst crosses an ordered resize event. Cumulative ACK credit must match
   // all parsed bytes, and a refresh must resume after the last original event.
+  validationPhase('burst output and ordered resize')
   for(let sequence=27;sequence<=90;sequence++){
     if(sequence===40)liveResize(sequence)
     else liveOutput(sequence,'x'.repeat(512)+` burst-${sequence}\r\n`)
@@ -98,6 +106,7 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
     const snapshots=await new Promise<any[]>((resolve,reject)=>{const request=db.transaction('snapshots').objectStore('snapshots').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});db.close()
     return snapshots.some(snapshot=>Object.values(snapshot.terminals||{}).some((value:any)=>value.sequence===90&&value.cols===80))
   })).toBe(true)
+  validationPhase('second refresh and retained output-gap checkpoint')
   await page.reload();await expect(page.getByText('已连接 · 只读观察',{exact:true})).toBeVisible()
   expect(resumeCursors.at(-1)).toBe(90)
   const acknowledgements=received.filter(message=>message.type===MessageType.Ack)
@@ -110,6 +119,7 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   // Failed local durability must withhold credit for the newly parsed batch.
   // Both browser storage layers fail; a successful synchronous tail must not
   // accidentally conceal the IndexedDB failure being exercised here.
+  validationPhase('both storage layers fail and ACK credit is withheld')
   await page.getByRole('button',{name:'重新挂载',exact:true}).click()
   await expect(page.getByText('已连接 · 只读观察',{exact:true})).toBeVisible()
   const ackCount=received.filter(message=>message.type===MessageType.Ack).length
@@ -122,4 +132,5 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   await expect(page.getByRole('alert')).toContainText('终端输出尚未持久保护')
   expect(received.filter(message=>message.type===MessageType.Ack)).toHaveLength(ackCount)
   expect(errors).toEqual([])
+  validationPhase('all terminal assertions passed')
 })

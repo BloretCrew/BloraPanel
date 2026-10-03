@@ -46,21 +46,21 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the eighth returned report: remaining WebKit checks
+## Follow up the ninth returned report: remaining WebKit checks
 
-The [eighth returned report](../acceptance/reports/windows-eighth-report-2026-10-03.md)
-passed WebKit **13/15**. All three original fallback-renderer/worker terminal
-executions passed. One task-summary resumption and one log-poll setup timed out;
-one diagnostic observed no paint despite a visible, focused document.
+The [ninth returned report](../acceptance/reports/windows-ninth-report-2026-10-03.md)
+passed WebKit **14/15**. All four navigation/log scenarios passed three times,
+including both eighth-report failing cases. The first fallback-renderer/worker
+terminal execution exhausted the original 45s test budget without a recorded
+page error; the later two full terminal executions passed in about 19s each.
 
-A controlled no-frame test reproduces the task-summary stall. Safe reads now
-resume through either painting or a **250ms** surviving-document fallback;
-`pagehide` invalidates and cancels both paths until `pageshow`. The fallback
-does not wait for a repaint, and a newer navigation restarts its guard. Only a
-navigation-aborted safe read can restart; mutations and terminal input are
-never automatically replayed. The log case now establishes its pending read
-using the actual registered interval callbacks rather than waiting for the
-next wall-clock tick after its UI setup.
+The narrow followup now type-checks and builds the production frontend in a
+separate logged stage, then tests that compiled bundle on a fresh local preview
+server. This removes on-demand development compilation from the case budget.
+It does not pre-open or warm up the terminal, change the 45s limit, add retries,
+or omit any original UI action, refresh, worker, recovery, ACK or no-replay check.
+The uploaded timing does not establish the Windows cause; the new run checks
+the compiled application and provides more precise diagnostic evidence.
 
 Download the runner from the **same pinned commit** supplied in the conversation,
 then use this narrower selection:
@@ -70,7 +70,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref <commit> -F
 ```
 
 It needs Git and Node.js, creates a fresh checkout, installs only `web`
-dependencies and the matching WebKit engine, and selects these five cases:
+dependencies, builds the production frontend, installs the matching WebKit
+engine, and selects these five cases:
 
 - Fallback-renderer/worker terminal checkpoint recovery, parsed-byte ACKs and
   no input replay, retained to guard the previously corrected native refresh.
@@ -96,10 +97,21 @@ Chromium/Firefox, account scenarios, the other terminal configurations,
 Go/native/race, compiler downloads and SDK packages are deliberately omitted.
 No Go installation or `-InstallRaceCompiler` is needed. The report records
 `runMode=followup-webkit`, `selectedBrowsers=["webkit"]` and the three
-Go/native/SDK selection flags as `false`. It does not import earlier passes or
+Go/native/SDK selection flags as `false`, plus
+`browserServerMode=production-preview` and `browserBuildSelected=true`.
+The **`web-browser-build`** stage must pass; a failed or omitted build prevents
+success and never falls back to stale output or development serving. The
+preview binds only to loopback and fails if port 5173 is occupied.
+It does not import earlier passes or
 require JSON reports from omitted engines. `-WebKitOnly` requires both
 `-Followup` and `-BrowsersOnly`. Progress, deadlines, failure diagnostics and
 ZIP creation remain enabled; return `Blora-Windows-Report.zip` even on failure.
+
+Terminal tests display static operation labels and elapsed milliseconds as they
+progress. If a case fails, the existing bounded diagnostic JSON now also carries
+these phases and up to twenty slowest static asset request durations. Field
+contents, terminal input text, request bodies, storage dumps and browser traces
+remain excluded from the diagnostic bundle.
 
 ## Broader browser-only followup
 

@@ -226,9 +226,9 @@ function Get-FollowupPlan {
     }
 }
 function Get-WebKitFollowupPlan {
-    # The eighth report passed the original terminal case three times, but
-    # task-summary resumption and log-poll setup each failed once. Keep the
-    # real refresh/terminal guards alongside both corrected polling cases;
+    # The ninth report passed all polling checks three times; the first
+    # terminal execution used the entire 45s limit. Check a freshly compiled
+    # production bundle and keep all four navigation guards alongside it;
     # every selected case must pass three executions, with no retries or skips.
     return [pscustomobject]@{
         goCases = @()
@@ -297,13 +297,13 @@ $uncovered = @(
 )
 if ($Followup) {
     if ($WebKitOnly) {
-        $uncovered += 'WebKit-only followup selects five scenarios in two browser files, each repeated three times (15 required executions): the remaining fallback-renderer/worker terminal case, all three task-read navigation regressions, and independent instance-log polling. Chromium/Firefox, account scenarios, the other terminal configurations, Go/native/race, GCC download, SDK packages, standalone builds/vet, production web/unit checks, other browser files and native IME are deliberately NOT selected. Previous reports are NOT imported as passes and omitted engines do not require a new JSON report.'
+        $uncovered += 'WebKit-only followup first type-checks and builds the production frontend in a separate logged stage, then serves that bundle locally. Five scenarios in two browser files each run three times (15 required executions): the fallback-renderer/worker terminal case, three task-read navigation regressions, and independent instance-log polling. Chromium/Firefox, account scenarios, other terminal configurations, Go/native/race, GCC download, SDK packages, standalone Go builds/vet, web unit checks, other browser files and native IME are deliberately NOT selected. Previous reports are NOT imported as passes and omitted engines do not require a new JSON report.'
     } elseif ($BrowsersOnly) {
         $uncovered += 'Browser-only followup runs all ten scenarios in three affected browser files: Chromium/Firefox once, WebKit three times. Go/native/race, GCC download, SDK packages, standalone builds/vet, production web/unit checks, other browser files and native IME are deliberately NOT selected. The fifth returned report verified the previous Go corrections; those passes are NOT imported into this run.'
     } else {
         $uncovered += 'Followup mode runs three named Go regressions (three executions), eleven native checks, full race testing of Master/runlog only, SDK packages, and all ten scenarios in three affected browser files. WebKit runs each scenario three times; Chromium/Firefox once. Other Go packages/browser files, standalone vet/builds, production web/unit checks and native IME are intentionally omitted; prior passes are NOT imported.'
     }
-    $uncovered += 'The eighth returned report passed WebKit 13/15, including all three original fallback/worker terminal executions. One task-summary resumption and one log-poll setup timed out; the latter diagnostic observed no paint despite a visible, focused page. The shared safe-read gate now has a 250ms surviving-document fallback independent of RAF. Pagehide cancels it and invalidates older deadlines/frames; a newer navigation restarts the guard. The prevented-navigation case deliberately stops new frame callbacks while retaining its original 5s recovery assertion. The log case establishes its pending read using the real registered interval callbacks instead of waiting for the next wall-clock tick. Queued-callback observations cover the navigation event turn and microtasks without depending on a paint to end the observation. Mutation/input submissions are never automatically replayed. Windows resolution still requires this run. Original page-error, recovery, password exclusion, ACK and no-replay assertions remain active. Bounded diagnostics contain timing, never bodies, field contents or storage dumps. This bounded guard and controlled prevented-beforeunload cases do not establish every slow navigation, native dialog or bfcache sequence.'
+    $uncovered += 'The ninth returned report passed WebKit 14/15: all four navigation/log scenarios passed three times, while the first fallback/worker terminal execution exhausted its original 45s case budget without a recorded page error. Its first refresh began about 32s after initial navigation; the later two full terminal executions took about 19s each. Development compilation overhead is a hypothesis, not an established Windows cause. The narrow WebKit selection now tests a freshly built production bundle, without warming up the terminal or raising any deadline. Terminal phase timestamps are shown live and retained in failure diagnostics together with bounded asset timings. The 250ms safe-read guard, no-frame recovery, actual refresh, worker/storage, ACK and no-input-replay assertions remain active. No mutations are automatically replayed. Diagnostics exclude bodies, field contents and storage dumps. This run does not establish every slow navigation, native dialog or bfcache sequence, and production-bundle browser tests still replace management transports.'
 } elseif ($Retest) {
     $uncovered += 'Retest mode reruns the returned failing Go cases, the native suite, and all cases in nine affected browser files (excluding the already-passed Chromium-only native IME scenario). Required case names are checked individually. Prior results are NOT imported as passes; full all-package race testing is attempted because it was previously blocked.'
     $uncovered += 'This targeted run omits standalone vet/builds, web production build/unit tests, unaffected browser files and unaffected non-race Go cases. Native IME injection in Firefox/WebKit remains a capability gap, not a passing test.'
@@ -382,6 +382,15 @@ try {
                 if ($directory -eq 'web') {
                     if (!$Remaining) { [void](Invoke-Stage 'web-unit' 'npm.cmd' @('test') $path 1800) }
                     $env:CI='1'; $env:BLORA_E2E_FRESH_SERVER='1'
+                    if ($WebKitOnly) {
+                        # Build failures cannot fall through to an old bundle
+                        # or dev serving. Fresh checkout and fresh server only.
+                        if (!(Invoke-Stage 'web-browser-build' 'npm.cmd' @('run','build','--','--outDir','.local/browser-test-build') $path 1800)) {
+                            Missing 'browser-webkit' 'Production frontend build failed; browser execution was not attempted.'
+                            continue
+                        }
+                        $env:BLORA_E2E_PREVIEW='1'
+                    }
                     foreach ($browser in @(Get-SelectedBrowsers)) {
                         if (Invoke-Stage "install-$browser" 'node.exe' @('node_modules/@playwright/test/cli.js','install',$browser) $path 1800) {
                             $env:BLORA_BROWSER=$browser
@@ -402,6 +411,7 @@ try {
     if ($goReady -and !$goChecksRun) { Invoke-GoChecks }
 } catch { $fatal=Clean $_.Exception.Message; Write-Host $fatal -ForegroundColor Red }
 finally {
+    if ($WebKitOnly -and !($steps | Where-Object { $_.name -eq 'web-browser-build' -and $_.status -eq 'PASS' })) { Missing 'web-browser-build-coverage' 'No successful production bundle build was recorded for the WebKit followup.' }
     # Must see actual terminal PASS events, not merely a successful empty filter.
     $required=@()
     if (!$BrowsersOnly) { $required=@('TestWindowsJobKeepsDescendantsAfterParentExits','TestWindowsJobCrashRecoveryPreservesRun','TestWindowsDaemonExitReopenAndStop','TestWindowsKeeperBirthMismatchFailsClosed','TestWindowsKeeperStartupFailureCleansEmptyJob','TestWindowsConPTYRealCommandResizeAndJobClose','TestWindowsDaemonExitDoesNotCloseBusinessPipe','TestWindowsNativeMetricsAndProcessIdentity','TestWindowsNativeServiceEnumeration','TestWindowsTaskSchedulerEnumeration','TestWindowsMetadataAttributesAndTimes') }
@@ -444,6 +454,8 @@ finally {
     $result=[ordered]@{schema=2;outcome=$outcome;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');commit=$commit;requestedRef=$Ref;windows=[Environment]::OSVersion.VersionString;architecture=$env:PROCESSOR_ARCHITECTURE;logicalProcessors=[Environment]::ProcessorCount;powershell=$PSVersionTable.PSVersion.ToString();fatal=$fatal;steps=@($steps.ToArray());requiredNativeTestsMissing=$missingTests;requiredGoRetestsMissing=$missingRetests;goTestEvents=@($events.ToArray());browserSummary=$browserSummary;notCovered=$uncovered}
     $result['runMode'] = $(if ($WebKitOnly) { 'followup-webkit' } elseif ($BrowsersOnly) { 'followup-browser' } elseif ($Followup) { 'followup' } elseif ($Retest) { 'retest' } elseif ($Remaining) { 'remaining' } else { 'full' })
     $result['selectedBrowsers'] = @(Get-SelectedBrowsers)
+    $result['browserServerMode'] = $(if ($WebKitOnly) { 'production-preview' } else { 'development' })
+    $result['browserBuildSelected'] = [bool]$WebKitOnly
     $result['goChecksSelected'] = !$BrowsersOnly
     $result['nativeChecksSelected'] = !$BrowsersOnly
     $result['sdkChecksSelected'] = !$BrowsersOnly
