@@ -32,7 +32,7 @@ describe('read-only document lifecycle',()=>{
     resumeDocumentReads()
     vi.stubGlobal('requestAnimationFrame',(callback:FrameRequestCallback)=>{frames.push(callback);return frames.length})
   })
-  afterEach(()=>{resumeDocumentReads();vi.restoreAllMocks();vi.unstubAllGlobals();session.user=undefined})
+  afterEach(()=>{resumeDocumentReads();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();session.user=undefined})
 
   it.each([{}, {method:'POST',readOnly:true,body:'{}'}])('cancels a pending safe read and defers both its restart and queued reads until paint (%j)',async(options)=>{
     let originalSignal:AbortSignal|undefined
@@ -70,6 +70,7 @@ describe('read-only document lifecycle',()=>{
   })
 
   it('keeps pagehide paused despite older frames and cancels an owner waiting for pageshow',async()=>{
+    vi.useFakeTimers({toFake:['setTimeout','clearTimeout']})
     const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>Response.json({items:[]}))
     pauseDocumentReadsUntilPaint()
     hideDocumentReads()
@@ -78,12 +79,51 @@ describe('read-only document lifecycle',()=>{
     const cancelled=new DOMException('View closed','AbortError')
     const assertion=expect(pending).rejects.toBe(cancelled)
     paint()
-    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(1000)
     expect(fetch).not.toHaveBeenCalled()
     owner.abort(cancelled)
     await assertion
     resumeDocumentReads()
     await expect(api('/nodes')).resolves.toEqual({items:[]})
+    expect(fetch).toHaveBeenCalledOnce()
+  })
+
+  it('resumes cancelled and queued safe reads when animation frames stop in a surviving document',async()=>{
+    vi.useFakeTimers({toFake:['setTimeout','clearTimeout']})
+    let originalSignal:AbortSignal|undefined
+    const fetch=vi.spyOn(globalThis,'fetch').mockImplementationOnce((_input,init)=>new Promise((_resolve,reject)=>{
+      originalSignal=init!.signal!
+      originalSignal.addEventListener('abort',()=>reject(originalSignal!.reason),{once:true})
+    })).mockImplementation(async()=>Response.json({items:['confirmed']}))
+    const pending=api('/instances/fixture/logs')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fetch).toHaveBeenCalledOnce()
+    pauseDocumentReadsUntilPaint()
+    expect(originalSignal?.aborted).toBe(true)
+    const queued=api('/nodes/fixture/metrics')
+    await vi.advanceTimersByTimeAsync(249)
+    expect(fetch).toHaveBeenCalledOnce()
+    // No frame callback is run. Timers alone must restore read liveness.
+    await vi.advanceTimersByTimeAsync(1)
+    await expect(pending).resolves.toEqual({items:['confirmed']})
+    await expect(queued).resolves.toEqual({items:['confirmed']})
+    expect(fetch).toHaveBeenCalledTimes(3)
+    paint()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(fetch).toHaveBeenCalledTimes(3)
+  })
+
+  it('does not let an older resume deadline release reads during a newer navigation',async()=>{
+    vi.useFakeTimers({toFake:['setTimeout','clearTimeout']})
+    const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async()=>Response.json({items:[]}))
+    pauseDocumentReadsUntilPaint()
+    const pending=api('/nodes')
+    await vi.advanceTimersByTimeAsync(100)
+    pauseDocumentReadsUntilPaint()
+    await vi.advanceTimersByTimeAsync(150)
+    expect(fetch).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(100)
+    await expect(pending).resolves.toEqual({items:[]})
     expect(fetch).toHaveBeenCalledOnce()
   })
 

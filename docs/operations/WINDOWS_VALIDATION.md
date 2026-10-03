@@ -46,16 +46,21 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the seventh returned report: remaining WebKit checks
+## Follow up the eighth returned report: remaining WebKit checks
 
-The [seventh returned report](../acceptance/reports/windows-seventh-report-2026-10-03.md)
-passed WebKit **11/12**, including all three task-query navigation cases three
-times each. The remaining fallback-renderer/worker terminal execution reported
-an **instance-log polling** fetch diagnostic between `beforeunload` and
-`pagehide`. That independent timer was outside task-query cancellation. A
-controlled test reproduces it; safe API reads now share navigation cancellation
-and deferral. Only a navigation-aborted safe read can restart in a surviving
-document; mutations and terminal input are never automatically replayed.
+The [eighth returned report](../acceptance/reports/windows-eighth-report-2026-10-03.md)
+passed WebKit **13/15**. All three original fallback-renderer/worker terminal
+executions passed. One task-summary resumption and one log-poll setup timed out;
+one diagnostic observed no paint despite a visible, focused document.
+
+A controlled no-frame test reproduces the task-summary stall. Safe reads now
+resume through either painting or a **250ms** surviving-document fallback;
+`pagehide` invalidates and cancels both paths until `pageshow`. The fallback
+does not wait for a repaint, and a newer navigation restarts its guard. Only a
+navigation-aborted safe read can restart; mutations and terminal input are
+never automatically replayed. The log case now establishes its pending read
+using the actual registered interval callbacks rather than waiting for the
+next wall-clock tick after its UI setup.
 
 Download the runner from the **same pinned commit** supplied in the conversation,
 then use this narrower selection:
@@ -68,10 +73,11 @@ It needs Git and Node.js, creates a fresh checkout, installs only `web`
 dependencies and the matching WebKit engine, and selects these five cases:
 
 - Fallback-renderer/worker terminal checkpoint recovery, parsed-byte ACKs and
-  no input replay: the scenario with the one remaining Windows failure.
+  no input replay, retained to guard the previously corrected native refresh.
 - Pending task-summary cancellation before a real refresh, with the latest
   task filter restored.
-- Last confirmed task count and continued polling after prevented navigation.
+- Last confirmed task count and continued polling after prevented navigation,
+  deliberately suppressing new frame callbacks until the unchanged 5s assertion passes.
 - Real queued QueryObserver polling callbacks cannot start task-list/summary
   reads during departure; a surviving document resumes them.
 - Independent instance-log polling cancels pending reads, holds queued
@@ -81,8 +87,10 @@ Every case runs **three times**, requiring **15/15** actual passing executions.
 The file/title selection is anchored; the report checks every required title
 and aggregate count. Retries, skips, expected failures and missing results
 cannot count as passes. Original terminal/page-error assertions remain active.
-The controlled prevented-navigation checks do not prove native dialog or
-bfcache behavior. Linux results do not establish resolution on Windows.
+The queued-callback observation covers the navigation event turn and its
+microtasks, independently of paint. The bounded guard and controlled
+prevented-navigation checks do not prove every slow navigation, native dialog
+or bfcache sequence. Linux results do not establish resolution on Windows.
 
 Chromium/Firefox, account scenarios, the other terminal configurations,
 Go/native/race, compiler downloads and SDK packages are deliberately omitted.

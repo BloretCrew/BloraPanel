@@ -74,14 +74,20 @@ test('cancelled navigation keeps task summary polling and its last confirmed sta
     await page.goto('/')
     await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
     await expect.poll(()=>waiting).toBe(true)
-    // Exercise a prevented beforeunload event in the still-live document.
+    // Stop new animation-frame callbacks at the navigation boundary. Reads
+    // must recover without depending on painting, within the original 5s.
     // This is not evidence of native confirmation-dialog or bfcache support.
-    await page.evaluate(()=>{const event=new Event('beforeunload',{cancelable:true});event.preventDefault();window.dispatchEvent(event)})
+    await page.evaluate(()=>{
+      const frame=window.requestAnimationFrame
+      Object.assign(window,{__bloraRestoreFrames:()=>{window.requestAnimationFrame=frame}})
+      window.requestAnimationFrame=()=>0
+      const event=new Event('beforeunload',{cancelable:true});event.preventDefault();window.dispatchEvent(event)
+    })
     expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('blora:test:summary-aborts')||'[]'))).toEqual(['beforeunload'])
     await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
     await expect(page.getByRole('button',{name:'7 项后台任务',exact:true})).toBeVisible({timeout:5000})
     expect(errors).toEqual([])
-  }finally{release()}
+  }finally{release();await page.evaluate(()=>(window as unknown as {__bloraRestoreFrames?:()=>void}).__bloraRestoreFrames?.()).catch(()=>{})}
 })
 
 test('queued task polling cannot start new reads during beforeunload and resumes in the surviving document',async({page})=>{
@@ -93,14 +99,15 @@ test('queued task polling cannot start new reads during beforeunload and resumes
     let leaving=false
     const blocked:string[]=[]
     // Retain the real QueryObserver timer callbacks. Invoke already-queued
-    // callbacks after beforeunload, before the next frame can resume reads.
+    // callbacks after beforeunload in the same event turn, including its
+    // microtasks. The observation ends on the next task, independently of RAF.
     window.setInterval=((handler:TimerHandler,delay?:number,...args:unknown[])=>{
       const id=interval(handler,delay,...args)
       if(typeof handler==='function'&&(delay===2000||delay===3000))callbacks.set(id,()=>handler(...args))
       return id
     }) as typeof window.setInterval
     window.clearInterval=((id?:number)=>{if(id!==undefined)callbacks.delete(id);clear(id)}) as typeof window.clearInterval
-    window.addEventListener('beforeunload',()=>{leaving=true;requestAnimationFrame(()=>{leaving=false})})
+    window.addEventListener('beforeunload',()=>{leaving=true;setTimeout(()=>{leaving=false},0)})
     window.fetch=(input:RequestInfo|URL,init?:RequestInit)=>{
       const url=typeof input==='string'?input:input instanceof URL?input.href:input.url
       const path=new URL(url,location.href).pathname
@@ -151,7 +158,7 @@ test('instance log polling cancels pending reads, gates queued polls and resumes
       return id
     }) as typeof window.setInterval
     window.clearInterval=((id?:number)=>{if(id!==undefined)callbacks.delete(id);clear(id)}) as typeof window.clearInterval
-    window.addEventListener('beforeunload',()=>{leaving=true;requestAnimationFrame(()=>{leaving=false})})
+    window.addEventListener('beforeunload',()=>{leaving=true;setTimeout(()=>{leaving=false},0)})
     window.fetch=(input:RequestInfo|URL,init?:RequestInit)=>{
       const url=typeof input==='string'?input:input instanceof URL?input.href:input.url,path=new URL(url,location.href).pathname
       if(path==='/api/v1/instances/poll-instance/logs'){
@@ -184,6 +191,12 @@ test('instance log polling cancels pending reads, gates queued polls and resumes
     const runs=page.getByRole('combobox',{name:'选择日志运行代次'})
     await expect(runs).toHaveValue('poll-run')
     await page.getByRole('textbox',{name:'尚未发送的实例命令'}).fill('保留草稿，不发送')
+    // Establish the pending read by invoking the registered application timer
+    // callbacks. A slow setup need not wait for the next wall-clock interval.
+    await page.evaluate(()=>{
+      const state=(window as unknown as {__bloraQueuedLogPolls:{callbacks:Map<number,()=>void>}}).__bloraQueuedLogPolls
+      state.callbacks.forEach(callback=>callback())
+    })
     await expect.poll(()=>waiting).toBe(true)
     const observation=await page.evaluate(()=>{
       const state=(window as unknown as {__bloraQueuedLogPolls:{callbacks:Map<number,()=>void>;blocked:string[];aborts:string[]}}).__bloraQueuedLogPolls

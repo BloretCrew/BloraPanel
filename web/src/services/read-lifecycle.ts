@@ -3,14 +3,17 @@
 let paused:Promise<void>|undefined
 let release:(()=>void)|undefined
 let generation=0
+let resumeDeadline:ReturnType<typeof setTimeout>|undefined
 const active=new Set<AbortController>()
 const departure=new DOMException('Document navigation','AbortError')
 
 function pause(){if(!paused)paused=new Promise<void>(resolve=>{release=resolve})}
 function cancelActive(){for(const controller of active)controller.abort(departure)}
+function clearResumeDeadline(){clearTimeout(resumeDeadline);resumeDeadline=undefined}
 
 export function resumeDocumentReads(){
   generation++
+  clearResumeDeadline()
   const resume=release
   paused=undefined
   release=undefined
@@ -21,13 +24,19 @@ export function pauseDocumentReadsUntilPaint(){
   pause()
   cancelActive()
   const current=++generation
-  // A prevented navigation can keep rendering. Accepted pagehide invalidates
-  // these frames and keeps reads paused until the document's pageshow.
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(current===generation)resumeDocumentReads()}))
+  clearResumeDeadline()
+  const resume=()=>{if(current===generation)resumeDocumentReads()}
+  // A surviving document may stop painting even while its timers still run.
+  // Keep a bounded departure guard, then allow safe reads without requiring
+  // RAF. Pagehide cancels the deadline and invalidates both paths until
+  // pageshow. This bounded guard is not a native navigation-cancel signal.
+  resumeDeadline=setTimeout(resume,250)
+  requestAnimationFrame(()=>requestAnimationFrame(resume))
 }
 
 export function hideDocumentReads(){
   generation++
+  clearResumeDeadline()
   pause()
   cancelActive()
 }

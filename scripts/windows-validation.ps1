@@ -226,8 +226,9 @@ function Get-FollowupPlan {
     }
 }
 function Get-WebKitFollowupPlan {
-    # The seventh returned report verified all three task navigation cases.
-    # Retain them and select the remaining terminal case plus log polling;
+    # The eighth report passed the original terminal case three times, but
+    # task-summary resumption and log-poll setup each failed once. Keep the
+    # real refresh/terminal guards alongside both corrected polling cases;
     # every selected case must pass three executions, with no retries or skips.
     return [pscustomobject]@{
         goCases = @()
@@ -302,7 +303,7 @@ if ($Followup) {
     } else {
         $uncovered += 'Followup mode runs three named Go regressions (three executions), eleven native checks, full race testing of Master/runlog only, SDK packages, and all ten scenarios in three affected browser files. WebKit runs each scenario three times; Chromium/Firefox once. Other Go packages/browser files, standalone vet/builds, production web/unit checks and native IME are intentionally omitted; prior passes are NOT imported.'
     }
-    $uncovered += 'The seventh returned report passed WebKit 11/12, including all three task navigation cases three times each. Its remaining terminal diagnostic came from independent InstanceConsole log polling 9ms after beforeunload and 1ms before pagehide. Production now gates and cancels all safe API reads, including independent polling and explicitly read-only Docker queries; only navigation-aborted reads may resume in a surviving document. Pagehide invalidates older resume frames. Mutation/input submissions are never automatically replayed. InstanceConsole also cancels owned reads on unmount. Windows resolution still requires this run. Original page-error, recovery, password exclusion, ACK and no-replay assertions remain active. Bounded failure diagnostics include log/task request timing, never bodies, field contents or storage dumps. Prevented-beforeunload/queued-callback cases are not native dialog or bfcache acceptance.'
+    $uncovered += 'The eighth returned report passed WebKit 13/15, including all three original fallback/worker terminal executions. One task-summary resumption and one log-poll setup timed out; the latter diagnostic observed no paint despite a visible, focused page. The shared safe-read gate now has a 250ms surviving-document fallback independent of RAF. Pagehide cancels it and invalidates older deadlines/frames; a newer navigation restarts the guard. The prevented-navigation case deliberately stops new frame callbacks while retaining its original 5s recovery assertion. The log case establishes its pending read using the real registered interval callbacks instead of waiting for the next wall-clock tick. Queued-callback observations cover the navigation event turn and microtasks without depending on a paint to end the observation. Mutation/input submissions are never automatically replayed. Windows resolution still requires this run. Original page-error, recovery, password exclusion, ACK and no-replay assertions remain active. Bounded diagnostics contain timing, never bodies, field contents or storage dumps. This bounded guard and controlled prevented-beforeunload cases do not establish every slow navigation, native dialog or bfcache sequence.'
 } elseif ($Retest) {
     $uncovered += 'Retest mode reruns the returned failing Go cases, the native suite, and all cases in nine affected browser files (excluding the already-passed Chromium-only native IME scenario). Required case names are checked individually. Prior results are NOT imported as passes; full all-package race testing is attempted because it was previously blocked.'
     $uncovered += 'This targeted run omits standalone vet/builds, web production build/unit tests, unaffected browser files and unaffected non-race Go cases. Native IME injection in Firefox/WebKit remains a capability gap, not a passing test.'
