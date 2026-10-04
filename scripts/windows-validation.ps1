@@ -14,6 +14,7 @@ param(
     [switch]$Followup,
     [switch]$BrowsersOnly,
     [switch]$WebKitOnly,
+    [switch]$Headed,
     [switch]$InstallRaceCompiler,
     [switch]$CollectLatest,
     [string]$CollectRun = ''
@@ -25,6 +26,7 @@ if ($Ref.StartsWith('-')) { throw 'Ref must be a branch, tag, or commit, not a G
 if ($Retest -and $Followup) { throw 'Choose either -Retest or -Followup.' }
 if ($BrowsersOnly -and !$Followup) { throw 'Use -BrowsersOnly with -Followup.' }
 if ($WebKitOnly -and (!$Followup -or !$BrowsersOnly)) { throw 'Use -WebKitOnly with -Followup -BrowsersOnly.' }
+if ($Headed -and !$WebKitOnly) { throw 'Use -Headed with -Followup -BrowsersOnly -WebKitOnly for the controlled display comparison.' }
 if ($Retest -or $Followup) { $Remaining = $true }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 function New-ReportZip([string]$Folder,[string]$Destination) {
@@ -70,7 +72,7 @@ $savedEnvironment = @{}
 $savedPath = $env:Path
 # Do not inherit E2E switches/endpoints or helper modes from another session.
 foreach ($item in Get-ChildItem Env:) {
-    if ($item.Name -match '^(BLORA_|GOOS$|GOARCH$|GOFLAGS$|CGO_ENABLED$|GORACE$|CC$|CI$|PLAYWRIGHT_)') {
+    if ($item.Name -match '^(BLORA_|GOOS$|GOARCH$|GOFLAGS$|CGO_ENABLED$|GORACE$|CC$|CI$|PLAYWRIGHT_|PWDEBUG$)') {
         $savedEnvironment[$item.Name] = $item.Value
         [Environment]::SetEnvironmentVariable($item.Name, $null, 'Process')
     }
@@ -227,6 +229,11 @@ function Get-FollowupPlan {
     }
 }
 function Get-WebKitFollowupPlan {
+    # The fourteenth report exercised the free port but passed 12/15. Preserve
+    # its unresolved recovery/setup/terminal deadlines. Optional -Headed keeps
+    # the exact cases and limits for a visible-browser comparison on Windows.
+    # Local comparison also exposed reactive checkpoint records crossing the
+    # Worker boundary; restored terminal cases now confirm the mirror survives.
     # The thirteenth report never started tests because 5173 was occupied.
     # Select a fresh free port per engine; preserve the unresolved coverage.
     # The twelfth report passed 12/15; terminal, logs and no-frame recovery each
@@ -260,6 +267,29 @@ function Get-BrowserTitlePattern($Plan) {
     $files = @($Plan.browserFiles | ForEach-Object { [regex]::Escape([IO.Path]::GetFileName($_)) })
     $titles = @($Plan.browserTitles | ForEach-Object { [regex]::Escape($_) })
     return '^(?:.* )?(?:' + ($files -join '|') + ') (?:' + ($titles -join '|') + ')$'
+}
+function Get-BrowserArguments([string]$Browser) {
+    $arguments=@('node_modules/@playwright/test/cli.js','test','--workers=1','--reporter=line,json','--output',(Join-Path $run "browser-artifacts/$Browser"))
+    if ($Headed) { $arguments+='--headed' }
+    if ($Retest -or $Followup) { $arguments+=@($retestPlan.browserFiles) }
+    if ($WebKitOnly) { $arguments+=@('--grep',(Get-BrowserTitlePattern $retestPlan)) }
+    if ($Retest) { $arguments+=@('--grep-invert','native Chromium IME composition survives immediate reload') }
+    if ($Followup -and $Browser -eq 'webkit') { $arguments+='--repeat-each=3' }
+    return $arguments
+}
+
+function Get-BrowserDisplayModes($Suites) {
+    foreach ($suite in @($Suites)) {
+        foreach ($spec in @($suite.specs)) {
+            if (!$spec) { continue }
+            foreach ($test in @($spec.tests)) {
+                if (!$test) { continue }
+                $annotations=@($test.annotations | Where-Object { $_.type -eq 'blora-browser-display' })
+                if ($annotations.Count -eq 1 -and $annotations[0].description -cin @('headed','headless')) { [string]$annotations[0].description } else { 'unconfirmed' }
+            }
+        }
+        if ($suite.suites) { Get-BrowserDisplayModes $suite.suites }
+    }
 }
 function Get-BrowserDiagnostics($Suites) {
     foreach ($suite in @($Suites)) {
@@ -316,8 +346,10 @@ if ($Followup) {
     } else {
         $uncovered += 'Followup mode runs three named Go regressions (three executions), eleven native checks, full race testing of Master/runlog only, SDK packages, and all ten scenarios in three affected browser files. WebKit runs each scenario three times; Chromium/Firefox once. Other Go packages/browser files, standalone vet/builds, production web/unit checks and native IME are intentionally omitted; prior passes are NOT imported.'
     }
+    $uncovered += 'The fourteenth returned report confirmed free-port startup and passed WebKit 12/15. No-frame count recovery, queued task polling and log lifecycle each passed three times. Failures were a missing restored task filter after real reload, a delayed pending-read setup, and a terminal control-takeover timeout after slow initial desktop setup. Two failure diagnostics had no paint frames; this does not establish the Windows cause. Optional -Headed opens visible browser windows without changing the selected cases, existing assertions, 45s case budgets or 5s expectations. It is an environment comparison, not a claimed product repair or headless/performance pass. Keep the Windows desktop unlocked and allow the automated browser windows to run. Native/Go/SDK and full E08/privileged/cross-host gaps remain outside this narrow selection.'
+    $uncovered += 'The local headed comparison independently exposed Vue-reactive terminal checkpoint controls/links that could not be cloned into the parser Worker. Restore now sends plain checkpoint data; the same terminal cases also require the Worker/main checkpoint mode after both real reloads. Existing limits, protocol, durable ACK, output ordering and no-input-replay checks remain. This local repair and Linux headed/headless 15/15 results do not prove the cause or resolution of the three uploaded Windows deadlines. The next narrow Windows -Headed comparison records each actual launch fixture and blocks missing/duplicate/mismatched mode evidence. Inherited PWDEBUG is isolated and restored to prevent debug settings from changing limits.'
     $uncovered += 'The thirteenth returned report built successfully but executed no browser tests because port 5173 was occupied. The runner now selects an OS-assigned free loopback port immediately before each engine, uses it for both the server and test base URL, and records that port plus bounded global startup errors. It never terminates or reuses an unrelated service; a reservation-to-start collision fails closed. The same five cases must still pass three times: strictly 15/15. This startup repair does not establish Windows task-recovery correctness.'
-    $uncovered += 'The twelfth returned report tested the compiled frontend and passed WebKit 12/15. Terminal fallback/worker, log lifecycle and no-frame task recovery each passed three times. Remaining task failures were one total-budget exhaustion after slow task-view setup, one task-list setup assertion before its first request, and one post-boundary visible-count deadline. The Windows post-boundary cause remains unconfirmed. Task setup now activates a visible, enabled app through native Enter and confirms the actual first list response/body and filter readiness before departure, inside the unchanged 45s total budget. This does not certify cold initialization within 5s or setup pointer performance. Queued-poll fixtures keep baseline count zero until the tested boundary, so an earlier ordinary poll cannot satisfy recovery. Original 5s recovery limits, real queued timers, held-read cancellation identity, cache retention, refresh, worker/storage, ACK, errors and no-write/input-replay assertions remain. Passive bounded diagnostics timestamp actual summary JSON consumption and displayed numeric count changes in the browser, independently of a later surface probe; only whitelisted numbers/static event kinds cross the binding, with no bodies, field contents or storage dumps. Product code and visuals are unchanged in this followup. Native Enter terminal/log setup and later terminal pointer actions remain. These checks do not establish pointer/paint performance, every slow navigation, native dialogs or bfcache; browser tests still replace management transports.'
+    $uncovered += 'The twelfth returned report tested the compiled frontend and passed WebKit 12/15. Terminal fallback/worker, log lifecycle and no-frame task recovery each passed three times. Remaining task failures were one total-budget exhaustion after slow task-view setup, one task-list setup assertion before its first request, and one post-boundary visible-count deadline. The Windows post-boundary cause remains unconfirmed. Task setup now activates a visible, enabled app through native Enter and confirms the actual first list response/body and filter readiness before departure, inside the unchanged 45s total budget. This does not certify cold initialization within 5s or setup pointer performance. Queued-poll fixtures keep baseline count zero until the tested boundary, so an earlier ordinary poll cannot satisfy recovery. Original 5s recovery limits, real queued timers, held-read cancellation identity, cache retention, refresh, worker/storage, ACK, errors and no-write/input-replay assertions remain. Passive bounded diagnostics timestamp actual summary JSON consumption and displayed numeric count changes in the browser, independently of a later surface probe; only whitelisted numbers/static event kinds cross the binding, with no bodies, field contents or storage dumps. In that twelfth-report test-only revision, product code and visuals were unchanged; the separate current cloning repair is described above. Native Enter terminal/log setup and later terminal pointer actions remain. These checks do not establish pointer/paint performance, every slow navigation, native dialogs or bfcache; browser tests still replace management transports.'
 } elseif ($Retest) {
     $uncovered += 'Retest mode reruns the returned failing Go cases, the native suite, and all cases in nine affected browser files (excluding the already-passed Chromium-only native IME scenario). Required case names are checked individually. Prior results are NOT imported as passes; full all-package race testing is attempted because it was previously blocked.'
     $uncovered += 'This targeted run omits standalone vet/builds, web production build/unit tests, unaffected browser files and unaffected non-race Go cases. Native IME injection in Firefox/WebKit remains a capability gap, not a passing test.'
@@ -413,11 +445,8 @@ try {
                             Write-Host "Browser server: http://127.0.0.1:$port (fresh checkout)"
                             $env:BLORA_BROWSER=$browser
                             $env:PLAYWRIGHT_JSON_OUTPUT_NAME=Join-Path $report "$browser.json"
-                            $browserArgs = @('node_modules/@playwright/test/cli.js','test','--workers=1','--reporter=line,json','--output',(Join-Path $run "browser-artifacts/$browser"))
-                            if ($Retest -or $Followup) { $browserArgs += @($retestPlan.browserFiles) }
-                            if ($WebKitOnly) { $browserArgs += @('--grep',(Get-BrowserTitlePattern $retestPlan)) }
-                            if ($Retest) { $browserArgs += @('--grep-invert','native Chromium IME composition survives immediate reload') }
-                            if ($Followup -and $browser -eq 'webkit') { $browserArgs += '--repeat-each=3' }
+                            Write-Host "Browser display: $(if ($Headed) { 'headed (visible window)' } else { 'headless' })"
+                            $browserArgs=@(Get-BrowserArguments $browser)
                             [void](Invoke-Stage "browser-$browser" 'node.exe' $browserArgs $path 7200)
                         } else { Missing "browser-$browser" 'Matching browser download failed.' }
                     }
@@ -453,6 +482,9 @@ finally {
                 $data=$text | ConvertFrom-Json
                 $globalErrors=@($data.errors | Where-Object { $_.message } | Select-Object -First 5 | ForEach-Object { $message=Clean ([string]$_.message); $message.Substring(0,[Math]::Min(2000,$message.Length)) })
                 if ($globalErrors.Count) { Missing "browser-$browser-runner-errors" ($globalErrors -join ' | ') }
+                $displayModes=@(Get-BrowserDisplayModes $data.suites)
+                $executionCount=[int]$data.stats.expected+[int]$data.stats.unexpected+[int]$data.stats.skipped+[int]$data.stats.flaky
+                if ($Headed -and (!$executionCount -or $displayModes.Count -ne $executionCount -or @($displayModes | Where-Object { $_ -ne 'headed' }).Count)) { Missing "browser-$browser-display-mode" 'Headed comparison requested but per-execution resolved launch fixtures did not all confirm headed mode.' }
                 $missingTitles = @()
                 if ($Retest -or $Followup) {
                     $passedTitles = @(Get-BrowserPassTitles $data.suites)
@@ -461,7 +493,7 @@ finally {
                     if ($missingTitles.Count) { Missing "browser-$browser-retest-coverage" "Required scenarios without PASS: $($missingTitles.Count). See browserSummary in report.json." }
                 }
                 $expectedCount = $(if ($Retest -or $Followup) { $retestPlan.browserCaseCount * $(if ($Followup -and $browser -eq 'webkit') { 3 } else { 1 }) } else { $null })
-                $browserSummary+=@{browser=$browser;stats=$data.stats;expectedCaseCount=$expectedCount;requiredRetestTitlesMissing=$missingTitles;globalErrors=$globalErrors;serverUrl=$data.config.webServer.url}
+                $browserSummary+=@{browser=$browser;stats=$data.stats;expectedCaseCount=$expectedCount;requiredRetestTitlesMissing=$missingTitles;globalErrors=$globalErrors;serverUrl=$data.config.webServer.url;recordedDisplayModes=$displayModes}
                 if ($null -ne $expectedCount -and $data.stats.expected -ne $expectedCount) { Missing "browser-$browser-case-count" "Expected $expectedCount passing executions; omitted or incomplete scenarios are not a pass." }
                 if (!$data.stats -or $data.stats.expected -lt 1 -or $data.stats.skipped -gt 0 -or $data.stats.unexpected -gt 0 -or $data.stats.flaky -gt 0) { Missing "browser-$browser-coverage" 'No successful tests, skips, unexpected or flaky outcomes; see JSON.' }
                 Copy-BrowserDiagnostics $browser $data.suites
@@ -476,12 +508,13 @@ finally {
     $result['selectedBrowsers'] = @(Get-SelectedBrowsers)
     $result['browserServerMode'] = $(if ($WebKitOnly) { 'production-preview' } else { 'development' })
     $result['browserBuildSelected'] = [bool]$WebKitOnly
+    $result['browserDisplayMode'] = $(if ($Headed) { 'headed' } else { 'headless' })
     $result['browserServerPorts'] = $browserServerPorts
     $result['goChecksSelected'] = !$BrowsersOnly
     $result['nativeChecksSelected'] = !$BrowsersOnly
     $result['sdkChecksSelected'] = !$BrowsersOnly
     Save-Text (Join-Path $report 'report.json') ($result | ConvertTo-Json -Depth 30)
-    $lines=@('# Blora Windows validation', '', "Result: **$outcome**", "Commit: $commit", "UTC: $($result.startedAt) to $($result.finishedAt)", '', 'This is an automated evidence bundle, not full Windows/platform acceptance.', '', '| Stage | Result | Seconds | Log |','|---|---|---:|---|')
+    $lines=@('# Blora Windows validation', '', "Result: **$outcome**", "Commit: $commit", "UTC: $($result.startedAt) to $($result.finishedAt)", "Browser display: **$($result.browserDisplayMode)**", '', 'This is an automated evidence bundle, not full Windows/platform acceptance.', '', '| Stage | Result | Seconds | Log |','|---|---|---:|---|')
     foreach ($s in $steps) { $lines+="| $($s.name) | $($s.status) | $($s.seconds) | $($s.log) |" }
     $lines+=@('', '## Browser servers')
     foreach ($key in @($browserServerPorts.Keys | Sort-Object)) { $lines+="- ${key}: http://127.0.0.1:$($browserServerPorts[$key])" }
@@ -502,7 +535,7 @@ finally {
     $zipReady=$false
     try { New-ReportZip $report $zip; $zipReady=$true }
     catch { Write-Host "ZIP creation failed: $($_.Exception.Message). Report files remain at $report" -ForegroundColor Red; $outcome='FAILED' }
-    foreach ($item in Get-ChildItem Env:) { if ($item.Name -match '^(BLORA_|GOOS$|GOARCH$|GOFLAGS$|CGO_ENABLED$|GORACE$|CC$|CI$|PLAYWRIGHT_)') { [Environment]::SetEnvironmentVariable($item.Name,$null,'Process') } }
+    foreach ($item in Get-ChildItem Env:) { if ($item.Name -match '^(BLORA_|GOOS$|GOARCH$|GOFLAGS$|CGO_ENABLED$|GORACE$|CC$|CI$|PLAYWRIGHT_|PWDEBUG$)') { [Environment]::SetEnvironmentVariable($item.Name,$null,'Process') } }
     foreach ($key in $savedEnvironment.Keys) { [Environment]::SetEnvironmentVariable($key,$savedEnvironment[$key],'Process') }
     $env:Path=$savedPath
     Write-Host "`nResult: $outcome`nSummary: $(Join-Path $report 'README.md')" -ForegroundColor Cyan

@@ -46,7 +46,37 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the thirteenth returned report: remaining WebKit checks
+## Follow up the fourteenth returned report: visible WebKit comparison
+
+The [fourteenth returned report](../acceptance/reports/windows-fourteenth-report-2026-10-04.md)
+confirms free-port startup and **12/15** actual executions passed. No-frame count
+recovery, real queued task polling and log lifecycle each passed three times.
+Remaining failures are a missing restored task filter at its 5s deadline,
+delayed preparation of a pending summary read, and a terminal takeover pointer
+action after very slow initial desktop setup exhausted the 45s total budget.
+Two later diagnostics report no paint frames; the Windows cause is not proven.
+
+Use optional **`-Headed`** with `-Followup -BrowsersOnly -WebKitOnly` for the next
+controlled comparison. It opens visible automated browser windows; keep the
+desktop unlocked and allow the windows to
+run. The exact same five cases, three repetitions, original 45s/5s limits,
+pointer actions, protocol assertions, build and fresh-port checks remain.
+Default mode is unchanged. The runner records the requested display mode and
+requires one `headed` annotation from the resolved launch fixture per execution;
+Playwright's JSON project metadata does not include `use.headless`. Missing,
+duplicate or mismatched fixture evidence is BLOCKED.
+This is an environment comparison, not a product repair or proof that the
+default/headless failures are fixed. It isolates inherited `PWDEBUG` and restores
+it afterward, as with other test environment variables. It does not enable debug
+mode or disable timeouts. Successful visible-window results would only certify
+that environment.
+
+The local visible-window comparison also exposed a separate terminal recovery
+defect: Vue-wrapped checkpoint controls/links could not be cloned into the
+parser Worker. Restore now sends plain checkpoint data and confirms the Worker
+survives both actual refreshes. Existing protocol, ACK, input replay, stored-state
+and time limits remain; the screenshot styles are unchanged. This fix does not
+establish the cause of the Windows initial-setup or task deadline failures.
 
 The [thirteenth returned report](../acceptance/reports/windows-thirteenth-report-2026-10-04.md)
 built successfully but started **no tests**: another listener already occupied
@@ -107,7 +137,7 @@ Download the runner from the **same pinned commit** supplied in the conversation
 then use this narrower selection:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref <commit> -Followup -BrowsersOnly -WebKitOnly
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref <commit> -Followup -BrowsersOnly -WebKitOnly -Headed
 ```
 
 It needs Git and Node.js, creates a fresh checkout, installs only `web`

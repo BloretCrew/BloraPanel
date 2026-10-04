@@ -60,7 +60,7 @@ for(const scenario of cases)test(`${scenario.name} survives checkpoint and remou
         const replayResponses=responses.splice(0)
         await output(scenario.suffix)
         await model.checkpoint()
-        return {screen:model.serialize.serialize({scrollback:3000}),controls:captureTerminalControlState(model.terminal,model.terminal.cols,model.terminal.rows),cols:model.terminal.cols,rows:model.terminal.rows,responses,titles,replayResponses,compacted,protectedSequence}
+        return {screen:model.serialize.serialize({scrollback:3000}),controls:captureTerminalControlState(model.terminal,model.terminal.cols,model.terminal.rows),cols:model.terminal.cols,rows:model.terminal.rows,responses,titles,replayResponses,compacted,protectedSequence,worker:container.dataset.terminalCheckpoint==='worker'}
       }finally{model.dispose();container.remove();await recovery.clear()}
     }
     return {baseline:await run(false),restored:await run(true)}
@@ -69,6 +69,7 @@ for(const scenario of cases)test(`${scenario.name} survives checkpoint and remou
   expect(result.restored.compacted).toBe(!!scenario.complete)
   expect(result.restored.protectedSequence).toBe(scenario.resize?2:1)
   expect(result.restored.replayResponses).toEqual([])
+  expect(result.restored.worker).toBe(true)
 })
 
 test('unfinished control sequence over journal budget preserves the last protected boundary',async({page})=>{

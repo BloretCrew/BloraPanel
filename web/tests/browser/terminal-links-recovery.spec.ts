@@ -36,7 +36,7 @@ for(const scenario of cases)test(`OSC link remains discoverable after recovery: 
         const links:Array<{text:string;range:unknown;activate:(event:MouseEvent,text:string)=>void}>=[]
         for(let row=1;row<=model.terminal.buffer.active.length;row++)links.push(...await new Promise<typeof links>(resolve=>provider.provideLinks(row,value=>resolve(value||[]))))
         for(const link of links)link.activate(new MouseEvent('click'),link.text)
-        return {links:links.map(({text,range})=>({text,range})),activated,output,screen:model.serialize.serialize()}
+        return {links:links.map(({text,range})=>({text,range})),activated,output,screen:model.serialize.serialize(),worker:container.dataset.terminalCheckpoint==='worker'}
       }finally{model.dispose();container.remove();await recovery.clear()}
     }
     return {baseline:await run(false),restored:await run(true)}
@@ -44,6 +44,7 @@ for(const scenario of cases)test(`OSC link remains discoverable after recovery: 
   if(scenario.count===0)expect(result.baseline.links).toHaveLength(0)
   else expect(result.baseline.links.length).toBeGreaterThan(0)
   expect(result.restored).toEqual(result.baseline)
+  expect(result.restored.worker).toBe(true)
 })
 
 test('real pointer activates the same link through two persistent remounts',async({page})=>{

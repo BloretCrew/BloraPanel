@@ -85,6 +85,7 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   liveOutput(2,'追加增量');await expect.poll(()=>received.filter(message=>message.type===MessageType.Ack).length).toBe(2)
   validationPhase('first refresh and durable checkpoint')
   await page.reload();await expect(page.getByText('已连接 · 只读观察',{exact:true})).toBeVisible();expect(resumeCursors.at(-1)).toBe(2)
+  await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-checkpoint',forceSnapshotFallback?'main':'worker')
   await expect.poll(()=>page.evaluate(async()=>{
     const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('blora-workspaces',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})
     const snapshots=await new Promise<any[]>((resolve,reject)=>{const request=db.transaction('snapshots').objectStore('snapshots').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)});db.close()
@@ -123,6 +124,7 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   })).toBe(true)
   validationPhase('second refresh and retained output-gap checkpoint')
   await page.reload();await expect(page.getByText('已连接 · 只读观察',{exact:true})).toBeVisible()
+  await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-checkpoint',forceSnapshotFallback?'main':'worker')
   expect(resumeCursors.at(-1)).toBe(90)
   const acknowledgements=received.filter(message=>message.type===MessageType.Ack)
   expect(acknowledgements.every(message=>message.credit>0&&message.credit<=message.sequence)).toBe(true)

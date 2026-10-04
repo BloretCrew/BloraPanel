@@ -5,7 +5,10 @@ import {decodeEnvelope,encodeEnvelope,MessageType} from '../../src/services/prot
 // desktop's independent notification stream so it cannot contact a real or
 // absent daemon while the tested terminal/HTTP routes use their own doubles.
 export const test=base.extend<{validationPhase:(name:string)=>void}>({
-  validationPhase:[async({page},use,testInfo)=>{
+  validationPhase:[async({page,headless},use,testInfo)=>{
+    // JSON reports omit project.use. Record the resolved launch fixture for
+    // each execution so the Windows runner can verify the real display mode.
+    testInfo.annotations.push({type:'blora-browser-display',description:headless?'headless':'headed'})
     const started=Date.now(),phases:{name:string;elapsedMs:number}[]=[]
     const signals:unknown[]=[]
     const record=(value:Record<string,unknown>)=>{if(signals.length<120)signals.push({at:Date.now(),...value})}

@@ -85,11 +85,13 @@ export class TerminalModel {
       if(saved.colors!==undefined)await this.write(terminalColorSequence(saved.colors))
       if(saved.controlState!==undefined){
         restoreTerminalControlState(this.terminal,saved.controlState,this.terminal.cols,this.terminal.rows)
-        await this.mirror(snapshot=>snapshot.restoreControls(saved.controlState!,this.terminal.cols,this.terminal.rows))
+        // Recovery records are Vue proxies. Only plain checkpoint data can
+        // cross the Worker boundary; otherwise postMessage drops the mirror.
+        await this.mirror(snapshot=>snapshot.restoreControls(json(saved.controlState!),this.terminal.cols,this.terminal.rows))
       }
       if(saved.links!==undefined){
         restoreTerminalLinks(this.terminal,saved.links,this.terminal.cols,this.terminal.rows)
-        await this.mirror(snapshot=>snapshot.restoreLinks(saved.links!))
+        await this.mirror(snapshot=>snapshot.restoreLinks(json(saved.links!)))
       }
       if(saved.pendingUtf8!==undefined){
         if(typeof saved.pendingUtf8!=='string'||saved.pendingUtf8.length!==4)throw new Error('终端检查点的UTF-8续接格式无效，原记录已保留')
