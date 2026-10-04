@@ -16,6 +16,27 @@ async function openDesktopWithSummary(page:Page,phase:(name:string)=>void){
   phase('desktop bootstrap confirmed first task summary response')
 }
 
+async function openConfirmedTaskView(page:Page,phase:(name:string)=>void){
+  const app=page.locator('[data-app="blora.tasks"]')
+  await expect(app).toBeVisible()
+  await expect(app).toBeEnabled()
+  phase('activating task application through native Enter')
+  // Opening an async application precedes its first list request. Confirm the
+  // real response, not just a request counter, within the original case budget.
+  // Native Enter uses the same visible application's normal activation path.
+  const [response]=await Promise.all([
+    page.waitForResponse(response=>response.request().method()==='GET'&&new URL(response.url()).pathname==='/api/v1/tasks'),
+    app.press('Enter'),
+  ])
+  expect(response.status()).toBe(200)
+  expect(await response.finished()).toBeNull()
+  phase('task view confirmed first list response')
+  const filter=page.getByRole('combobox',{name:'任务状态筛选'})
+  await expect(filter).toBeVisible()
+  await expect(filter).toBeEnabled()
+  phase('task view filter visible and enabled')
+}
+
 async function recordSummaryAborts(page:Page){
   await page.addInitScript(()=>{
     const fetch=window.fetch.bind(window)
@@ -66,7 +87,7 @@ test('pending task summary reads cancel before refresh while the latest task fil
     validationPhase('opening desktop for pending task refresh')
     await openDesktopWithSummary(page,validationPhase)
     await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
-    await page.locator('[data-app="blora.tasks"]').click()
+    await openConfirmedTaskView(page,validationPhase)
     await expect.poll(()=>waiting).toBe(true)
     validationPhase('pending summary established; editing latest task filter')
     // No settling delay after the last protected edit. The real refresh
@@ -133,6 +154,10 @@ test('cancelled navigation keeps task summary polling and its last confirmed sta
 test('queued task polling cannot start new reads during beforeunload and resumes in the surviving document',async({page,validationPhase})=>{
   const errors:string[]=[]
   page.on('pageerror',error=>errors.push(error.message))
+  let afterDeparture=false,lists=0
+  // Change fixture data only once the browser actually dispatches departure,
+  // not before a potentially delayed automation round trip to that boundary.
+  await page.exposeFunction('__bloraQueuedPollDeparture',()=>{afterDeparture=true})
   await page.addInitScript(()=>{
     const callbacks=new Map<number,()=>void>()
     const interval=window.setInterval.bind(window),clear=window.clearInterval.bind(window),fetch=window.fetch.bind(window)
@@ -147,7 +172,10 @@ test('queued task polling cannot start new reads during beforeunload and resumes
       return id
     }) as typeof window.setInterval
     window.clearInterval=((id?:number)=>{if(id!==undefined)callbacks.delete(id);clear(id)}) as typeof window.clearInterval
-    window.addEventListener('beforeunload',()=>{leaving=true;setTimeout(()=>{leaving=false},0)})
+    window.addEventListener('beforeunload',()=>{
+      leaving=true;setTimeout(()=>{leaving=false},0)
+      void (window as unknown as {__bloraQueuedPollDeparture:()=>Promise<void>}).__bloraQueuedPollDeparture().catch(()=>{})
+    })
     window.fetch=(input:RequestInfo|URL,init?:RequestInit)=>{
       const url=typeof input==='string'?input:input instanceof URL?input.href:input.url
       const path=new URL(url,location.href).pathname
@@ -156,20 +184,22 @@ test('queued task polling cannot start new reads during beforeunload and resumes
     }
     Object.assign(window,{__bloraQueuedTaskPolls:{callbacks,blocked}})
   })
-  let summaries=0,lists=0
   const writes:string[]=[]
   await page.context().route('**/api/v1/**',route=>{
     const path=new URL(route.request().url()).pathname
     if(route.request().method()!=='GET')writes.push(path)
-    if(path.endsWith('/tasks/summary'))return route.fulfill({json:{active:++summaries>1?7:0,states:{}}})
+    // A slow cold application must not make the expected recovered count
+    // visible before the departure being tested. Only this boundary changes it.
+    if(path.endsWith('/tasks/summary'))return route.fulfill({json:{active:afterDeparture?7:0,states:{}}})
     if(path.endsWith('/tasks'))lists++
     return route.fulfill({json:path.endsWith('/session')?{user:{userId:'queued-poll',name:'离开轮询测试',admin:true},csrfToken:'test-only'}:{items:[],nextBefore:-1}})
   })
   validationPhase('opening desktop and task view for queued polling')
   await openDesktopWithSummary(page,validationPhase)
   await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
-  await page.locator('[data-app="blora.tasks"]').click()
-  await expect.poll(()=>lists).toBe(1)
+  await openConfirmedTaskView(page,validationPhase)
+  await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
+  const baselineLists=lists
   validationPhase('task observers active; invoking queued callbacks during departure')
   const observation=await page.evaluate(()=>{
     const state=(window as unknown as {__bloraQueuedTaskPolls:{callbacks:Map<number,()=>void>;blocked:string[]}}).__bloraQueuedTaskPolls
@@ -181,7 +211,7 @@ test('queued task polling cannot start new reads during beforeunload and resumes
   expect(observation.callbacks).toBeGreaterThanOrEqual(2)
   expect(observation.blocked).toEqual([])
   await expect(page.getByRole('button',{name:'7 项后台任务',exact:true})).toBeVisible()
-  await expect.poll(()=>lists).toBeGreaterThanOrEqual(2)
+  await expect.poll(()=>lists).toBeGreaterThan(baselineLists)
   expect(await page.evaluate(()=>(window as unknown as {__bloraQueuedTaskPolls:{blocked:string[]}}).__bloraQueuedTaskPolls.blocked)).toEqual([])
   expect(writes).toEqual([])
   expect(errors).toEqual([])

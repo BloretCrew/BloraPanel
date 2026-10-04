@@ -46,31 +46,40 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the eleventh returned report: remaining WebKit checks
+## Follow up the twelfth returned report: remaining WebKit checks
 
-The [eleventh returned report](../acceptance/reports/windows-eleventh-report-2026-10-04.md)
-tested the compiled frontend and passed WebKit **13/15**, including all three
-log lifecycle executions. One task check failed the initial count assertion
-before establishing its pending read or navigation boundary. One terminal case
-exhausted its 45s budget during console pointer setup before attaching a session.
-Neither failed case reached the recovery assertions. The Windows startup and
-pointer/paint causes are not established by these diagnostics.
+The [twelfth returned report](../acceptance/reports/windows-twelfth-report-2026-10-04.md)
+tested the compiled frontend and passed WebKit **12/15**. Terminal fallback/worker,
+log lifecycle and task recovery without animation frames each passed three times.
+Remaining task failures include one total-budget exhaustion after slow task-view
+setup, one list assertion before its first request, and one post-boundary visible
+count deadline. The latter failure remains unresolved on Windows; HTTP completion
+alone does not establish JSON consumption or DOM publication.
 
 The narrow followup type-checks and builds the production frontend in a
 separate logged stage, then tests that compiled bundle on a fresh local preview
 server. This removes on-demand development compilation from the case budget.
-The task cases now await the actual first successful summary HTTP response and
-completed body before checking its UI. Cold session/workspace setup stays within
-the original 45s total; rendering and navigation recovery keep their 5s limits.
-This does not certify cold initialization within 5s. Terminal setup uses native
+The task cases await the actual first successful summary HTTP response and
+completed body before checking its UI. Opening the task application now uses
+native Enter on its visible, enabled button and confirms the first task-list
+response/body plus visible, enabled filter before testing departure. Cold
+session/workspace/module setup stays within the original 45s total; rendering and
+navigation recovery keep their 5s limits. Queued-poll fixture data remains zero
+until the tested boundary, preventing a pre-boundary poll from satisfying the
+recovery assertion. This does not certify cold initialization within 5s or those
+setup pointer actions. Terminal setup uses native
 Enter-key activation through the same visible, enabled application, resource,
 console, management and attachment buttons. Its subsequent takeover, tab
 migration and remount pointer actions remain. Log setup already uses native keys.
 These setup actions do not establish pointer/paint performance. Existing
 immediate task revalidation, confirmed-cache retention, real polling, refresh,
 worker/storage, ACK, draft/input and page-error checks remain. All task/log and
-terminal phases log timing live; failed diagnostics include a numeric displayed
-count and control geometry. Product code and visuals are unchanged in this followup.
+terminal phases log timing live. Passive diagnostics timestamp actual summary
+JSON consumption and displayed count changes in the browser, even when a later
+surface probe is unavailable. Only whitelisted numeric counts, read indices and
+static lifecycle events cross the diagnostic binding; bodies, field values and
+storage contents are excluded. Existing bounded assets and control geometry remain.
+Product code and visuals are unchanged in this followup.
 Summary cancellation records identify the deliberately held second request:
 it must cancel exactly once after departure, and every other observed cancellation
 must also occur after departure. A distinct read resumed during a slow refresh
