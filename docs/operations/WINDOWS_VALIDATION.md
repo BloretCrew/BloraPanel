@@ -46,26 +46,36 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the tenth returned report: remaining WebKit checks
+## Follow up the eleventh returned report: remaining WebKit checks
 
-The [tenth returned report](../acceptance/reports/windows-tenth-report-2026-10-04.md)
-tested the compiled frontend and passed WebKit **12/15**, including all three
-fallback-renderer/worker terminal executions. Two log checks stopped at console
-button pointer stability before any log request; one no-frame task-count
-assertion timed out despite later completed summary requests. The Windows
-rendering/response-publication causes are not established by these diagnostics.
+The [eleventh returned report](../acceptance/reports/windows-eleventh-report-2026-10-04.md)
+tested the compiled frontend and passed WebKit **13/15**, including all three
+log lifecycle executions. One task check failed the initial count assertion
+before establishing its pending read or navigation boundary. One terminal case
+exhausted its 45s budget during console pointer setup before attaching a session.
+Neither failed case reached the recovery assertions. The Windows startup and
+pointer/paint causes are not established by these diagnostics.
 
 The narrow followup type-checks and builds the production frontend in a
 separate logged stage, then tests that compiled bundle on a fresh local preview
 server. This removes on-demand development compilation from the case budget.
-Task queries now revalidate as soon as the surviving document's read gate
-resumes, retaining confirmed cache and leaving disabled/inactive observers alone.
-The log lifecycle case uses native Enter-key activation through the same visible
-application/resource/console controls; it still checks actual polling, refresh,
-draft recovery, zero input replay and page errors. This separates its setup from
-pointer stability's frame waits; it does not establish pointer/paint performance.
-Other cases retain pointer actions. All task/log and terminal phases log timing
-live; failed diagnostics include a numeric displayed count and control geometry.
+The task cases now await the actual first successful summary HTTP response and
+completed body before checking its UI. Cold session/workspace setup stays within
+the original 45s total; rendering and navigation recovery keep their 5s limits.
+This does not certify cold initialization within 5s. Terminal setup uses native
+Enter-key activation through the same visible, enabled application, resource,
+console, management and attachment buttons. Its subsequent takeover, tab
+migration and remount pointer actions remain. Log setup already uses native keys.
+These setup actions do not establish pointer/paint performance. Existing
+immediate task revalidation, confirmed-cache retention, real polling, refresh,
+worker/storage, ACK, draft/input and page-error checks remain. All task/log and
+terminal phases log timing live; failed diagnostics include a numeric displayed
+count and control geometry. Product code and visuals are unchanged in this followup.
+Summary cancellation records identify the deliberately held second request:
+it must cancel exactly once after departure, and every other observed cancellation
+must also occur after departure. A distinct read resumed during a slow refresh
+is no longer miscounted as another cancellation of that held request. Departure
+flags reset in the new document. Queued-read and no-write/replay checks remain.
 There is no prewarming, force click, sleep, retry, skip or raised deadline.
 
 Download the runner from the **same pinned commit** supplied in the conversation,

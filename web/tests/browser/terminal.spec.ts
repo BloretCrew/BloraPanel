@@ -55,9 +55,24 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
     else send(MessageType.Resume)
   })
   validationPhase('navigate desktop')
-  await page.goto('/');validationPhase('open instance center');await page.locator('[data-app="blora.instances"]').click();validationPhase('open instance');await page.getByRole('button',{name:'终端测试实例',exact:true}).click();validationPhase('open console');await page.getByRole('button',{name:'控制台',exact:true}).click();validationPhase('open terminal management');await page.getByRole('button',{name:'打开终端会话管理',exact:true}).click()
+  await page.goto('/')
+  // Build the real terminal UI with visible, enabled buttons and native Enter.
+  // Windows pointer stability can exhaust the case before a terminal exists;
+  // this stream/storage case does not certify those setup pointer actions.
+  // Subsequent takeover/view-migration/remount pointer actions remain covered.
+  for(const [name,button] of [
+    ['open instance center',page.locator('[data-app="blora.instances"]')],
+    ['open instance',page.getByRole('button',{name:'终端测试实例',exact:true})],
+    ['open console',page.getByRole('button',{name:'控制台',exact:true})],
+    ['open terminal management',page.getByRole('button',{name:'打开终端会话管理',exact:true})],
+    ['attach terminal',page.getByRole('button',{name:/terminal-fixture · RUNNING/})],
+  ] as const){
+    validationPhase(name+' with native Enter key')
+    await expect(button).toBeVisible()
+    await expect(button).toBeEnabled()
+    await button.press('Enter')
+  }
   validationPhase('attach terminal and check replay ACK')
-  await page.getByRole('button',{name:/terminal-fixture · RUNNING/}).click()
   await expect.poll(()=>received.filter(message=>message.type===MessageType.Ack).length).toBe(1)
   expect(received.filter(message=>message.type===MessageType.Data)).toEqual([])
   const ack=received.find(message=>message.type===MessageType.Ack)!;expect(ack.sequence).toBe(ack.credit)
