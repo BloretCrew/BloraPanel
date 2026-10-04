@@ -65,6 +65,7 @@ $commit = 'not fetched'
 $active = $null
 $stage = 0
 $fatal = ''
+$browserServerPorts = @{}
 $savedEnvironment = @{}
 $savedPath = $env:Path
 # Do not inherit E2E switches/endpoints or helper modes from another session.
@@ -226,6 +227,8 @@ function Get-FollowupPlan {
     }
 }
 function Get-WebKitFollowupPlan {
+    # The thirteenth report never started tests because 5173 was occupied.
+    # Select a fresh free port per engine; preserve the unresolved coverage.
     # The twelfth report passed 12/15; terminal, logs and no-frame recovery each
     # passed three times. Task failures include incomplete cold-view setup and
     # a post-boundary count deadline. Confirm actual task-list readiness and
@@ -242,6 +245,14 @@ function Get-WebKitFollowupPlan {
 function Get-SelectedBrowsers {
     if ($WebKitOnly) { return @('webkit') }
     return @('chromium','firefox','webkit')
+}
+function Get-BrowserServerPort {
+    # Ask the OS for a currently free loopback port instead of assuming 5173.
+    # Release this probe before Vite binds; strictPort/fresh-server checks keep
+    # the small reservation-to-start race fail-closed rather than reusing data.
+    $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
+    try { $listener.Start(); return [int]$listener.LocalEndpoint.Port }
+    finally { $listener.Stop() }
 }
 function Get-BrowserTitlePattern($Plan) {
     # Playwright grep includes the file name (and optional project prefix),
@@ -305,6 +316,7 @@ if ($Followup) {
     } else {
         $uncovered += 'Followup mode runs three named Go regressions (three executions), eleven native checks, full race testing of Master/runlog only, SDK packages, and all ten scenarios in three affected browser files. WebKit runs each scenario three times; Chromium/Firefox once. Other Go packages/browser files, standalone vet/builds, production web/unit checks and native IME are intentionally omitted; prior passes are NOT imported.'
     }
+    $uncovered += 'The thirteenth returned report built successfully but executed no browser tests because port 5173 was occupied. The runner now selects an OS-assigned free loopback port immediately before each engine, uses it for both the server and test base URL, and records that port plus bounded global startup errors. It never terminates or reuses an unrelated service; a reservation-to-start collision fails closed. The same five cases must still pass three times: strictly 15/15. This startup repair does not establish Windows task-recovery correctness.'
     $uncovered += 'The twelfth returned report tested the compiled frontend and passed WebKit 12/15. Terminal fallback/worker, log lifecycle and no-frame task recovery each passed three times. Remaining task failures were one total-budget exhaustion after slow task-view setup, one task-list setup assertion before its first request, and one post-boundary visible-count deadline. The Windows post-boundary cause remains unconfirmed. Task setup now activates a visible, enabled app through native Enter and confirms the actual first list response/body and filter readiness before departure, inside the unchanged 45s total budget. This does not certify cold initialization within 5s or setup pointer performance. Queued-poll fixtures keep baseline count zero until the tested boundary, so an earlier ordinary poll cannot satisfy recovery. Original 5s recovery limits, real queued timers, held-read cancellation identity, cache retention, refresh, worker/storage, ACK, errors and no-write/input-replay assertions remain. Passive bounded diagnostics timestamp actual summary JSON consumption and displayed numeric count changes in the browser, independently of a later surface probe; only whitelisted numbers/static event kinds cross the binding, with no bodies, field contents or storage dumps. Product code and visuals are unchanged in this followup. Native Enter terminal/log setup and later terminal pointer actions remain. These checks do not establish pointer/paint performance, every slow navigation, native dialogs or bfcache; browser tests still replace management transports.'
 } elseif ($Retest) {
     $uncovered += 'Retest mode reruns the returned failing Go cases, the native suite, and all cases in nine affected browser files (excluding the already-passed Chromium-only native IME scenario). Required case names are checked individually. Prior results are NOT imported as passes; full all-package race testing is attempted because it was previously blocked.'
@@ -395,6 +407,10 @@ try {
                     }
                     foreach ($browser in @(Get-SelectedBrowsers)) {
                         if (Invoke-Stage "install-$browser" 'node.exe' @('node_modules/@playwright/test/cli.js','install',$browser) $path 1800) {
+                            $port=Get-BrowserServerPort
+                            $env:BLORA_E2E_PORT=[string]$port
+                            $browserServerPorts[$browser]=$port
+                            Write-Host "Browser server: http://127.0.0.1:$port (fresh checkout)"
                             $env:BLORA_BROWSER=$browser
                             $env:PLAYWRIGHT_JSON_OUTPUT_NAME=Join-Path $report "$browser.json"
                             $browserArgs = @('node_modules/@playwright/test/cli.js','test','--workers=1','--reporter=line,json','--output',(Join-Path $run "browser-artifacts/$browser"))
@@ -435,6 +451,8 @@ finally {
             try {
                 $text=Clean ([IO.File]::ReadAllText($file)); Save-Text $file $text
                 $data=$text | ConvertFrom-Json
+                $globalErrors=@($data.errors | Where-Object { $_.message } | Select-Object -First 5 | ForEach-Object { $message=Clean ([string]$_.message); $message.Substring(0,[Math]::Min(2000,$message.Length)) })
+                if ($globalErrors.Count) { Missing "browser-$browser-runner-errors" ($globalErrors -join ' | ') }
                 $missingTitles = @()
                 if ($Retest -or $Followup) {
                     $passedTitles = @(Get-BrowserPassTitles $data.suites)
@@ -443,7 +461,7 @@ finally {
                     if ($missingTitles.Count) { Missing "browser-$browser-retest-coverage" "Required scenarios without PASS: $($missingTitles.Count). See browserSummary in report.json." }
                 }
                 $expectedCount = $(if ($Retest -or $Followup) { $retestPlan.browserCaseCount * $(if ($Followup -and $browser -eq 'webkit') { 3 } else { 1 }) } else { $null })
-                $browserSummary+=@{browser=$browser;stats=$data.stats;expectedCaseCount=$expectedCount;requiredRetestTitlesMissing=$missingTitles}
+                $browserSummary+=@{browser=$browser;stats=$data.stats;expectedCaseCount=$expectedCount;requiredRetestTitlesMissing=$missingTitles;globalErrors=$globalErrors;serverUrl=$data.config.webServer.url}
                 if ($null -ne $expectedCount -and $data.stats.expected -ne $expectedCount) { Missing "browser-$browser-case-count" "Expected $expectedCount passing executions; omitted or incomplete scenarios are not a pass." }
                 if (!$data.stats -or $data.stats.expected -lt 1 -or $data.stats.skipped -gt 0 -or $data.stats.unexpected -gt 0 -or $data.stats.flaky -gt 0) { Missing "browser-$browser-coverage" 'No successful tests, skips, unexpected or flaky outcomes; see JSON.' }
                 Copy-BrowserDiagnostics $browser $data.suites
@@ -458,12 +476,16 @@ finally {
     $result['selectedBrowsers'] = @(Get-SelectedBrowsers)
     $result['browserServerMode'] = $(if ($WebKitOnly) { 'production-preview' } else { 'development' })
     $result['browserBuildSelected'] = [bool]$WebKitOnly
+    $result['browserServerPorts'] = $browserServerPorts
     $result['goChecksSelected'] = !$BrowsersOnly
     $result['nativeChecksSelected'] = !$BrowsersOnly
     $result['sdkChecksSelected'] = !$BrowsersOnly
     Save-Text (Join-Path $report 'report.json') ($result | ConvertTo-Json -Depth 30)
     $lines=@('# Blora Windows validation', '', "Result: **$outcome**", "Commit: $commit", "UTC: $($result.startedAt) to $($result.finishedAt)", '', 'This is an automated evidence bundle, not full Windows/platform acceptance.', '', '| Stage | Result | Seconds | Log |','|---|---|---:|---|')
     foreach ($s in $steps) { $lines+="| $($s.name) | $($s.status) | $($s.seconds) | $($s.log) |" }
+    $lines+=@('', '## Browser servers')
+    foreach ($key in @($browserServerPorts.Keys | Sort-Object)) { $lines+="- ${key}: http://127.0.0.1:$($browserServerPorts[$key])" }
+    foreach ($summary in $browserSummary) { foreach ($message in $summary.globalErrors) { $lines+="- $($summary.browser) runner error: $message" } }
     $lines+=@('', '## Required native tests without PASS', ($missingTests -join "`n"), '', '## Skipped Go tests')
     foreach ($s in $skips) { $lines+="- $($s.stage): $($s.package) / $($s.test)" }
     $lines+=@('', '## Not covered'); foreach ($gap in $uncovered) { $lines+="- $gap" }

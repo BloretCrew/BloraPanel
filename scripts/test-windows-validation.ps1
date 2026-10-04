@@ -15,7 +15,7 @@ $report=Join-Path $run 'report'; $repo=$run
 [void](New-Item -ItemType Directory $report)
 $steps=New-Object System.Collections.Generic.List[object]
 $events=New-Object System.Collections.Generic.List[object]
-$active=$null; $stage=0
+$active=$null; $stage=0; $browserServerPorts=@{}
 $started=[DateTime]::UtcNow; $commit='test-only'; $Ref='test'; $fatal=''; $savedEnvironment=@{}
 $savedPath=$env:Path; $Retest=$false; $Followup=$false; $BrowsersOnly=$false; $WebKitOnly=$false; $retestPlan=Get-RetestPlan
 $uncovered=@('harness only'); $ProgressPreference='SilentlyContinue'
@@ -26,6 +26,15 @@ function taskkill.exe { param([Parameter(ValueFromRemainingArguments=$true)]$Arg
     $index=[Array]::IndexOf($Arguments,'/PID'); Stop-Process -Id ([int]$Arguments[$index+1]) -Force
 }
 try {
+    $occupied=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,5173)
+    $occupied.Start()
+    try {
+        $free=Get-BrowserServerPort
+        if ($free -eq 5173 -or $free -lt 1 -or $free -gt 65535) { throw 'Browser port selector returned the occupied/default or invalid port' }
+        $probe=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,$free)
+        try { $probe.Start() } finally { $probe.Stop() }
+        Write-Host 'PASS: actual OS port selection bypasses occupied 5173 and releases its probe before server startup.'
+    } finally { $occupied.Stop() }
     $value='space path & literal $() ` quote " and 中文'
     if (!(Invoke-Stage 'arguments' 'Write-Output' @($value) $run 10)) { throw 'Argument invocation failed' }
     if (!(Invoke-Stage 'child-progress' 'Write-Progress' @('test progress') $run 10)) { throw 'Child progress not suppressed' }
@@ -169,6 +178,19 @@ try {
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.runMode -ne 'followup-webkit' -or $result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS' -or @($result.selectedBrowsers).Count -ne 1 -or $result.selectedBrowsers[0] -ne 'webkit' -or $result.browserSummary.Count -ne 1 -or $result.browserSummary[0].expectedCaseCount -ne 15 -or $result.goChecksSelected -or $result.nativeChecksSelected -or $result.sdkChecksSelected -or $result.goTestEvents.Count -or $result.requiredNativeTestsMissing.Count -or $result.requiredGoRetestsMissing.Count) { throw 'WebKit-only selection imported or required omitted evidence' }
     if ($result.browserServerMode -ne 'production-preview' -or !$result.browserBuildSelected) { throw 'Production bundle selection not recorded' }
+    # A global startup error cannot disappear behind nominal aggregate/title
+    # passes. Preserve the chosen port and actual URL in the report as well.
+    $browserServerPorts['webkit']=$free
+    $browserData['config']=@{webServer=@{url="http://127.0.0.1:$free"}}
+    $browserData['errors']=@(@{message='Controlled startup error: occupied browser port'})
+    Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
+    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'browser-webkit-runner-errors').Count -or $result.browserServerPorts.webkit -ne $free -or $result.browserSummary[0].serverUrl -ne "http://127.0.0.1:$free" -or $result.browserSummary[0].globalErrors[0] -ne 'Controlled startup error: occupied browser port') { throw 'Startup error or selected port missing from report' }
+    $browserData.errors=@()
+    Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
+    $steps.Remove(($steps | Where-Object name -eq 'browser-webkit-runner-errors')) | Out-Null
     # Aggregate/title passes alone cannot conceal an omitted or failed build.
     $buildStep=$steps | Where-Object name -eq 'web-browser-build'; $steps.Remove($buildStep) | Out-Null
     Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
@@ -240,5 +262,5 @@ try {
         & $shell -NoProfile -File $source -WorkRoot $collection -CollectLatest
         if ($LASTEXITCODE -ne 0 -or @(Get-ChildItem (Join-Path $collection '20260102-010101-new') -Filter '*.zip').Count -ne 1 -or @(Get-ChildItem (Join-Path $collection '20260101-010101-old') -Filter '*.zip').Count -ne 0) { throw 'CollectLatest selected the wrong run' }
     } finally { $env:OS=$previousOS }
-    Write-Host 'PASS: failing progress host, child progress suppression, literal arguments, failure/skip/timeout, full/remaining/retest/followup/browser-only/WebKit-only coverage gates, production build gate and server-mode metadata, anchored title selection, diagnostic bundling, compiler checksum/traversal, ZIP boundaries and old-run recovery.'
+    Write-Host 'PASS: occupied-port selection/probe release, startup-error and server-port reporting, failing progress host, child progress suppression, literal arguments, failure/skip/timeout, full/remaining/retest/followup/browser-only/WebKit-only coverage gates, production build gate and server-mode metadata, anchored title selection, diagnostic bundling, compiler checksum/traversal, ZIP boundaries and old-run recovery.'
 } finally { Remove-Item -LiteralPath $run -Recurse -Force }

@@ -46,7 +46,23 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the twelfth returned report: remaining WebKit checks
+## Follow up the thirteenth returned report: remaining WebKit checks
+
+The [thirteenth returned report](../acceptance/reports/windows-thirteenth-report-2026-10-04.md)
+built successfully but started **no tests**: another listener already occupied
+`127.0.0.1:5173`. Its owner is unknown. This is a test-server startup failure,
+not fifteen failed product cases, and does not resolve the task failures below.
+
+The runner now asks the OS for a free loopback port immediately before each
+browser engine. `BLORA_E2E_PORT` sets both the test base URL and the development
+or compiled preview server's port. The console and report record the selection;
+bounded global browser-runner errors also appear in the summary. Fresh-server
+checks and `--strictPort` remain active. The script never kills or reuses the
+listener on 5173. If another program claims the selected port between selection
+and server startup, the stage fails explicitly instead of testing an unrelated
+service. Existing manual browser commands retain port 5173 unless this variable
+is set; invalid port values fail before testing. The five-case selection and
+original deadlines remain unchanged.
 
 The [twelfth returned report](../acceptance/reports/windows-twelfth-report-2026-10-04.md)
 tested the compiled frontend and passed WebKit **12/15**. Terminal fallback/worker,
