@@ -96,7 +96,7 @@ try {
         $specs=@(foreach ($execution in 1..$executions) { foreach ($title in $retestPlan.browserTitles) { @{title=$title;ok=$true;tests=@(@{expectedStatus='passed';status='expected';results=@(@{status='passed'})})} } })
         $browserData=@{stats=@{expected=($retestPlan.browserCaseCount*$executions);unexpected=0;flaky=0;skipped=0};suites=@(@{specs=$specs})}
         if ($browser -eq 'webkit') {
-            $sample=@{browserServerMode='production-preview';phases=@(@{name='navigate desktop';elapsedMs=31},@{name='first refresh and durable checkpoint';elapsedMs=32000});assets=@{completed=18;slowest=@(@{path='/assets/TerminalApp-fixture.js';durationMs=200})};signals=@(@{kind='requestfailed';path='/api/v1/tasks'});surface=@{visibility='visible';paint=$false}} | ConvertTo-Json -Depth 10
+            $sample=@{browserServerMode='production-preview';phases=@(@{name='navigate desktop';elapsedMs=31},@{name='first refresh and durable checkpoint';elapsedMs=32000});assets=@{completed=18;slowest=@(@{path='/assets/TerminalApp-fixture.js';durationMs=200})};signals=@(@{kind='requestfailed';path='/api/v1/tasks'});surface=@{visibility='visible';paint=$false;taskSummary=@{activeCount=7};consoles=@(@{disabled=$false;focused=$true;selected=$false;bounds=@{x=150;y=180;width=90;height=40}})}} | ConvertTo-Json -Depth 10
             $browserData.suites[0].specs[0].tests[0].results[0]['attachments']=@(@{name='blora-runtime-diagnostics';contentType='application/json';body=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($sample))},@{name='private-credentials';contentType='application/json';path='/do/not/read/private.json'})
         }
         Save-Text (Join-Path $report "$browser.json") ($browserData | ConvertTo-Json -Depth 20)
@@ -108,6 +108,7 @@ try {
     if (!(Test-Path (Join-Path $report 'browser-webkit-diagnostic-1.json')) -or (Test-Path (Join-Path $report 'private-credentials.json'))) { throw 'Diagnostic bundling boundary failed' }
     $diagnostic=Get-Content (Join-Path $report 'browser-webkit-diagnostic-1.json') -Raw | ConvertFrom-Json
     if ($diagnostic.browserServerMode -ne 'production-preview' -or $diagnostic.phases.Count -ne 2 -or $diagnostic.assets.slowest[0].durationMs -ne 200) { throw 'Diagnostic phase/asset data was lost' }
+    if ($diagnostic.surface.taskSummary.activeCount -ne 7 -or !$diagnostic.surface.consoles[0].focused -or $diagnostic.surface.consoles[0].bounds.width -ne 90) { throw 'Bounded task/control diagnostics were lost' }
     # An aggregate claiming 30 successes cannot hide a missing third
     # execution of one particular required scenario.
     $completeWebkitSpecs=@($browserData.suites[0].specs)

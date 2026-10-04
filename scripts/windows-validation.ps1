@@ -226,9 +226,10 @@ function Get-FollowupPlan {
     }
 }
 function Get-WebKitFollowupPlan {
-    # The ninth report passed all polling checks three times; the first
-    # terminal execution used the entire 45s limit. Check a freshly compiled
-    # production bundle and keep all four navigation guards alongside it;
+    # The tenth report passed the terminal three times. Two log checks stalled
+    # on pointer stability before reading logs, and one summary check timed out.
+    # Check immediate task revalidation and native keyboard setup against a
+    # freshly compiled bundle, retaining all four navigation guards and terminal;
     # every selected case must pass three executions, with no retries or skips.
     return [pscustomobject]@{
         goCases = @()
@@ -303,7 +304,7 @@ if ($Followup) {
     } else {
         $uncovered += 'Followup mode runs three named Go regressions (three executions), eleven native checks, full race testing of Master/runlog only, SDK packages, and all ten scenarios in three affected browser files. WebKit runs each scenario three times; Chromium/Firefox once. Other Go packages/browser files, standalone vet/builds, production web/unit checks and native IME are intentionally omitted; prior passes are NOT imported.'
     }
-    $uncovered += 'The ninth returned report passed WebKit 14/15: all four navigation/log scenarios passed three times, while the first fallback/worker terminal execution exhausted its original 45s case budget without a recorded page error. Its first refresh began about 32s after initial navigation; the later two full terminal executions took about 19s each. Development compilation overhead is a hypothesis, not an established Windows cause. The narrow WebKit selection now tests a freshly built production bundle, without warming up the terminal or raising any deadline. Terminal phase timestamps are shown live and retained in failure diagnostics together with bounded asset timings. The 250ms safe-read guard, no-frame recovery, actual refresh, worker/storage, ACK and no-input-replay assertions remain active. No mutations are automatically replayed. Diagnostics exclude bodies, field contents and storage dumps. This run does not establish every slow navigation, native dialog or bfcache sequence, and production-bundle browser tests still replace management transports.'
+    $uncovered += 'The tenth returned report tested the compiled frontend and passed WebKit 12/15, including all three fallback/worker terminal executions. Two log checks stalled while waiting for console-button pointer stability before any log request or navigation boundary; one no-frame task-count assertion timed out despite subsequent successful HTTP responses. These observations do not establish the Windows rendering or response-publication cause. Task queries now revalidate immediately when safe document reads resume, rather than waiting for the next polling interval. The log HTTP lifecycle case sets up its actual UI using native Enter-key activation, with visibility and unchanged recovery assertions; this is not proof of pointer/paint performance. Task/log and terminal phase timestamps are shown live and retained with bounded asset timings and numeric task-count/control geometry diagnostics. Fresh production build, original 45s cases and 5s assertions, no-frame recovery, queued reads, actual refresh, worker/storage, ACK and no-input-replay checks remain active. No mutations are automatically replayed. Diagnostics exclude bodies, field contents and storage dumps. This run does not establish every slow navigation, native dialog or bfcache sequence, and browser tests still replace management transports.'
 } elseif ($Retest) {
     $uncovered += 'Retest mode reruns the returned failing Go cases, the native suite, and all cases in nine affected browser files (excluding the already-passed Chromium-only native IME scenario). Required case names are checked individually. Prior results are NOT imported as passes; full all-package race testing is attempted because it was previously blocked.'
     $uncovered += 'This targeted run omits standalone vet/builds, web production build/unit tests, unaffected browser files and unaffected non-race Go cases. Native IME injection in Firefox/WebKit remains a capability gap, not a passing test.'

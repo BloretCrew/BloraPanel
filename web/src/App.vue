@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onScopeDispose, ref, watch } from 'vue'
 import { useQueryClient } from '@tanstack/vue-query'
 import { useEventListener } from '@vueuse/core'
 import { api, checkSession, login, session } from './services/api'
 import { hideDocumentReads, pauseDocumentReadsUntilPaint, resumeDocumentReads } from './services/read-lifecycle'
+import {resumeTaskQueriesOnDocumentResume} from './services/task-query-lifecycle'
 import { useDesktop } from './desktop/store'
 import Desktop from './desktop/Desktop.vue'
 const desktop = useDesktop(), query=useQueryClient(), name = ref(''), password = ref(''), busy = ref(false), error = ref(''), initialized = ref('')
@@ -31,6 +32,7 @@ async function logout() {
 // revert cancelled results to their last confirmed cache state. Mutations and
 // terminal/input recovery keep their existing lifecycles.
 const cancelTaskReads=()=>{void query.cancelQueries({queryKey:['tasks']})}
+onScopeDispose(resumeTaskQueriesOnDocumentResume(query))
 useEventListener(window,'beforeunload',(event:BeforeUnloadEvent)=> { pauseDocumentReadsUntilPaint();if(desktop.recovery && !desktop.recovery.status.protected) { event.preventDefault(); event.returnValue = '' };cancelTaskReads() })
 useEventListener(window,'pagehide',()=>{hideDocumentReads();cancelTaskReads()})
 useEventListener(window,'pageshow',resumeDocumentReads)

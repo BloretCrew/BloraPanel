@@ -5,6 +5,7 @@ let release:(()=>void)|undefined
 let generation=0
 let resumeDeadline:ReturnType<typeof setTimeout>|undefined
 const active=new Set<AbortController>()
+const resumed=new Set<()=>void>()
 const departure=new DOMException('Document navigation','AbortError')
 
 function pause(){if(!paused)paused=new Promise<void>(resolve=>{release=resolve})}
@@ -18,6 +19,12 @@ export function resumeDocumentReads(){
   paused=undefined
   release=undefined
   resume?.()
+  if(resume)for(const listener of resumed)listener()
+}
+
+export function onDocumentReadsResumed(listener:()=>void){
+  resumed.add(listener)
+  return()=>{resumed.delete(listener)}
 }
 
 export function pauseDocumentReadsUntilPaint(){

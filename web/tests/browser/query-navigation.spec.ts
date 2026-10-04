@@ -19,7 +19,7 @@ async function recordSummaryAborts(page:Page){
   })
 }
 
-test('pending task summary reads cancel before refresh while the latest task filter restores',async({page})=>{
+test('pending task summary reads cancel before refresh while the latest task filter restores',async({page,validationPhase})=>{
   const errors:string[]=[]
   page.on('pageerror',error=>errors.push(error.message))
   await recordSummaryAborts(page)
@@ -37,13 +37,16 @@ test('pending task summary reads cancel before refresh while the latest task fil
     return route.fulfill({json:path.endsWith('/session')?{user:{userId:'query-refresh',name:'查询恢复测试',admin:true},csrfToken:'test-only'}:{items:[],nextBefore:-1}})
   })
   try{
+    validationPhase('opening desktop for pending task refresh')
     await page.goto('/')
     await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
     await page.locator('[data-app="blora.tasks"]').click()
     await expect.poll(()=>waiting).toBe(true)
+    validationPhase('pending summary established; editing latest task filter')
     // No settling delay after the last protected edit. The real refresh
     // must cancel the pending read without replaying a remote operation.
     await page.getByRole('combobox',{name:'任务状态筛选'}).selectOption('RUNNING')
+    validationPhase('refreshing with pending task read')
     await page.reload()
     release()
     await expect(page.getByRole('combobox',{name:'任务状态筛选'})).toHaveValue('RUNNING')
@@ -51,29 +54,37 @@ test('pending task summary reads cancel before refresh while the latest task fil
     expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('blora:test:summary-aborts')||'[]'))).toEqual(['beforeunload'])
     expect(writes).toEqual([])
     expect(errors).toEqual([])
+    validationPhase('task filter and confirmed summary restored; no writes or page errors')
   }finally{release()}
 })
 
-test('cancelled navigation keeps task summary polling and its last confirmed state',async({page})=>{
+test('cancelled navigation keeps task summary polling and its last confirmed state',async({page,validationPhase})=>{
   const errors:string[]=[]
   page.on('pageerror',error=>errors.push(error.message))
   await recordSummaryAborts(page)
   let summaries=0,waiting=false,release:()=>void=()=>{}
   const held=new Promise<void>(resolve=>{release=resolve})
+  let resumeReply:()=>void=()=>{}
+  const resumedReply=new Promise<void>(resolve=>{resumeReply=resolve})
   await page.context().route('**/api/v1/**',async route=>{
     const path=new URL(route.request().url()).pathname
     expect(route.request().method()).toBe('GET')
     if(path.endsWith('/tasks/summary')){
       summaries++
       if(summaries===2){waiting=true;await held;return}
+      // Keep the resumed response pending until the retained-cache assertion
+      // finishes. Immediate revalidation must not race that assertion.
+      if(summaries===3)await resumedReply
       return route.fulfill({json:{active:summaries>2?7:0,states:{}}})
     }
     return route.fulfill({json:path.endsWith('/session')?{user:{userId:'query-stay',name:'查询继续测试',admin:true},csrfToken:'test-only'}:{items:[],nextBefore:-1}})
   })
   try{
+    validationPhase('opening desktop for prevented navigation')
     await page.goto('/')
     await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
     await expect.poll(()=>waiting).toBe(true)
+    validationPhase('pending summary established; suppressing frames and preventing navigation')
     // Stop new animation-frame callbacks at the navigation boundary. Reads
     // must recover without depending on painting, within the original 5s.
     // This is not evidence of native confirmation-dialog or bfcache support.
@@ -85,12 +96,15 @@ test('cancelled navigation keeps task summary polling and its last confirmed sta
     })
     expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('blora:test:summary-aborts')||'[]'))).toEqual(['beforeunload'])
     await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
+    validationPhase('cancelled query retained its last confirmed count; releasing resumed response')
+    resumeReply()
     await expect(page.getByRole('button',{name:'7 项后台任务',exact:true})).toBeVisible({timeout:5000})
+    validationPhase('confirmed task count visible within original deadline without frames')
     expect(errors).toEqual([])
-  }finally{release();await page.evaluate(()=>(window as unknown as {__bloraRestoreFrames?:()=>void}).__bloraRestoreFrames?.()).catch(()=>{})}
+  }finally{resumeReply();release();await page.evaluate(()=>(window as unknown as {__bloraRestoreFrames?:()=>void}).__bloraRestoreFrames?.()).catch(()=>{})}
 })
 
-test('queued task polling cannot start new reads during beforeunload and resumes in the surviving document',async({page})=>{
+test('queued task polling cannot start new reads during beforeunload and resumes in the surviving document',async({page,validationPhase})=>{
   const errors:string[]=[]
   page.on('pageerror',error=>errors.push(error.message))
   await page.addInitScript(()=>{
@@ -125,10 +139,12 @@ test('queued task polling cannot start new reads during beforeunload and resumes
     if(path.endsWith('/tasks'))lists++
     return route.fulfill({json:path.endsWith('/session')?{user:{userId:'queued-poll',name:'离开轮询测试',admin:true},csrfToken:'test-only'}:{items:[],nextBefore:-1}})
   })
+  validationPhase('opening desktop and task view for queued polling')
   await page.goto('/')
   await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
   await page.locator('[data-app="blora.tasks"]').click()
   await expect.poll(()=>lists).toBe(1)
+  validationPhase('task observers active; invoking queued callbacks during departure')
   const observation=await page.evaluate(()=>{
     const state=(window as unknown as {__bloraQueuedTaskPolls:{callbacks:Map<number,()=>void>;blocked:string[]}}).__bloraQueuedTaskPolls
     const queued=[...state.callbacks.values()]
@@ -143,9 +159,10 @@ test('queued task polling cannot start new reads during beforeunload and resumes
   expect(await page.evaluate(()=>(window as unknown as {__bloraQueuedTaskPolls:{blocked:string[]}}).__bloraQueuedTaskPolls.blocked)).toEqual([])
   expect(writes).toEqual([])
   expect(errors).toEqual([])
+  validationPhase('queued task reads resumed; departure fetches, writes and page errors absent')
 })
 
-test('instance log polling cancels pending reads, gates queued polls and resumes without input replay',async({page})=>{
+test('instance log polling cancels pending reads, gates queued polls and resumes without input replay',async({page,validationPhase})=>{
   const errors:string[]=[],writes:string[]=[]
   page.on('pageerror',error=>errors.push(error.message))
   await page.addInitScript(()=>{
@@ -184,13 +201,27 @@ test('instance log polling cancels pending reads, gates queued polls and resumes
   // real binary stream processing, ACKs, checkpoints and command delivery.
   await page.context().routeWebSocket(/\/instances\/poll-instance\/logs\/poll-run\/stream/,()=>{})
   try{
+    validationPhase('opening desktop for instance log polling')
     await page.goto('/')
-    await page.locator('[data-app="blora.instances"]').click()
-    await page.getByRole('button',{name:'轮询实例',exact:true}).click()
-    await page.getByRole('button',{name:'控制台',exact:true}).click()
+    // Native button keyboard activation builds the same real UI state without
+    // coupling this HTTP lifecycle case to pointer stability's RAF checks.
+    // No force click, dispatched click or store-based navigation is used.
+    const applications=page.locator('[data-app="blora.instances"]')
+    await expect(applications).toBeVisible()
+    validationPhase('activating instance application with native Enter key')
+    await applications.press('Enter')
+    const instance=page.getByRole('button',{name:'轮询实例',exact:true})
+    await expect(instance).toBeVisible()
+    validationPhase('activating instance resource with native Enter key')
+    await instance.press('Enter')
+    const consoleButton=page.getByRole('button',{name:'控制台',exact:true})
+    await expect(consoleButton).toBeVisible()
+    validationPhase('activating console with native Enter key')
+    await consoleButton.press('Enter')
     const runs=page.getByRole('combobox',{name:'选择日志运行代次'})
     await expect(runs).toHaveValue('poll-run')
     await page.getByRole('textbox',{name:'尚未发送的实例命令'}).fill('保留草稿，不发送')
+    validationPhase('console and run selected; command draft protected')
     // Establish the pending read by invoking the registered application timer
     // callbacks. A slow setup need not wait for the next wall-clock interval.
     await page.evaluate(()=>{
@@ -198,6 +229,7 @@ test('instance log polling cancels pending reads, gates queued polls and resumes
       state.callbacks.forEach(callback=>callback())
     })
     await expect.poll(()=>waiting).toBe(true)
+    validationPhase('pending log read established; invoking queued departure callbacks')
     const observation=await page.evaluate(()=>{
       const state=(window as unknown as {__bloraQueuedLogPolls:{callbacks:Map<number,()=>void>;blocked:string[];aborts:string[]}}).__bloraQueuedLogPolls
       const queued=[...state.callbacks.values()]
@@ -210,6 +242,7 @@ test('instance log polling cancels pending reads, gates queued polls and resumes
     expect(observation.aborts).toEqual(['beforeunload'])
     await expect(runs).toHaveValue('poll-run')
     await expect(runs.locator('option[value="later-run"]')).toHaveCount(1)
+    validationPhase('pending log read cancelled and run list resumed; checking second departure')
     // Repeat the queued-callback boundary after the previous pending read has
     // completed, so the component's overlap guard cannot mask a new fetch.
     const queuedAfterResume=await page.evaluate(()=>{
@@ -223,10 +256,12 @@ test('instance log polling cancels pending reads, gates queued polls and resumes
     expect(await page.evaluate(()=>(window as unknown as {__bloraQueuedLogPolls:{blocked:string[]}}).__bloraQueuedLogPolls.blocked)).toEqual([])
     await expect(page.locator('.instance-console [role="alert"]')).toHaveCount(0)
     release()
+    validationPhase('refreshing console; draft and run must restore without replay')
     await page.reload()
     await expect(page.getByRole('textbox',{name:'尚未发送的实例命令'})).toHaveValue('保留草稿，不发送')
     await expect(runs).toHaveValue('poll-run')
     expect(writes).toEqual([])
     expect(errors).toEqual([])
+    validationPhase('log polling, draft recovery and no input replay verified')
   }finally{release()}
 })

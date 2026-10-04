@@ -46,21 +46,27 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the ninth returned report: remaining WebKit checks
+## Follow up the tenth returned report: remaining WebKit checks
 
-The [ninth returned report](../acceptance/reports/windows-ninth-report-2026-10-03.md)
-passed WebKit **14/15**. All four navigation/log scenarios passed three times,
-including both eighth-report failing cases. The first fallback-renderer/worker
-terminal execution exhausted the original 45s test budget without a recorded
-page error; the later two full terminal executions passed in about 19s each.
+The [tenth returned report](../acceptance/reports/windows-tenth-report-2026-10-04.md)
+tested the compiled frontend and passed WebKit **12/15**, including all three
+fallback-renderer/worker terminal executions. Two log checks stopped at console
+button pointer stability before any log request; one no-frame task-count
+assertion timed out despite later completed summary requests. The Windows
+rendering/response-publication causes are not established by these diagnostics.
 
-The narrow followup now type-checks and builds the production frontend in a
+The narrow followup type-checks and builds the production frontend in a
 separate logged stage, then tests that compiled bundle on a fresh local preview
 server. This removes on-demand development compilation from the case budget.
-It does not pre-open or warm up the terminal, change the 45s limit, add retries,
-or omit any original UI action, refresh, worker, recovery, ACK or no-replay check.
-The uploaded timing does not establish the Windows cause; the new run checks
-the compiled application and provides more precise diagnostic evidence.
+Task queries now revalidate as soon as the surviving document's read gate
+resumes, retaining confirmed cache and leaving disabled/inactive observers alone.
+The log lifecycle case uses native Enter-key activation through the same visible
+application/resource/console controls; it still checks actual polling, refresh,
+draft recovery, zero input replay and page errors. This separates its setup from
+pointer stability's frame waits; it does not establish pointer/paint performance.
+Other cases retain pointer actions. All task/log and terminal phases log timing
+live; failed diagnostics include a numeric displayed count and control geometry.
+There is no prewarming, force click, sleep, retry, skip or raised deadline.
 
 Download the runner from the **same pinned commit** supplied in the conversation,
 then use this narrower selection:
@@ -78,11 +84,13 @@ engine, and selects these five cases:
 - Pending task-summary cancellation before a real refresh, with the latest
   task filter restored.
 - Last confirmed task count and continued polling after prevented navigation,
-  deliberately suppressing new frame callbacks until the unchanged 5s assertion passes.
+  deliberately suppressing new frame callbacks until the unchanged 5s assertion
+  passes; the first resumed mock response is released after checking retained cache.
 - Real queued QueryObserver polling callbacks cannot start task-list/summary
   reads during departure; a surviving document resumes them.
 - Independent instance-log polling cancels pending reads, holds queued
-  callbacks, resumes its run list, and restores command drafts without input replay.
+  callbacks, resumes its run list, and restores command drafts without input replay;
+  native keyboard setup opens the actual application/resource/console.
 
 Every case runs **three times**, requiring **15/15** actual passing executions.
 The file/title selection is anchored; the report checks every required title

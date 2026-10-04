@@ -1,6 +1,8 @@
 # UI 暂停后的剩余工作核对
 
-更新：2026-10-03，补充用户 Windows 回传报告及本地修复，当前发行仍为 RC34（当时完整功能回归51/51通过）。保留原路径供已有链接使用，以下为当前状态；早期过程和失败记录见[执行进度](PROGRESS.md)、[验收矩阵](../acceptance/ACCEPTANCE_MATRIX.md)和 Git 历史。
+更新：2026-10-04，补充用户 Windows 回传报告及本地修复，当前发行仍为 RC34（当时完整功能回归51/51通过）。保留原路径供已有链接使用，以下为当前状态；早期过程和失败记录见[执行进度](PROGRESS.md)、[验收矩阵](../acceptance/ACCEPTANCE_MATRIX.md)和 Git 历史。
+
+第十轮 Windows 增量：[固定3ef289a的报告](../acceptance/reports/windows-tenth-report-2026-10-04.md)确认正式构建通过、WebKit12/15，终端3次通过；剩两次控制台点击稳定等待45秒超时（尚无日志读取），及一次无帧汇总5秒断言失败（之后有HTTP完成）。Windows具体绘制/数据发布原因仍未确立。安全读取恢复后现立即重查活动任务查询，保留确认缓存，不重放写入；日志生命周期测试以原生Enter键打开同一实际UI，明确不计这三步指针稳定覆盖。所有查询/日志补实时阶段和有界数字计数/按钮几何诊断。90单测/类型构建、WebKit36/36、Firefox12/12、Chromium12/12及脚本harness/真实JSON/严格15次选择核验通过；探索暂停时钟未复现指针停顿，独立保留，不冒充修复因果。下一次仍`-Followup -BrowsersOnly -WebKitOnly`五项各3次且构建PASS、15/15，不重复Go/GCC/SDK/其他引擎，不导入旧PASS；UI冻结，Windows实效和原生/E08/外部缺口保持。
 
 第九轮 Windows 增量：[固定3e6c31c的报告](../acceptance/reports/windows-ninth-report-2026-10-03.md)确认WebKit14/15，四项导航/日志用例各3次通过，前轮两项超时已获真机通过。仅第一次终端耗尽原45秒总时限，之后两次约19秒通过，无页面/请求错误；首次刷新约32秒才开始，不能从上传确认具体慢动作/Windows因果。补测改为先单独构建正式frontend，再在fresh preview运行，新增实时阶段耗时和有界静态资源诊断，保留原断言/时限，UI不改。下一次仍是`-Followup -BrowsersOnly -WebKitOnly`五项各3次，必须构建通过且15/15；不重复Go/GCC/SDK/其他浏览器，不计未选择项PASS。本地验证详情见报告，Windows实效和完整原生/E08/外部环境缺口保持。
 
@@ -34,7 +36,7 @@ UI、完整通透材质及 p95 ≤ 50ms 的目标保持不变。证据只覆盖�
 | E08严格延迟 | 完整材质正式Chromium/Firefox/WebKit p95为1003.9/1108/545ms，均失败。[诊断](../acceptance/reports/local-diagnostics-2026-09-29.md)表明软件合成为主要瓶颈，显式SwiftShader更慢未采用 | 保持原UI/负载/阈值，验证可区分热点的新方案，或取得硬件合成设备补测。再次检查本机无`/dev/dri`；不保证硬件环境一定达标 |
 | Vim刷新偶发额外字节 | RC25曾失败，严格逐字节复验及后续套件未再现；已补连接/阶段/字节附件 | 取得新失败附件或确定复现，辨明旧连接、回放或恢复后原生查询来源；不放宽断言或过滤合法live应答 |
 | 单次权限撤销超时 | [RC30](../acceptance/reports/terminal-protocol-state-2026-09-29.md)首轮6/7，原限时串行复核7/7，后续通过；首次原因未定位 | 再次失败或新可区分证据后定向排查；不把连续通过等同根因修复 |
-| Windows运行 | [第九轮真机报告](../acceptance/reports/windows-ninth-report-2026-10-03.md)：WebKit14/15，四项导航/日志检查各3次通过，剩第一次终端45秒总超时；无页面错误/skip/retry/flaky，后两次终端约19秒通过。Chromium/Firefox保持第六轮各8/8；[第五轮](../acceptance/reports/windows-fifth-report-2026-10-01.md)11必需原生/3项Go回归各3次及Master/runlog race87pass/0fail/4skip保持为该版本证据。本轮未选择Go/SDK/其他浏览器；正式bundle补测与阶段诊断的Windows实效仍待验证，不冒充全包全浏览器回归 | 用户Windows设备运行新版[补测脚本](../operations/WINDOWS_VALIDATION.md)的 `-Followup -BrowsersOnly -WebKitOnly`（先独立构建，5项各3次，严格15/15）回传ZIP；原生系统通知、服务/任务变更和防火墙回滚等仍须隔离验收。Linux容器不能替代Windows |
+| Windows运行 | [第十轮真机报告](../acceptance/reports/windows-tenth-report-2026-10-04.md)：正式构建PASS、WebKit12/15；终端3次通过，剩两次控制台指针稳定等待超时和一次无帧任务汇总断言失败，具体Windows原因未确立。立即任务重查/原生键盘日志现场/新增阶段与计数几何诊断已通过本地相关回归，真机实效仍待验证。Chromium/Firefox保持第六轮各8/8；[第五轮](../acceptance/reports/windows-fifth-report-2026-10-01.md)原生/Go/race只作该版本证据；本轮未选择Go/SDK/其他引擎，不导入旧PASS | 用户运行新版[补测脚本](../operations/WINDOWS_VALIDATION.md) `-Followup -BrowsersOnly -WebKitOnly`（正式构建，5项各3次严格15/15）回传ZIP；原生系统通知、服务/任务变更、防火墙回滚及指针/绘制性能仍须隔离验收。Linux容器不能替代Windows |
 | 跨主机运维 | 本机Docker/Compose、loopback TLS、私有netem、注册源两版本/CA轮换已有证据 | 独立主机/Engine/网络/注册源，补跨主机长时故障与证书运维；loopback不是远端验证 |
 | 设备故障 | ENOSPC、SIGKILL、SQLite重开、归档/恢复/调度不重放已有证据 | 可回滚的一次性环境，补写入中断电、缓存丢失、Engine主机存储耗尽；不能触碰生产磁盘或以进程退出替代掉电 |
 | 其他桌面与长期组合 | Linux X11和本地24h已覆盖，其他平台/更长期组合未覆盖 | 对应隔离环境及实际持续时间；模拟时钟/短测不能替代 |
