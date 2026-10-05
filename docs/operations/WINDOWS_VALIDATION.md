@@ -1,5 +1,21 @@
 # Run Windows validation and return the report
 
+## Current required scope — 2026-10-05
+
+The user requested delegated review instead of impractical environment tests.
+The [scope review](../acceptance/reports/scope-review-2026-10-05.md) and
+[remaining work](../execution/NON_UI_REMAINING_2026-09-26.md) now govern this
+delivery. No repeat of the completed visible-WebKit followup is required.
+Physical/full-disk/VM, privileged service/task mutation, notification-center/IME,
+additional headless/cold-start and Windows-container combinations are optional
+compatibility evidence, not blocking requests. Their untested status is retained.
+Windows firewall supports status reads; rule mutation/rollback is Linux-only.
+
+A new non-destructive real-Master/Daemon and final-release recovery/compatible
+rollback runner remains to be implemented locally, then run once on the user's
+ordinary Windows device. The historical commands below do not cover that gap
+and should not be repeatedly run to satisfy the current remaining list.
+
 This runner downloads a fresh checkout of BloraPanel from GitHub and runs the
 existing automated Windows checks without remote access. It never updates an
 existing checkout. Run it in **Windows PowerShell**, not WSL, on Windows 10 1809

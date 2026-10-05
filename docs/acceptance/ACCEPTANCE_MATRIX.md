@@ -1,5 +1,7 @@
 # Blora Panel 全范围验收矩阵
 
+2026-10-05 用户要求调整本次必测范围：已由三个子代理分别审查存储/备份/传输/调度、Windows平台能力和终端恢复/性能，主代理核对源码与既有证据，见[范围调整报告](reports/scope-review-2026-10-05.md)。物理掉电/缓存丢失、宿主/NTFS实际写满、浏览器真实驱逐、公网多主机/证书运维、超过24h及多桌面全组合，以及Windows通知/IME/额外headless/特权服务任务修改等改为本次不强制，保持未实测事实而不记PASS。普通错误处理/权限/源保护及已有安全测试不删除。Windows防火墙规则变更本就不属支持子集，不能再要求用户验证其回滚；新增确认的读写门禁错误仍待修复。旧Vim字节/单次撤权超时转为非阻塞历史观察，不声称根因已修复。**当前阻塞清单只保留R1～R5：E08目标、门禁修复、Windows正常真实后端/发行演练入口、一次正常真机结果、最终发行验收收尾**，详见[最新剩余表](../execution/NON_UI_REMAINING_2026-09-26.md)。下方历史范围/未测说明不自动重新成为本次阻塞项；不宣称原全环境认证完成。
+
 2026-10-05 Windows第十六轮收尾：见[报告](reports/windows-sixteenth-report-2026-10-05.md)，固定8d6b14e、完整hash/ZIP集合及来源/阶段检查点匹配；实际headed剩余同例3/3，原45/5秒、取消身份/保留缓存/无帧恢复断言通过，无retry/skip/flaky/全局错误。构建16.35秒及所有十阶段PASS，fresh正式preview端口12408。第十五轮其他四例各3/3保持独立版本证据，当前requested visible WebKit补测组结束，无需重复；不把这两份报告伪合成新版单批15/15，不修改旧FAILED。Go/native/SDK本轮未选不记新PASS，默认headless、自然周期/冷启动/指针绘制、完整平台/物理故障/E08仍未因本轮关闭。
 
 2026-10-05 Windows第十五轮增量：见[报告](reports/windows-fifteenth-report-2026-10-05.md)，固定d75b825、完整hash/ZIP集合及15条实际headed证据匹配。构建PASS，WebKit14/15；刷新、真实queued、日志、Worker终端各3/3。剩一次prevented-navigation第二个held read准备5秒失败，未到恢复边界，同例其余2/2通过；Windows调度原因不作推定。仅测试准备通过已注册轮询回调建立实际held read；全部原恢复/取消/缓存/无帧断言及45/5秒不变。-TaskRecoveryOnly只同例三次、缺失/错误标题/次数失败关闭，历史通过不导入当前报告。ZIP新增版本和时间，CollectRef防选错、收集后完整checksum覆盖。此前重复上传不计新一轮或新PASS；本地验证和实际Windows剩余结果分开，完整平台及E08等缺口未关闭。
@@ -635,7 +637,7 @@ Windows Job/ConPTY/监控/系统适配、独立 systemd manager、远程 Engine/
 
 ## 7. 执行台账与完成判定
 
-当前统计：14 个功能项、17 个原规划场景、9 个补充场景均尚未整项通过。已开始项及子场景证据见上表；部分测试通过不计为整项完成。
+历史初始统计（2026-09-09）：14 个功能项、17 个原规划场景、9 个补充场景当时均尚未整项通过。此统计不能当成2026-10-05当前待办数量；最新证据和用户调整后的本次完成判定以本文件顶部及最新剩余表为准。部分测试通过仍不等于未执行的实测通过。
 
 2026-09-09增量证据：F03/F04见[用户角色及节点维护换钥](reports/administration.md)；F05及A04/A14配置与真实自动启动子项见[实例设置](reports/instance-settings.md)；F06/F07/F08及A01/A02/A06/A07/A17见[真实数据流集成](reports/stream-integration.md)、[文件API](reports/files-api.md)、[桌面浏览器](reports/desktop-2026-09-09.md)；A12跨节点/同宿主关系保护与11项真实TLS测试见[传输报告](reports/transfers.md)；F11/E02见[Docker/Compose](reports/containers-api.md)，宿主 docker-host PTY 双主体测试见[容器报告](reports/containers-2026-09-09.md)；F12/E03/E04见[备份与调度](reports/backup-scheduler-library.md)及 Master API 集成测试；A13/E06见[SDK报告](reports/sdk-2026-09-09.md)；F13/E05 的系统管理浏览器边界见[系统管理报告](reports/system-management-2026-09-09.md)。当时真实磁盘满、完整故障组合、容器实例日志归档、监控、系统管理危险变更、扩展安装生命周期和 Windows 真机仍未验证；其中 Docker 日志归档已在 2026-09-22 补上前端入口和浏览器证据，其他边界继续按各项记录。均为已明确列出的子场景，未将交叉编译、替身测试或尚未运行的组合计为整项通过。
 
