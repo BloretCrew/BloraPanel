@@ -1,6 +1,8 @@
 # UI 暂停后的剩余工作核对
 
-更新：2026-10-04，补充用户 Windows 回传报告及本地修复，当前发行仍为 RC34（当时完整功能回归51/51通过）。保留原路径供已有链接使用，以下为当前状态；早期过程和失败记录见[执行进度](PROGRESS.md)、[验收矩阵](../acceptance/ACCEPTANCE_MATRIX.md)和 Git 历史。
+更新：2026-10-05，补充用户 Windows 回传报告及本地修复，当前发行仍为 RC34（当时完整功能回归51/51通过）。保留原路径供已有链接使用，以下为当前状态；早期过程和失败记录见[执行进度](PROGRESS.md)、[验收矩阵](../acceptance/ACCEPTANCE_MATRIX.md)和 Git 历史。
+
+最新第十五轮：[固定d75b825报告](../acceptance/reports/windows-fifteenth-report-2026-10-05.md)确认Windows headed14/15，刷新/queued/日志/Worker终端各3/3，剩一次取消导航测试准备held read等待5秒失败；其余两次同例通过。现仅修订测试准备，实际应用已注册轮询回调建立挂起读取，原45/5秒及恢复断言不变。下一次只需-TaskRecoveryOnly同一项3次，严格计数/标题和真实显示模式，历史通过保持独立记录，不导入新版结果。此前重复旧ZIP不计新失败轮次；新增带版本/时间报告名及按版本只收集已有结果入口。UI/产品/协议保持，完整平台、默认headless、自然轮询时延、E08与外部缺口仍须各自证据。
 
 第十四轮 Windows 增量：[固定63cacc0的报告](../acceptance/reports/windows-fourteenth-report-2026-10-04.md)确认17/17摘要及完整ZIP匹配，构建PASS、OS端口3570 fresh preview成功，WebKit12/15。无帧/真实queued/日志各3/3；剩filter恢复5秒、held read准备迟到、初次导航慢后接管45秒耗尽，Windows原因未定。脚本新增可选-Headed同五项3次环境对照和逐执行实际模式证据，原45/5秒及既有断言保持。初次Linux headed12/15及两次Worker探针0/1保留，发现reactive controls跨Worker克隆失败；现controls/links转为纯数据，真实刷新后验证Worker保持，UI/协议/ACK/不重放不变。新类型构建、90单测、脚本harness/实际JSON/finally通过；Linux headed/headless精确各15/15，WebKit六文件终端恢复62/62、Firefox/Chromium正式preview各7/7，无skip/retry/flaky/全局错误且引擎依次。回传仍保留FAILED，不用本地修复假称Windows三处超时已解决。下一次固定新提交运行`-Followup -BrowsersOnly -WebKitOnly -Headed`，保持桌面解锁且允许自动窗口运行，正式构建PASS及五项3次15/15回传；可见模式结果不自动关闭默认无界面可靠性，完整原生/E08/外部缺口保持。
 

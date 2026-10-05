@@ -39,6 +39,15 @@ async function openConfirmedTaskView(page:Page,phase:(name:string)=>void){
 
 async function recordSummaryAborts(page:Page){
   await page.addInitScript(()=>{
+    const callbacks=new Map<number,()=>void>()
+    const interval=window.setInterval.bind(window),clear=window.clearInterval.bind(window)
+    window.setInterval=((handler:TimerHandler,delay?:number,...args:unknown[])=>{
+      const id=interval(handler,delay,...args)
+      if(typeof handler==='function'&&delay===3000)callbacks.set(id,()=>handler(...args))
+      return id
+    }) as typeof window.setInterval
+    window.clearInterval=((id?:number)=>{if(id!==undefined)callbacks.delete(id);clear(id)}) as typeof window.clearInterval
+    Object.assign(window,{__bloraSummaryPollCallbacks:callbacks})
     const fetch=window.fetch.bind(window)
     let reads=0,leaving=false
     window.addEventListener('beforeunload',()=>{leaving=true})
@@ -130,6 +139,16 @@ test('cancelled navigation keeps task summary polling and its last confirmed sta
     validationPhase('opening desktop for prevented navigation')
     await openDesktopWithSummary(page,validationPhase)
     await expect(page.getByRole('button',{name:'0 项后台任务',exact:true})).toBeVisible()
+    // Establish the held read through the application's registered observer
+    // callback, as the log case already does. A delayed natural timer must not
+    // fail preparation before departure; held-read confirmation still uses 5s.
+    // No fetch, query state, clock or timeout is replaced or injected.
+    const registeredPolls=await page.evaluate(()=>{
+      const callbacks=(window as unknown as {__bloraSummaryPollCallbacks:Map<number,()=>void>}).__bloraSummaryPollCallbacks
+      callbacks.forEach(callback=>callback())
+      return callbacks.size
+    })
+    expect(registeredPolls).toBeGreaterThanOrEqual(1)
     await expect.poll(()=>waiting).toBe(true)
     validationPhase('pending summary established; suppressing frames and preventing navigation')
     // Stop new animation-frame callbacks at the navigation boundary. Reads

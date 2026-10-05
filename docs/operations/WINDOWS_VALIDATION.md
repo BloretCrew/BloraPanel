@@ -46,7 +46,32 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the fourteenth returned report: visible WebKit comparison
+## Follow up the fifteenth report: only the remaining task-recovery case
+
+The [fifteenth report](../acceptance/reports/windows-fifteenth-report-2026-10-05.md)
+tested `d75b825` in visible WebKit and passed **14/15**. The other four scenarios
+each passed three times. The only failure occurred while establishing a held
+summary read before navigation; the same scenario passed its other two runs.
+The setup now invokes the registered application polling callback to establish
+that read. Product code, the 45s case budget, original 5s recovery expectations
+and cancellation/cache/frame assertions remain unchanged.
+
+Use the fixed commit supplied in chat for both the downloaded script and `-Ref`:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref $ref -Followup -BrowsersOnly -WebKitOnly -Headed -TaskRecoveryOnly
+```
+
+This builds a fresh production bundle and runs **only that exact case three
+times**, requiring all three to pass. Keep the desktop unlocked. Its reported
+mode is `followup-task-recovery`; missing/wrong titles or counts, skipped/retried
+or flaky outcomes, global errors, unconfirmed actual display mode and failed
+builds cannot pass. Previous results are retained separately, not imported into
+this new report. This is not natural timer cadence, default headless, native
+dialog, full Windows or E08 acceptance. Omit `-TaskRecoveryOnly` to explicitly
+run the original five-case, fifteen-execution batch.
+
+## Historical fourteenth report: visible WebKit comparison
 
 The [fourteenth returned report](../acceptance/reports/windows-fourteenth-report-2026-10-04.md)
 confirms free-port startup and **12/15** actual executions passed. No-frame count
@@ -322,7 +347,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -CollectLatest
 
 This only packages existing evidence from the most recent run under the default
 work root; it does not repeat tests or infer that unfinished tests passed. It
-prints a new `Blora-Windows-Recovered-<id>.zip` path. For a custom location use
+prints a new `Blora-Windows-Recovered-<commit>-<UTC-time>-<id>.zip` path. To
+collect only a known tested version, add `-CollectRef <full-40-character-commit>`.
+It selects the newest run whose `report.json` (or interrupted-run `run.json`)
+records that exact commit, and fails without tests or a ZIP if none matches.
+It does not overwrite original test results, and the collection note is covered
+by the rebuilt SHA-256 manifest. For a custom location use
 `-WorkRoot 'D:\BloraValidation' -CollectLatest`, or select the exact old run with
 `-CollectRun 'D:\BloraValidation\<timestamp-id>'`. Keep the original logs and send
 the recovered ZIP before rerunning. The recovery marker explicitly records that
@@ -338,8 +368,8 @@ the run may have been interrupted. Do not collect a run that is still active.
 - All Go package tests without cached results, then all race tests if GCC exists.
 - SDK and independent reference extension builds/packages.
 - Frontend build and unit tests; complete existing browser suites on downloaded
-  Chromium, Firefox and WebKit, one browser at a time. Port 5173 must be free; an
-  unrelated running server is never silently reused.
+  Chromium, Firefox and WebKit, one browser at a time. Each engine uses an
+  OS-selected free loopback port; an unrelated server is never silently reused.
 
 The runner clears inherited Blora test opt-ins so it cannot accidentally use a
 previous Engine endpoint or privileged test fixture. Native tests create their
@@ -348,7 +378,8 @@ change existing services, scheduled tasks, firewall rules or system time.
 
 ## Send back the report
 
-At the end the console prints the absolute path to **Blora-Windows-Report.zip**,
+At the end the console prints the absolute path to
+**Blora-Windows-Report-<commit>-<UTC-time>-<id>.zip**,
 normally under `%USERPROFILE%\BloraValidation\<timestamp-id>\`. Send that ZIP
 back in this conversation, including when tests fail. It contains:
 

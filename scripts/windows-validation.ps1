@@ -14,10 +14,12 @@ param(
     [switch]$Followup,
     [switch]$BrowsersOnly,
     [switch]$WebKitOnly,
+    [switch]$TaskRecoveryOnly,
     [switch]$Headed,
     [switch]$InstallRaceCompiler,
     [switch]$CollectLatest,
-    [string]$CollectRun = ''
+    [string]$CollectRun = '',
+    [string]$CollectRef = ''
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -26,7 +28,10 @@ if ($Ref.StartsWith('-')) { throw 'Ref must be a branch, tag, or commit, not a G
 if ($Retest -and $Followup) { throw 'Choose either -Retest or -Followup.' }
 if ($BrowsersOnly -and !$Followup) { throw 'Use -BrowsersOnly with -Followup.' }
 if ($WebKitOnly -and (!$Followup -or !$BrowsersOnly)) { throw 'Use -WebKitOnly with -Followup -BrowsersOnly.' }
+if ($TaskRecoveryOnly -and !$WebKitOnly) { throw 'Use -TaskRecoveryOnly with -Followup -BrowsersOnly -WebKitOnly.' }
 if ($Headed -and !$WebKitOnly) { throw 'Use -Headed with -Followup -BrowsersOnly -WebKitOnly for the controlled display comparison.' }
+if ($CollectRef -and (!$CollectLatest -and !$CollectRun)) { throw 'Use -CollectRef with -CollectLatest or -CollectRun.' }
+if ($CollectRef -and $CollectRef -notmatch '^[0-9a-fA-F]{40}$') { throw 'CollectRef must be the full 40-character tested commit.' }
 if ($Retest -or $Followup) { $Remaining = $true }
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 function New-ReportZip([string]$Folder,[string]$Destination) {
@@ -41,19 +46,48 @@ function New-ReportZip([string]$Folder,[string]$Destination) {
         }
     } finally { $archive.Dispose() }
 }
+function Get-RecordedCommit([string]$RunFolder) {
+    foreach ($name in @('report.json','run.json')) {
+        $path=Join-Path $RunFolder "report/$name"
+        if (!(Test-Path -LiteralPath $path -PathType Leaf)) { continue }
+        try {
+            $record=Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+            if ([string]$record.commit -match '^[0-9a-fA-F]{40}$') { return ([string]$record.commit).ToLowerInvariant() }
+        } catch { }
+    }
+    return ''
+}
+function Get-ReportArchivePath([string]$RunFolder,[string]$Kind,[string]$SourceCommit) {
+    $label='unknown'
+    if ($SourceCommit -match '^[0-9a-fA-F]{40}$') { $label=$SourceCommit.Substring(0,7).ToLowerInvariant() }
+    return Join-Path $RunFolder ("Blora-Windows-$Kind-$label-"+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmssfff')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)+'.zip')
+}
+function Write-ReportChecksums([string]$Folder) {
+    $hashes=@(foreach ($file in Get-ChildItem -LiteralPath $Folder -File | Sort-Object Name) {
+        if ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Report contains a linked file; refusing to hash it.' }
+        if ($file.Name -eq 'SHA256SUMS.txt') { continue }
+        "$((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLower())  $($file.Name)"
+    })
+    [IO.File]::WriteAllText((Join-Path $Folder 'SHA256SUMS.txt'),($hashes -join "`r`n"),$utf8)
+}
 if ($CollectLatest -or $CollectRun) {
     if ($CollectLatest -and $CollectRun) { throw 'Choose either -CollectLatest or -CollectRun.' }
     if ($CollectLatest) {
-        $candidate=Get-ChildItem -LiteralPath $WorkRoot -Directory | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'report/steps-so-far.json') } | Sort-Object Name -Descending | Select-Object -First 1
-        if (!$candidate) { throw 'No previous run found. Use -CollectRun with the previous work directory.' }
+        $candidate=Get-ChildItem -LiteralPath $WorkRoot -Directory | Where-Object {
+            (Test-Path -LiteralPath (Join-Path $_.FullName 'report/steps-so-far.json')) -and (!$CollectRef -or (Get-RecordedCommit $_.FullName) -eq $CollectRef)
+        } | Sort-Object Name -Descending | Select-Object -First 1
+        if (!$candidate) { throw "No recorded run matches the requested commit '$CollectRef' under '$WorkRoot'. No tests were run. Check -WorkRoot or use -CollectRun with the completed run directory." }
         $CollectRun=$candidate.FullName
     }
     $oldReport=Join-Path $CollectRun 'report'
     if (!(Test-Path -LiteralPath (Join-Path $oldReport 'steps-so-far.json'))) { throw 'No stage checkpoint in this run directory.' }
-    $destination=Join-Path $CollectRun ('Blora-Windows-Recovered-'+[guid]::NewGuid().ToString('N').Substring(0,8)+'.zip')
-    [IO.File]::WriteAllText((Join-Path $oldReport 'RECOVERY.txt'),"Recovered existing logs only. No tests were rerun and no missing test is counted as passed. Original report/exit records may describe an interrupted run. Collected UTC: $([DateTime]::UtcNow.ToString('o'))",$utf8)
+    $recordedCommit=Get-RecordedCommit $CollectRun
+    if ($CollectRef -and $recordedCommit -ne $CollectRef) { throw 'The selected run does not record the requested tested commit. No tests were run and no ZIP was created.' }
+    $destination=Get-ReportArchivePath $CollectRun 'Recovered' $recordedCommit
+    [IO.File]::WriteAllText((Join-Path $oldReport 'RECOVERY.txt'),"Collected existing logs only. No tests were rerun and no missing test is counted as passed. Original report/exit records are preserved and may describe an interrupted run. Recorded commit: $recordedCommit. Collected UTC: $([DateTime]::UtcNow.ToString('o'))",$utf8)
+    Write-ReportChecksums $oldReport
     New-ReportZip $oldReport $destination
-    Write-Host "Recovered previous evidence; tests NOT resumed.`nSend this ZIP: $destination" -ForegroundColor Cyan
+    Write-Host "Collected previous evidence; tests NOT resumed.`nRecorded commit: $recordedCommit`nSend this ZIP: $destination" -ForegroundColor Cyan
     exit 0
 }
 $run = Join-Path $WorkRoot ((Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8))
@@ -253,6 +287,14 @@ function Get-SelectedBrowsers {
     if ($WebKitOnly) { return @('webkit') }
     return @('chromium','firefox','webkit')
 }
+function Get-TaskRecoveryFollowupPlan {
+    return @{
+        goCases = @()
+        browserCaseCount = 1
+        browserFiles = @('tests/browser/query-navigation.spec.ts')
+        browserTitles = @('cancelled navigation keeps task summary polling and its last confirmed state')
+    }
+}
 function Get-BrowserServerPort {
     # Ask the OS for a currently free loopback port instead of assuming 5173.
     # Release this probe before Vite binds; strictPort/fresh-server checks keep
@@ -330,7 +372,7 @@ function Get-BrowserPassTitles($Suites) {
         if ($suite.suites) { Get-BrowserPassTitles $suite.suites }
     }
 }
-$retestPlan = $(if ($WebKitOnly) { Get-WebKitFollowupPlan } elseif ($Followup) { Get-FollowupPlan } else { Get-RetestPlan })
+$retestPlan = $(if ($TaskRecoveryOnly) { Get-TaskRecoveryFollowupPlan } elseif ($WebKitOnly) { Get-WebKitFollowupPlan } elseif ($Followup) { Get-FollowupPlan } else { Get-RetestPlan })
 $uncovered = @(
     'Existing Windows SCM/Task Scheduler tests enumerate read-only; service start/stop, task changes and firewall rollback require separate isolated lifecycle acceptance.',
     'Browser suites use API doubles with real browser/xterm/storage. The Linux /bin/sh devfixture and Linux-only real-browser scenarios are NOT Windows full-stack evidence.',
@@ -339,7 +381,9 @@ $uncovered = @(
     'Power loss, device cache loss, Engine disk exhaustion and remote certificate/network operations are not performed.'
 )
 if ($Followup) {
-    if ($WebKitOnly) {
+    if ($TaskRecoveryOnly) {
+        $uncovered += 'Task-recovery-only mode checks the one remaining prevented-navigation scenario three times, from a fresh production build/server and unchanged 45s total/5s recovery limits. The d75b825 Windows headed report passed the other four scenarios three times and this scenario twice; those historical executions are not imported as passes here. Setup now establishes the held summary read through the registered application polling callback instead of waiting for a wall-clock timer before departure. This does not certify natural timer cadence, cold initialization, native navigation dialogs, default headless reliability or full Windows acceptance. Source, protocol and UI are unchanged.'
+    } elseif ($WebKitOnly) {
         $uncovered += 'WebKit-only followup first type-checks and builds the production frontend in a separate logged stage, then serves that bundle locally. Five scenarios in two browser files each run three times (15 required executions): the fallback-renderer/worker terminal case, three task-read navigation regressions, and independent instance-log polling. Chromium/Firefox, account scenarios, other terminal configurations, Go/native/race, GCC download, SDK packages, standalone Go builds/vet, web unit checks, other browser files and native IME are deliberately NOT selected. Previous reports are NOT imported as passes and omitted engines do not require a new JSON report.'
     } elseif ($BrowsersOnly) {
         $uncovered += 'Browser-only followup runs all ten scenarios in three affected browser files: Chromium/Firefox once, WebKit three times. Go/native/race, GCC download, SDK packages, standalone builds/vet, production web/unit checks, other browser files and native IME are deliberately NOT selected. The fifth returned report verified the previous Go corrections; those passes are NOT imported into this run.'
@@ -367,6 +411,7 @@ try {
     if (!(Invoke-Stage 'fetch-ref' 'git.exe' @('-C',$repo,'fetch','origin',$Ref) $run)) { throw 'Requested ref could not be fetched.' }
     if (!(Invoke-Stage 'checkout' 'git.exe' @('-C',$repo,'checkout','--detach','FETCH_HEAD') $run)) { throw 'Checkout failed.' }
     $commit=(& git.exe -C $repo rev-parse HEAD).Trim()
+    Save-Text (Join-Path $report 'run.json') (@{commit=$commit;requestedRef=$Ref;startedAt=$started.ToString('o')} | ConvertTo-Json)
     [void](Invoke-Stage 'git-version' 'git.exe' @('--version'))
     function Invoke-GoChecks {
         [void](Invoke-Stage 'go-version' 'go.exe' @('version'))
@@ -504,8 +549,9 @@ finally {
     if ($fatal -or @($steps | Where-Object { $_.status -in @('FAIL','TIMEOUT') }).Count) { $outcome='FAILED' }
     elseif ($missingTests.Count -or $skips.Count -or @($steps | Where-Object status -eq 'BLOCKED').Count) { $outcome='INCOMPLETE' }
     $result=[ordered]@{schema=2;outcome=$outcome;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');commit=$commit;requestedRef=$Ref;windows=[Environment]::OSVersion.VersionString;architecture=$env:PROCESSOR_ARCHITECTURE;logicalProcessors=[Environment]::ProcessorCount;powershell=$PSVersionTable.PSVersion.ToString();fatal=$fatal;steps=@($steps.ToArray());requiredNativeTestsMissing=$missingTests;requiredGoRetestsMissing=$missingRetests;goTestEvents=@($events.ToArray());browserSummary=$browserSummary;notCovered=$uncovered}
-    $result['runMode'] = $(if ($WebKitOnly) { 'followup-webkit' } elseif ($BrowsersOnly) { 'followup-browser' } elseif ($Followup) { 'followup' } elseif ($Retest) { 'retest' } elseif ($Remaining) { 'remaining' } else { 'full' })
+    $result['runMode'] = $(if ($TaskRecoveryOnly) { 'followup-task-recovery' } elseif ($WebKitOnly) { 'followup-webkit' } elseif ($BrowsersOnly) { 'followup-browser' } elseif ($Followup) { 'followup' } elseif ($Retest) { 'retest' } elseif ($Remaining) { 'remaining' } else { 'full' })
     $result['selectedBrowsers'] = @(Get-SelectedBrowsers)
+    $result['requiredBrowserTitles'] = @(if ($Retest -or $Followup) { $retestPlan.browserTitles })
     $result['browserServerMode'] = $(if ($WebKitOnly) { 'production-preview' } else { 'development' })
     $result['browserBuildSelected'] = [bool]$WebKitOnly
     $result['browserDisplayMode'] = $(if ($Headed) { 'headed' } else { 'headless' })
@@ -529,9 +575,8 @@ finally {
     if ($fatal) { $lines+=@('', '## Fatal error', $fatal) }
     $lines+=@('', 'Only this report folder is zipped. Source, browser traces, credentials, environment dumps and test state are excluded.', 'Before sharing, review the logs for local paths or identifiers emitted by failed tests. Timeout/abort cleanup requires inspection; do not terminate unrelated services.')
     Save-Text (Join-Path $report 'README.md') ($lines -join "`r`n")
-    $hashes=Get-ChildItem $report -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
-    Save-Text (Join-Path $report 'SHA256SUMS.txt') ($hashes -join "`r`n")
-    $zip=Join-Path $run 'Blora-Windows-Report.zip'
+    Write-ReportChecksums $report
+    $zip=Get-ReportArchivePath $run 'Report' $commit
     $zipReady=$false
     try { New-ReportZip $report $zip; $zipReady=$true }
     catch { Write-Host "ZIP creation failed: $($_.Exception.Message). Report files remain at $report" -ForegroundColor Red; $outcome='FAILED' }

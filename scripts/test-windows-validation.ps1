@@ -17,13 +17,37 @@ $steps=New-Object System.Collections.Generic.List[object]
 $events=New-Object System.Collections.Generic.List[object]
 $active=$null; $stage=0; $browserServerPorts=@{}
 $started=[DateTime]::UtcNow; $commit='test-only'; $Ref='test'; $fatal=''; $savedEnvironment=@{}
-$savedPath=$env:Path; $Retest=$false; $Followup=$false; $BrowsersOnly=$false; $WebKitOnly=$false; $Headed=$false; $retestPlan=Get-RetestPlan
+$savedPath=$env:Path; $Retest=$false; $Followup=$false; $BrowsersOnly=$false; $WebKitOnly=$false; $TaskRecoveryOnly=$false; $Headed=$false; $retestPlan=Get-RetestPlan
 $uncovered=@('harness only'); $ProgressPreference='SilentlyContinue'
 $Remaining=$true
 # Test only: the timeout case runs the Start-Sleep cmdlet in the owned shell,
 # not an external grandchild. Windows production uses taskkill /T /F.
 function taskkill.exe { param([Parameter(ValueFromRemainingArguments=$true)]$Arguments)
     $index=[Array]::IndexOf($Arguments,'/PID'); Stop-Process -Id ([int]$Arguments[$index+1]) -Force
+}
+function Get-TestReportZip {
+    $files=@(Get-ChildItem -LiteralPath $run -Filter 'Blora-Windows-Report-*.zip' -File)
+    if ($files.Count -ne 1) { throw 'Expected exactly one current harness report archive' }
+    return $files[0].FullName
+}
+function Assert-ArchiveChecksums([string]$Path) {
+    $archive=[IO.Compression.ZipFile]::OpenRead($Path)
+    try {
+        $reader=[IO.StreamReader]::new($archive.GetEntry('SHA256SUMS.txt').Open())
+        try { $manifest=$reader.ReadToEnd() } finally { $reader.Dispose() }
+        $expected=@{}
+        foreach ($line in $manifest -split '\r?\n') {
+            if ($line -notmatch '^([a-f0-9]{64})  (.+)$' -or $expected.ContainsKey($Matches[2])) { throw 'Invalid or duplicate archive checksum entry' }
+            $expected[$Matches[2]]=$Matches[1]
+        }
+        if ($expected.Count -ne $archive.Entries.Count-1) { throw 'Archive manifest does not cover the exact file set' }
+        foreach ($entry in $archive.Entries) {
+            if ($entry.FullName -eq 'SHA256SUMS.txt') { continue }
+            $stream=$entry.Open(); $hasher=[Security.Cryptography.SHA256]::Create()
+            try { $actual=[BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-','').ToLowerInvariant() } finally { $stream.Dispose(); $hasher.Dispose() }
+            if ($expected[$entry.FullName] -ne $actual) { throw "Archive checksum mismatch: $($entry.FullName)" }
+        }
+    } finally { $archive.Dispose() }
 }
 try {
     $occupied=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,5173)
@@ -54,7 +78,7 @@ try {
     if ($result.browserServerMode -ne 'development' -or $result.browserBuildSelected) { throw 'Existing modes unexpectedly require preview builds' }
     if ($result.outcome -ne 'FAILED' -or !$result.requiredNativeTestsMissing.Count) { throw 'False success summary' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $zip=[IO.Compression.ZipFile]::OpenRead((Join-Path $run 'Blora-Windows-Report.zip'))
+    $zip=[IO.Compression.ZipFile]::OpenRead((Get-TestReportZip))
     try { if ($zip.Entries.FullName -match 'private-credentials') { throw 'Private source entered ZIP' }; if (!($zip.Entries.FullName -contains 'report.json')) { throw 'Report missing from ZIP' } } finally { $zip.Dispose() }
     $requiredNames=@($result.requiredNativeTestsMissing)
     $steps.Clear(); $events.Clear()
@@ -63,12 +87,12 @@ try {
     $events.Add([pscustomobject]@{stage='go-all';test='TestHarness';package='harness';action='pass';elapsed=0})
     $events.Add([pscustomobject]@{stage='go-race';test='TestHarness';package='harness';action='pass';elapsed=0})
     foreach ($browser in @('chromium','firefox','webkit')) { Save-Text (Join-Path $report "$browser.json") '{"stats":{"expected":1,"unexpected":0,"flaky":0,"skipped":0}}' }
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS' -or $result.requiredNativeTestsMissing.Count) { throw 'Passing summary incorrect' }
     $events.Add([pscustomobject]@{stage='go-all';test='TestNeedsEngine';package='harness';action='skip';elapsed=0})
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE') { throw 'Skip did not prevent success' }
@@ -81,14 +105,14 @@ try {
     $events.Add([pscustomobject]@{stage='go-race';test='TestHarness';package='harness';action='pass';elapsed=0})
     $browserData=@{stats=@{expected=$retestPlan.browserCaseCount;unexpected=0;flaky=0;skipped=0};suites=@(@{title='nested file';suites=@(@{title='nested group';specs=@($retestPlan.browserTitles | ForEach-Object { @{title=$_;ok=$true;tests=@(@{expectedStatus='passed';status='expected';results=@(@{status='passed'})})} })})})}
     foreach ($browser in @('chromium','firefox','webkit')) { Save-Text (Join-Path $report "$browser.json") ($browserData | ConvertTo-Json -Depth 20) }
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.runMode -ne 'retest' -or $result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS' -or $result.requiredGoRetestsMissing.Count -or @($result.browserSummary | Where-Object { $_.requiredRetestTitlesMissing.Count }).Count) { throw 'Valid retest summary incorrect' }
     $events[($events.Count-2)].package='wrong-package'
     $browserData.suites[0].suites[0].specs[0].tests[0].results=@(@{status='failed'},@{status='passed'})
     Save-Text (Join-Path $report 'firefox.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or $result.requiredGoRetestsMissing.Count -ne 1 -or @($result.browserSummary | Where-Object browser -eq 'firefox')[0].requiredRetestTitlesMissing.Count -ne 1) { throw 'Incomplete retest or flaky browser accepted as pass' }
@@ -110,7 +134,7 @@ try {
         }
         Save-Text (Join-Path $report "$browser.json") ($browserData | ConvertTo-Json -Depth 20)
     }
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.runMode -ne 'followup' -or $result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS') { throw 'Valid followup summary incorrect' }
@@ -124,7 +148,7 @@ try {
     $completeWebkitSpecs=@($browserData.suites[0].specs)
     $browserData.suites[0].specs=@($completeWebkitSpecs[1..($completeWebkitSpecs.Count-1)])
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or @($result.browserSummary | Where-Object browser -eq 'webkit')[0].requiredRetestTitlesMissing.Count -ne 1) { throw 'Missing third browser execution counted as passed' }
@@ -133,7 +157,7 @@ try {
     # two Go passes instead of three, must not satisfy this followup plan.
     $events.RemoveAt($events.Count-2)
     $browserData.stats.expected=$retestPlan.browserCaseCount; Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or $result.requiredGoRetestsMissing.Count -ne 1 -or !@($result.steps | Where-Object name -eq 'browser-webkit-case-count').Count) { throw 'Incomplete followup counted as passed' }
@@ -147,12 +171,12 @@ try {
         $browserData=@{stats=@{expected=($retestPlan.browserCaseCount*$executions);unexpected=0;flaky=0;skipped=0};suites=@(@{specs=$specs})}
         Save-Text (Join-Path $report "$browser.json") ($browserData | ConvertTo-Json -Depth 20)
     }
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.runMode -ne 'followup-browser' -or $result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS' -or $result.goChecksSelected -or $result.nativeChecksSelected -or $result.sdkChecksSelected -or $result.goTestEvents.Count -or $result.requiredNativeTestsMissing.Count -or $result.requiredGoRetestsMissing.Count) { throw 'Browser-only selection imported or required omitted Go evidence' }
     $browserData.stats.expected=$retestPlan.browserCaseCount; Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'browser-webkit-case-count').Count) { throw 'Browser-only selection accepted an incomplete WebKit result' }
@@ -173,7 +197,7 @@ try {
     $specs=@(foreach ($execution in 1..3) { foreach ($title in $retestPlan.browserTitles) { @{title=$title;ok=$true;tests=@(@{expectedStatus='passed';status='expected';results=@(@{status='passed'})})} } })
     $browserData=@{stats=@{expected=15;unexpected=0;flaky=0;skipped=0};suites=@(@{specs=$specs})}
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.runMode -ne 'followup-webkit' -or $result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS' -or @($result.selectedBrowsers).Count -ne 1 -or $result.selectedBrowsers[0] -ne 'webkit' -or $result.browserSummary.Count -ne 1 -or $result.browserSummary[0].expectedCaseCount -ne 15 -or $result.goChecksSelected -or $result.nativeChecksSelected -or $result.sdkChecksSelected -or $result.goTestEvents.Count -or $result.requiredNativeTestsMissing.Count -or $result.requiredGoRetestsMissing.Count) { throw 'WebKit-only selection imported or required omitted evidence' }
@@ -185,31 +209,59 @@ try {
     if ($headedArguments -notcontains '--headed' -or (($headedArguments | Where-Object { $_ -ne '--headed' }) -join "`n") -ne ($defaultArguments -join "`n")) { throw 'Headed comparison changed the original cases/arguments' }
     foreach ($spec in $browserData.suites[0].specs) { $spec.tests[0]['annotations']=@(@{type='blora-browser-display';description='headed'}) }
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS' -or $result.browserDisplayMode -ne 'headed' -or $result.browserSummary[0].recordedDisplayModes.Count -ne 15 -or @($result.browserSummary[0].recordedDisplayModes | Where-Object { $_ -ne 'headed' }).Count) { throw 'Confirmed headed display mode not recorded' }
     $browserData.suites[0].specs[0].tests[0].annotations[0].description='headless'
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'browser-webkit-display-mode').Count) { throw 'Headed request accepted an actual headless configuration' }
     $steps.Remove(($steps | Where-Object name -eq 'browser-webkit-display-mode')) | Out-Null
     $browserData.suites[0].specs[0].tests[0].Remove('annotations')
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'browser-webkit-display-mode').Count) { throw 'Headed request accepted missing launch fixture evidence' }
     $steps.Remove(($steps | Where-Object name -eq 'browser-webkit-display-mode')) | Out-Null
     $browserData.suites[0].specs[0].tests[0]['annotations']=@(@{type='blora-browser-display';description='headed'},@{type='blora-browser-display';description='headed'})
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'browser-webkit-display-mode').Count) { throw 'Headed request accepted duplicate launch fixture evidence' }
     $steps.Remove(($steps | Where-Object name -eq 'browser-webkit-display-mode')) | Out-Null
+    $TaskRecoveryOnly=$true; $retestPlan=Get-TaskRecoveryFollowupPlan
+    $savedBrowserData=$browserData
+    $taskTitle=$retestPlan.browserTitles[0]
+    $taskSpecs=@(foreach ($execution in 1..3) { @{title=$taskTitle;ok=$true;tests=@(@{annotations=@(@{type='blora-browser-display';description='headed'});expectedStatus='passed';status='expected';results=@(@{status='passed'})})} })
+    $browserData=@{stats=@{expected=3;unexpected=0;flaky=0;skipped=0};suites=@(@{specs=$taskSpecs})}
+    $taskArguments=@(Get-BrowserArguments 'webkit')
+    if ($taskArguments -notcontains '--headed' -or $taskArguments -notcontains '--repeat-each=3' -or $taskArguments -contains 'tests/browser/terminal.spec.ts' -or $retestPlan.browserCaseCount -ne 1 -or $retestPlan.browserTitles.Count -ne 1) { throw 'Remaining task-only scope changed' }
+    Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
+    Remove-Item (Get-TestReportZip)
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.runMode -ne 'followup-task-recovery' -or $result.outcome -ne 'AUTOMATED_CHECKS_PASSED_WITH_COVERAGE_GAPS' -or $result.browserSummary[0].expectedCaseCount -ne 3 -or $result.requiredBrowserTitles.Count -ne 1 -or $result.requiredBrowserTitles[0] -ne $taskTitle -or $result.goChecksSelected -or $result.nativeChecksSelected -or $result.sdkChecksSelected) { throw 'Task-only mode imported omitted coverage or failed real summary gating' }
+    $browserData.suites[0].specs=$taskSpecs[0..1]; $browserData.stats.expected=2
+    Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
+    Remove-Item (Get-TestReportZip)
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.outcome -ne 'INCOMPLETE' -or $result.browserSummary[0].requiredRetestTitlesMissing.Count -ne 1) { throw 'Task-only mode accepted fewer than three executions' }
+    foreach ($blocked in @($steps | Where-Object status -eq 'BLOCKED')) { $steps.Remove($blocked) | Out-Null }
+    $browserData.suites[0].specs=$taskSpecs; $browserData.stats.expected=3
+    foreach ($spec in $taskSpecs) { $spec.title='unrelated scenario' }
+    Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
+    Remove-Item (Get-TestReportZip)
+    & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
+    $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
+    if ($result.outcome -ne 'INCOMPLETE' -or $result.browserSummary[0].requiredRetestTitlesMissing.Count -ne 1) { throw 'Task-only mode accepted unrelated passes' }
+    foreach ($blocked in @($steps | Where-Object status -eq 'BLOCKED')) { $steps.Remove($blocked) | Out-Null }
+    $TaskRecoveryOnly=$false; $retestPlan=Get-WebKitFollowupPlan; $browserData=$savedBrowserData
     $Headed=$false
     # A global startup error cannot disappear behind nominal aggregate/title
     # passes. Preserve the chosen port and actual URL in the report as well.
@@ -217,7 +269,7 @@ try {
     $browserData['config']=@{webServer=@{url="http://127.0.0.1:$free"}}
     $browserData['errors']=@(@{message='Controlled startup error: occupied browser port'})
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'browser-webkit-runner-errors').Count -or $result.browserServerPorts.webkit -ne $free -or $result.browserSummary[0].serverUrl -ne "http://127.0.0.1:$free" -or $result.browserSummary[0].globalErrors[0] -ne 'Controlled startup error: occupied browser port') { throw 'Startup error or selected port missing from report' }
@@ -226,19 +278,19 @@ try {
     $steps.Remove(($steps | Where-Object name -eq 'browser-webkit-runner-errors')) | Out-Null
     # Aggregate/title passes alone cannot conceal an omitted or failed build.
     $buildStep=$steps | Where-Object name -eq 'web-browser-build'; $steps.Remove($buildStep) | Out-Null
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'web-browser-build-coverage').Count) { throw 'Omitted production build counted as passed' }
     $steps.Clear(); $buildStep.status='FAIL'; $steps.Add($buildStep)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'FAILED') { throw 'Failed production build counted as passed' }
     $steps.Clear(); $buildStep.status='PASS'; $steps.Add($buildStep)
     $browserData.suites[0].specs=@($specs[1..($specs.Count-1)])
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or $result.browserSummary[0].requiredRetestTitlesMissing.Count -ne 1) { throw 'WebKit-only selection accepted a missing third execution' }
@@ -246,12 +298,12 @@ try {
     $browserData.suites[0].specs=$specs; $browserData.stats.expected=14
     $steps.Add($buildStep)
     Save-Text (Join-Path $report 'webkit.json') ($browserData | ConvertTo-Json -Depth 20)
-    Remove-Item (Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'browser-webkit-case-count').Count) { throw 'WebKit-only selection accepted an incomplete aggregate' }
     $steps.Clear(); $steps.Add([pscustomobject]@{name='harness-pass';status='PASS';exitCode=0;seconds=0;detail='';log=''})
-    Remove-Item (Join-Path $report 'webkit.json'),(Join-Path $run 'Blora-Windows-Report.zip')
+    Remove-Item (Join-Path $report 'webkit.json'),(Get-TestReportZip)
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $report 'report.json') -Raw | ConvertFrom-Json
     if ($result.outcome -ne 'INCOMPLETE' -or !@($result.steps | Where-Object name -eq 'browser-webkit-report').Count -or @($result.steps | Where-Object name -match 'browser-(chromium|firefox)').Count) { throw 'WebKit-only selection misclassified missing reports' }
@@ -284,6 +336,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Recovery entry failed' }
         $recovered=@(Get-ChildItem $run -Filter 'Blora-Windows-Recovered-*.zip')
         if ($recovered.Count -ne 1) { throw 'Recovered ZIP missing' }
+        Assert-ArchiveChecksums $recovered[0].FullName
         $zip=[IO.Compression.ZipFile]::OpenRead($recovered[0].FullName)
         try { if (!($zip.Entries.FullName -contains 'RECOVERY.txt') -or !($zip.Entries.FullName -contains 'report.json')) { throw 'Recovery evidence missing' } } finally { $zip.Dispose() }
         $collection=Join-Path $run 'collection'
@@ -294,6 +347,37 @@ try {
         }
         & $shell -NoProfile -File $source -WorkRoot $collection -CollectLatest
         if ($LASTEXITCODE -ne 0 -or @(Get-ChildItem (Join-Path $collection '20260102-010101-new') -Filter '*.zip').Count -ne 1 -or @(Get-ChildItem (Join-Path $collection '20260101-010101-old') -Filter '*.zip').Count -ne 0) { throw 'CollectLatest selected the wrong run' }
+        $target='d75b825d42ad95d044314ebe2ef28bcde340ee64'
+        $other='63cacc0ef92a25dd84f4d534e1f767323d8b3965'
+        $targetRun=Join-Path $collection '20260101-010101-old'
+        $otherRun=Join-Path $collection '20260102-010101-new'
+        $targetReport=Join-Path $targetRun 'report/report.json'
+        Save-Text $targetReport (@{commit=$target;outcome='FAILED';browserDisplayMode='headed';steps=@(@{status='FAIL'})} | ConvertTo-Json -Depth 5)
+        Save-Text (Join-Path $otherRun 'report/report.json') (@{commit=$other;outcome='FAILED'} | ConvertTo-Json)
+        $before=Get-FileHash -LiteralPath $targetReport
+        & $shell -NoProfile -File $source -WorkRoot $collection -CollectLatest -CollectRef $target
+        if ($LASTEXITCODE -ne 0) { throw 'Version-specific collection failed' }
+        $targetZips=@(Get-ChildItem -LiteralPath $targetRun -Filter 'Blora-Windows-Recovered-d75b825-*.zip')
+        if ($targetZips.Count -ne 1 -or @(Get-ChildItem $otherRun -Filter '*.zip').Count -ne 1) { throw 'Version-specific collection selected a newer wrong commit' }
+        if ((Get-FileHash -LiteralPath $targetReport).Hash -ne $before.Hash) { throw 'Collector changed original test results' }
+        Assert-ArchiveChecksums $targetZips[0].FullName
+        $allBefore=@(Get-ChildItem $collection -Recurse -Filter '*.zip').Count
+        & $shell -NoProfile -File $source -WorkRoot $collection -CollectLatest -CollectRef ('a'*40) 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0 -or @(Get-ChildItem $collection -Recurse -Filter '*.zip').Count -ne $allBefore) { throw 'Missing tested commit did not fail closed' }
+        & $shell -NoProfile -File $source -CollectRun $otherRun -CollectRef $target 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0 -or @(Get-ChildItem $collection -Recurse -Filter '*.zip').Count -ne $allBefore) { throw 'Explicit mismatched run did not fail closed' }
+        $interrupted=Join-Path $collection '20260103-010101-interrupted'
+        [void](New-Item -ItemType Directory (Join-Path $interrupted 'report'))
+        Save-Text (Join-Path $interrupted 'report/steps-so-far.json') '[]'
+        Save-Text (Join-Path $interrupted 'report/run.json') (@{commit=$target;startedAt='2026-01-03T01:01:01Z'} | ConvertTo-Json)
+        & $shell -NoProfile -File $source -WorkRoot $collection -CollectLatest -CollectRef $target
+        $partialZip=@(Get-ChildItem $interrupted -Filter 'Blora-Windows-Recovered-d75b825-*.zip')
+        if ($LASTEXITCODE -ne 0 -or $partialZip.Count -ne 1 -or (Test-Path (Join-Path $interrupted 'report/report.json'))) { throw 'Interrupted collection fabricated final results or lost recorded version' }
+        Assert-ArchiveChecksums $partialZip[0].FullName
+        $nameA=Get-ReportArchivePath $run 'Report' $target
+        $nameB=Get-ReportArchivePath $run 'Report' $target
+        if ($nameA -eq $nameB -or [IO.Path]::GetFileName($nameA) -notmatch '^Blora-Windows-Report-d75b825-\d{8}-\d{9}-[a-f0-9]{8}\.zip$') { throw 'Report filenames omit version/time or collide' }
+        Write-Host 'PASS: exact-commit collection skips newer wrong versions, preserves original outcomes, rejects absent/mismatched commits, covers recovery checksums and uses unique version/time filenames.'
     } finally { $env:OS=$previousOS }
     Write-Host 'PASS: headed argument parity/actual-mode reporting and mismatch rejection, occupied-port selection/probe release, startup-error and server-port reporting, failing progress host, child progress suppression, literal arguments, failure/skip/timeout, full/remaining/retest/followup/browser-only/WebKit-only coverage gates, production build gate and server-mode metadata, anchored title selection, diagnostic bundling, compiler checksum/traversal, ZIP boundaries and old-run recovery.'
 } finally { Remove-Item -LiteralPath $run -Recurse -Force }
