@@ -40,16 +40,16 @@ UI、完整通透材质及 p95 ≤ 50ms 的目标保持不变。证据只覆盖�
 | 终端恢复 | RC27～33补齐UTF-8续接、未完成VT序列、控制状态、鼠标/光标协议、颜色/主题顺序和OSC 8链接。RC33单测76/76、Chromium61/61、Firefox/WebKit各50/50；不声称所有VT扩展已验证 |
 | Linux系统管理与限制 | [独立systemd/cgroup](../acceptance/reports/systemd-cgroup-2026-09-29.md)服务/定时器、归属/整组结束、CPU限流、32MiB OOM与8进程上限实际触发通过；停止服务和未加载timer遗漏已修复 |
 | Linux原生通知 | [X11/DBus/Dunst](../acceptance/reports/native-notifications-2026-09-29.md)实际绘制/点击/刷新去重/退出后遗留弹窗关闭通过；不覆盖其他桌面或退出后后台投递 |
+| R2：防火墙能力门禁 | 状态读取与仅Linux firewalld支持的规则变更已分开；类型检查及定向浏览器5/5通过，见[本地报告](../acceptance/reports/local-remaining-2026-10-05.md) |
+| R3：普通Windows真实联调入口 | 新脚本使用真实Master/Daemon/HTTPS/WSS及Vue/Monaco，临时数据与确认清理、独立报告；当前Linux最新源码实跑14/14、安全单测2/2、Windows交叉构建和PowerShell报告harness通过。Windows实际执行不计PASS，见[入口说明](../operations/WINDOWS_VALIDATION.md) |
 
 ## 尚未完成
 
 | 项目 | 当前事实 | 下一步动作 |
 | --- | --- | --- |
 | R1：E08严格延迟 | 完整材质正式Chromium/Firefox/WebKit最近p95为1003.9/1108/545ms，均失败。[诊断](../acceptance/reports/local-diagnostics-2026-09-29.md)证明软件合成瓶颈；审查不能改成PASS | 本地保留UI/负载/50ms目标继续有针对性的优化与测量；获取GPU或所有远端/冷启动组合不是用户前置条件 |
-| R2：防火墙能力门禁 | 静态审查确认SystemApp把Windows netsh读取能力当作预览/应用能力，计算差异可点但后端只支持Linux firewalld，见[发现](../acceptance/reports/scope-review-2026-10-05.md) | 本地分开读取与规则变更门禁，定向验证；不新增Windows防火墙规则管理，不改变视觉设计 |
-| R3：Windows真实联调与发行演练入口 | Master/Daemon产品已有入口；现有devfixture及package-smoke含/bin/sh、native-linux和Linux产物，旧浏览器脚本使用API doubles | 本地增加一次性临时目录的Windows真实后端/发行恢复与兼容回退脚本，先构建和验证入口；不包含磁盘写满或宿主服务/防火墙修改 |
-| R4：一次Windows正常真机验证 | 11原生、Go竞争与visible WebKit恢复已有各自版本证据，保留且不原样重跑；真实后端完整链路及发行恢复演练尚缺证据 | R3就绪后在用户普通Windows设备运行一次合并脚本，覆盖初始化/登录/节点、测试实例/文件/终端/任务/刷新、代表性备份/监控/扩展及停机恢复/兼容回退；无需VM或远程权限 |
-| R5：最终发行与验收收尾 | RC34历史发行与51/51保留，后续修复不自动获得同一发行/全范围结论 | 相关修复后对最终源码/包作相应构建、普通回归、启动恢复检查，并整理证据、README/运行说明/矩阵；不重跑用户排除环境 |
+| R4：一次Windows正常真机验证 | 新真实联调脚本已就绪；11原生、Go竞争与visible WebKit恢复历史证据保留且不重复 | 普通Windows设备运行固定提交的windows-device-validation.ps1一次，返回独立ZIP；14项真实API/浏览器/WSS/备份/监控/扩展与停机恢复，不需VM或远程权限 |
+| R5：最终发行（用户延期） | RC34历史发行与51/51保留，后续修复不自动获得同一发行/全范围结论；用户明确要求本轮不做发行 | 发行打包、兼容回退和发布留到用户要求时执行；本轮仍整理当前源码的普通回归和验收证据 |
 
 ## 非阻塞历史观察与环境限制
 
@@ -61,4 +61,4 @@ Vim刷新偶发额外字节和[RC30一次撤权超时](../acceptance/reports/ter
 
 本轮已复现并修复旧终端连接解析失败晚返回禁用新连接的问题，三引擎定向组合各4/4通过；不能将它认定为原Vim偶发或撤权超时根因。完整回归session90325已退出0，无活动测试句柄，日志`.local/evidence/rc34/real-full.log`。玻璃遮挡裁剪的像素等价检查未通过，不纳入产品。旧表中的RC23发行、24h仍RUNNING及Linux systemd/通知完全缺环境已不再是当前待办。
 
-下一具体动作是本地修复R2并准备R3，性能只做可区分假设的R1优化；R4合并为一次正常Windows验证，R5在相应修复后收尾。本轮仅进行审查与范围文档更新，未修改产品/脚本、未启动测试/服务，无运行句柄接管。无需再要求用户提供磁盘耗尽、掉电、虚拟机或独立公网环境；不重复刚关闭的Windows补测组，不将审查冒充实测。当前R1～R5完成前仍不称本次交付全部完成。
+本轮R2修复及R3新真实入口已完成本地验证，相关证据见[本轮报告](../acceptance/reports/local-remaining-2026-10-05.md)。R1新增布局隔离探针截图一致但仍约923～953ms，收益不足，未采用，见[性能诊断](../acceptance/reports/render-layout-diagnostic-2026-10-05.md)；不降低50ms或改变UI。下一具体动作仅普通Windows运行一次R4新脚本并收取报告；R5用户明确延期。已确认所有本轮所属测试/服务/容器退出，无会话接管。无需危险环境，不重复已关闭补测组，不将Linux或静态审查冒充Windows实跑，不称本次交付全部完成。

@@ -2,6 +2,33 @@ import {test, expect} from '@playwright/test'
 
 test.setTimeout(90_000)
 
+for (const [platform, backend] of [['windows', 'netsh'], ['darwin', 'pf'], ['linux', 'nftables']]) {
+  test(`system management keeps ${backend} status readable without offering unsupported mutations`, async ({page}) => {
+    const posts: string[] = []
+    await page.route('**/api/v1/**', async route => {
+      const request = route.request(), path = new URL(request.url()).pathname
+      if (request.method() === 'POST') posts.push(path)
+      if (path.endsWith('/session')) return route.fulfill({json: {user: {userId: 'admin', name: '管理员', admin: true}, csrfToken: 'test-only'}})
+      if (path === '/api/v1/nodes') return route.fulfill({json: {items: [{nodeId: 'read-only-node', name: '只读防火墙节点', platform}]}})
+      if (path.endsWith('/system/capabilities')) return route.fulfill({json: {platform, services: 'unavailable', firewall: backend, scheduledTasks: 'unavailable'}})
+      if (path.endsWith('/system/firewall')) return route.fulfill({json: {backend, state: 'enabled', detail: 'Read-only firewall status remains available'}})
+      return route.fulfill({json: {items: []}})
+    })
+    await page.goto('/')
+    await page.locator('.launcher-button').click()
+    await page.locator('.launcher').getByRole('button', {name: '系统管理'}).click()
+    await page.locator('select[aria-label="系统节点"]').selectOption('read-only-node')
+    await expect(page.getByText(`${backend} · enabled`, {exact: true})).toBeVisible()
+    await page.getByRole('textbox', {name: '目标防火墙规则'}).fill('443/tcp')
+    await expect(page.getByRole('button', {name: '计算差异'})).toBeDisabled()
+    await expect(page.getByRole('button', {name: '确认并应用'})).toBeDisabled()
+    await page.reload()
+    await expect(page.getByText(`${backend} · enabled`, {exact: true})).toBeVisible()
+    await expect(page.getByRole('button', {name: '计算差异'})).toBeDisabled()
+    expect(posts).toEqual([])
+  })
+}
+
 test('system management submits authorized task and firewall confirmations', async ({page}) => {
   const requests: {path: string; body: string}[] = []
   let phase='queued',state='QUEUED'

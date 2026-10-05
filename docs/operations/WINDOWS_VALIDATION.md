@@ -11,10 +11,51 @@ additional headless/cold-start and Windows-container combinations are optional
 compatibility evidence, not blocking requests. Their untested status is retained.
 Windows firewall supports status reads; rule mutation/rollback is Linux-only.
 
-A new non-destructive real-Master/Daemon and final-release recovery/compatible
-rollback runner remains to be implemented locally, then run once on the user's
-ordinary Windows device. The historical commands below do not cover that gap
-and should not be repeatedly run to satisfy the current remaining list.
+A new non-destructive [ordinary-device runner](../../scripts/windows-device-validation.ps1)
+starts real Master/Daemon processes and checks the actual browser and backend.
+Release packaging and compatible release rollback are deferred at the user's
+request. The historical commands below should not be repeatedly run to satisfy
+the current remaining list.
+
+## Current ordinary-device runner
+
+Use the **full fixed commit supplied in chat** for both the script download and
+the checkout. This runner also compares its own SHA-256 against the checked-out
+script, so an old runner cannot silently run against newer source.
+
+```powershell
+$ref = '<full 40-character commit supplied in chat>'
+$script = Join-Path $env:TEMP 'Blora-Windows-Device-Validation.ps1'
+Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/BloretCrew/BloraPanel/$ref/scripts/windows-device-validation.ps1" -OutFile $script
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref $ref
+```
+
+Use a normal Windows PowerShell terminal with Git, Go 1.25+ and Node.js 24+
+already installed. No administrator access, VM or race compiler is required.
+Each invocation clones into a fresh temporary directory, installs locked frontend
+dependencies and Chromium only, and builds ordinary test executables. It does
+not produce or publish a release.
+
+Fourteen named checks cover private initialization/TLS/login, Daemon enrollment,
+a disposable instance, member permission denial, UTF-8 file save/readback,
+backup/restore, fresh monitoring, extension install/upgrade/remove, instance
+start/stop, terminal WSS input with an actual file-write result and reconnection,
+browser draft/refresh/server-save, stopped-resource process restart, and confirmed
+cleanup. The checker uses one real local node, not API doubles; it does not
+claim every Windows platform or multi-node combination passed.
+
+Progress is plain text with a 15-second heartbeat. Failures generate a report
+instead of importing historical passes. Missing/duplicate required checks,
+failed cleanup, a mismatched source/script, or a non-Windows report cannot pass.
+Return the uniquely named `Blora-Windows-Device-<commit>-<time>-<id>.zip` printed
+at the end. It includes report JSON, stage logs and exact SHA-256 checksums,
+excluding private credentials, enrollment tickets, database/state, process logs,
+browser traces and screenshots. If cleanup cannot be confirmed, the result is
+failed and private state is retained locally for recovery.
+
+This adds a real Windows validation entry point. Local Linux runs, PowerShell
+harness tests and Windows cross-builds are separate evidence and do not certify
+execution on Windows. E08 performance and deferred release work remain separate.
 
 This runner downloads a fresh checkout of BloraPanel from GitHub and runs the
 existing automated Windows checks without remote access. It never updates an
@@ -22,7 +63,7 @@ existing checkout. Run it in **Windows PowerShell**, not WSL, on Windows 10 1809
 or newer / Windows 11, preferably x64. Use a normal terminal first; do not disable
 antivirus or change execution policy globally when a test fails.
 
-## One command to start
+## Historical broad runner — not the current remaining test
 
 Paste these lines into PowerShell:
 
