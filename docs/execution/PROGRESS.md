@@ -1,5 +1,7 @@
 # Blora Panel 执行进度与续接记录
 
+2026-10-05 Windows第十六轮通过并结束本组补测：见[报告](../acceptance/reports/windows-sixteenth-report-2026-10-05.md)。固定8d6b14e，ZIP16条/15条checksum完整匹配，run.json与最终来源/时间、阶段检查点一致。Windows真实headed精确剩余同例3/3（14.882/19.153/11.334秒），无retry/skip/flaky/全局错误；十个阶段全PASS，正式构建16.35秒、浏览器51.43秒、JSON49.721秒，fresh端口12408、原45/5秒保留。结合第十五轮其他四项各3/3，用户要求的visible WebKit补测组完成，不再要求重复本组脚本；原14/15 FAILED与本轮3/3按不同固定版本独立保留，不伪造新版单批15/15。仅更新验收文档，不改产品/UI/脚本、不重跑已通过测试、不提升全Windows/E08状态。本轮无启动服务、容器或测试会话。下一动作只在有具体新复现、可区分性能假设或独立缺失环境时推进对应范围；完整缺口见最新剩余表，不再把本组查询恢复当待补项目。
+
 2026-10-05 第十五轮交付前核对：1,158个本地文档链接无缺失，差异检查通过，所有本轮所属容器/会话均已退出。源码、脚本和验收记录采用同一固定提交交付。最新下一动作是用户Windows运行交付版本的`-Followup -BrowsersOnly -WebKitOnly -Headed -TaskRecoveryOnly`，只补剩余同例三次，返回含版本/时间的新ZIP；无需再收集已正确回传的d75b825旧结果。未将Linux或脚本harness计为Windows新增通过，完整平台/E08/外部缺口保留。
 
 2026-10-05 第十五轮本地收尾：类型与正式构建通过（3740模块/Vite3.88秒），WebKit headed四导航例各3次12/12、49.300秒；Firefox4/4、17.237秒；Chromium4/4、13.974秒；引擎依次一worker，fresh正式preview，无skip/retry/flaky/全局错误且实际模式/45秒预算JSON核对。真实脚本AST生成的精简参数WebKit headless准确同例3/3、16.251秒，通过title/mode/次数/独立server核验。最终PS7.4 harness通过新3次缺失/错误标题拒绝、旧模式/构建/显示/资源边界、精准CollectRef及恢复checksum/保留FAILED/中断不造PASS；真实回传由脚本title/display函数仍确认14/15。证据`.local/evidence/windows-report15-2026-10-05/`；本轮所属容器和会话均结束，早期GUI启动未开始测试及两次harness夹具纠正单独记录，不算Windows新失败或产品PASS。下一具体动作差异/文档链接检查、提交推送固定版本，只交付-TaskRecoveryOnly Windows同一项3次回传；自然轮询时延、默认headless、完整原生/E08/外部缺口保持。

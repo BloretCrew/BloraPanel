@@ -2,7 +2,7 @@
 
 更新：2026-10-05，补充用户 Windows 回传报告及本地修复，当前发行仍为 RC34（当时完整功能回归51/51通过）。保留原路径供已有链接使用，以下为当前状态；早期过程和失败记录见[执行进度](PROGRESS.md)、[验收矩阵](../acceptance/ACCEPTANCE_MATRIX.md)和 Git 历史。
 
-最新第十五轮：[固定d75b825报告](../acceptance/reports/windows-fifteenth-report-2026-10-05.md)确认Windows headed14/15，刷新/queued/日志/Worker终端各3/3，剩一次取消导航测试准备held read等待5秒失败；其余两次同例通过。现仅修订测试准备，实际应用已注册轮询回调建立挂起读取，原45/5秒及恢复断言不变。下一次只需-TaskRecoveryOnly同一项3次，严格计数/标题和真实显示模式，历史通过保持独立记录，不导入新版结果。此前重复旧ZIP不计新失败轮次；新增带版本/时间报告名及按版本只收集已有结果入口。UI/产品/协议保持，完整平台、默认headless、自然轮询时延、E08与外部缺口仍须各自证据。
+最新第十六轮：[固定8d6b14e报告](../acceptance/reports/windows-sixteenth-report-2026-10-05.md)确认Windows实际headed剩余取消导航用例3/3，正式构建及全部阶段PASS，完整checksum/ZIP/来源及阶段检查点匹配，原45/5秒和恢复断言保留。结合[第十五轮](../acceptance/reports/windows-fifteenth-report-2026-10-05.md)刷新/queued/日志/Worker终端各3/3，用户要求的visible WebKit补测组结束，无需再跑同组脚本。两份报告按原版本独立记录，不导入旧PASS或伪称新版单批15/15，旧14/15 FAILED保留。完整平台、默认headless、自然轮询时延、E08及外部缺口仍须各自证据。
 
 第十四轮 Windows 增量：[固定63cacc0的报告](../acceptance/reports/windows-fourteenth-report-2026-10-04.md)确认17/17摘要及完整ZIP匹配，构建PASS、OS端口3570 fresh preview成功，WebKit12/15。无帧/真实queued/日志各3/3；剩filter恢复5秒、held read准备迟到、初次导航慢后接管45秒耗尽，Windows原因未定。脚本新增可选-Headed同五项3次环境对照和逐执行实际模式证据，原45/5秒及既有断言保持。初次Linux headed12/15及两次Worker探针0/1保留，发现reactive controls跨Worker克隆失败；现controls/links转为纯数据，真实刷新后验证Worker保持，UI/协议/ACK/不重放不变。新类型构建、90单测、脚本harness/实际JSON/finally通过；Linux headed/headless精确各15/15，WebKit六文件终端恢复62/62、Firefox/Chromium正式preview各7/7，无skip/retry/flaky/全局错误且引擎依次。回传仍保留FAILED，不用本地修复假称Windows三处超时已解决。下一次固定新提交运行`-Followup -BrowsersOnly -WebKitOnly -Headed`，保持桌面解锁且允许自动窗口运行，正式构建PASS及五项3次15/15回传；可见模式结果不自动关闭默认无界面可靠性，完整原生/E08/外部缺口保持。
 
@@ -44,7 +44,7 @@ UI、完整通透材质及 p95 ≤ 50ms 的目标保持不变。证据只覆盖�
 | E08严格延迟 | 完整材质正式Chromium/Firefox/WebKit p95为1003.9/1108/545ms，均失败。[诊断](../acceptance/reports/local-diagnostics-2026-09-29.md)表明软件合成为主要瓶颈，显式SwiftShader更慢未采用 | 保持原UI/负载/阈值，验证可区分热点的新方案，或取得硬件合成设备补测。再次检查本机无`/dev/dri`；不保证硬件环境一定达标 |
 | Vim刷新偶发额外字节 | RC25曾失败，严格逐字节复验及后续套件未再现；已补连接/阶段/字节附件 | 取得新失败附件或确定复现，辨明旧连接、回放或恢复后原生查询来源；不放宽断言或过滤合法live应答 |
 | 单次权限撤销超时 | [RC30](../acceptance/reports/terminal-protocol-state-2026-09-29.md)首轮6/7，原限时串行复核7/7，后续通过；首次原因未定位 | 再次失败或新可区分证据后定向排查；不把连续通过等同根因修复 |
-| Windows运行 | [第十三轮真机报告](../acceptance/reports/windows-thirteenth-report-2026-10-04.md)：正式构建PASS，5173占用导致零执行；现脚本自动选择空闲端口，保留fresh/strict和有界启动错误，不杀/不复用占用程序。[第十二轮](../acceptance/reports/windows-twelfth-report-2026-10-04.md)12/15中的任务窗口准备/列表及导航后计数缺口仍待Windows复验；不计冷启动5秒/准备指针/绘制性能。Chromium/Firefox第六轮各8/8及[第五轮](../acceptance/reports/windows-fifth-report-2026-10-01.md)原生/Go/race仅作当时版本证据，本轮未选择项不导入旧PASS | 用户运行新版[补测脚本](../operations/WINDOWS_VALIDATION.md) `-Followup -BrowsersOnly -WebKitOnly`（正式构建，5项各3次严格15/15）回传ZIP；原生系统通知、服务/任务变更、防火墙回滚及冷启动/指针/绘制性能仍须隔离验收。Linux容器不能替代Windows |
+| Windows完整平台验收 | [第十六轮](../acceptance/reports/windows-sixteenth-report-2026-10-05.md)真实headed剩余查询恢复3/3，与第十五轮其余四项各3/3分别验证，当前visible WebKit补测组已结束。Chromium/Firefox第六轮各8/8及[第五轮](../acceptance/reports/windows-fifth-report-2026-10-01.md)11原生/Go/race保留各自版本与范围证据；本轮未选择项不导入旧PASS | 无需重复该组脚本。默认headless、自然轮询/冷启动/指针/绘制性能及原生通知/IME、服务/任务变更、防火墙回滚、完整启动/迁移/升级回退仍须对应隔离验收；取得环境或新可区分证据后单独推进。Linux容器不能替代Windows |
 | 跨主机运维 | 本机Docker/Compose、loopback TLS、私有netem、注册源两版本/CA轮换已有证据 | 独立主机/Engine/网络/注册源，补跨主机长时故障与证书运维；loopback不是远端验证 |
 | 设备故障 | ENOSPC、SIGKILL、SQLite重开、归档/恢复/调度不重放已有证据 | 可回滚的一次性环境，补写入中断电、缓存丢失、Engine主机存储耗尽；不能触碰生产磁盘或以进程退出替代掉电 |
 | 其他桌面与长期组合 | Linux X11和本地24h已覆盖，其他平台/更长期组合未覆盖 | 对应隔离环境及实际持续时间；模拟时钟/短测不能替代 |

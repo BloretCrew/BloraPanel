@@ -46,7 +46,19 @@ Progress uses plain text (including a 15-second heartbeat), not the Windows
 PowerShell progress renderer. Child-shell progress is suppressed to avoid CLIXML
 progress noise; ZIP creation uses .NET directly rather than `Compress-Archive`.
 
-## Follow up the fifteenth report: only the remaining task-recovery case
+## Completed navigation followup — 2026-10-05
+
+The [sixteenth returned report](../acceptance/reports/windows-sixteenth-report-2026-10-05.md)
+tested `8d6b14e` and passed **3/3** actual visible-WebKit executions of the
+remaining prevented-navigation case, with a successful fresh production build,
+matching source/checkpoint/checksum records and no retry/skip/flaky/global error.
+The preceding report separately passed the other four scenarios three times.
+The requested visible-WebKit followup is complete; no repeat run of this group
+is pending. These are separate pinned results, not one new fifteen-case batch.
+The original failed reports remain unchanged. Full Windows, default headless,
+natural polling cadence and E08 acceptance remain separate.
+
+## Historical fifteenth report: focused reproduction
 
 The [fifteenth report](../acceptance/reports/windows-fifteenth-report-2026-10-05.md)
 tested `d75b825` in visible WebKit and passed **14/15**. The other four scenarios
