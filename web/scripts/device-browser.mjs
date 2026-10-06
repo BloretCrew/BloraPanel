@@ -17,7 +17,8 @@ try {
   step('browser-launch')
   browser=await chromium.launch({headless:true})
   step('browser-context')
-  const context=await browser.newContext({baseURL:fixture.url,ignoreHTTPSErrors:true})
+  const context=await browser.newContext({baseURL:fixture.url,ignoreHTTPSErrors:true,
+    ...(process.argv.includes('--windows-user-agent')?{userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'}:{})})
   const page=await context.newPage()
   const errors=[]
   page.on('pageerror',()=>errors.push('page-error'))
@@ -48,10 +49,17 @@ try {
   await expect(page.locator('.view-lines')).toContainText('真实浏览器未保存草稿',{timeout:30000})
   step('save-readback')
   await page.getByRole('button',{name:'保存到服务器',exact:true}).click()
+  let readbackStatus=0,readbackKind='not-observed'
   await expect.poll(async()=>{
     const r=await page.request.get(`/api/v1/instances/${fixture.instance}/files/content?path=browser-device.txt`)
-    return r.ok()?(await r.json()).text:''
-  },{timeout:30000}).toBe('真实浏览器未保存草稿\n')
+    readbackStatus=r.status()
+    const text=r.ok()?(await r.json()).text:''
+    readbackKind=text==='真实浏览器未保存草稿\n'?'exact-lf':text==='真实浏览器未保存草稿\r\n'?'unexpected-crlf':text===''?'empty':'other'
+    return text
+  },{timeout:30000}).toBe('真实浏览器未保存草稿\n').catch(error=>{
+    console.error(`FAIL readback: HTTP ${readbackStatus}; ${readbackKind}`)
+    throw error
+  })
   step('final-refresh')
   await page.reload()
   await expect(page.locator('.view-lines')).toContainText('真实浏览器未保存草稿',{timeout:30000})

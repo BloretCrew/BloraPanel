@@ -42,7 +42,7 @@ async function rebuildHistory(recovery:RecoveryService,draftId:string,entry:Docu
   entry.recovering=true
   try{
     model.setValue(draft.base.startsWith('\ufeff')?draft.base.slice(1):draft.base)
-    if(draft.newline==='CRLF'||(!draft.newline&&draft.base.includes('\r\n')))model.setEOL(monaco.editor.EndOfLineSequence.CRLF)
+    model.setEOL((draft.newline|| (draft.base.includes('\r\n')?'CRLF':'LF'))==='CRLF'?monaco.editor.EndOfLineSequence.CRLF:monaco.editor.EndOfLineSequence.LF)
     await restoreHistory(model,draft)
     for(const [editor,state] of viewStates)editor.restoreViewState(state)
     entry.historyEpoch=draft.historyEpoch||0
@@ -56,10 +56,11 @@ export async function documentModel(recovery:RecoveryService,draftId:string) {
   const language=documentLanguage(draft.path)
   const modelBase=draft.base.startsWith('\ufeff')?draft.base.slice(1):draft.base
   const model=monaco.editor.createModel(modelBase,language,monaco.Uri.parse(`blora://draft/${encodeURIComponent(recovery.key)}/${draftId}/${encodeURIComponent(draft.path||'untitled.txt')}`))
-  // Monaco defaults to LF in the browser. Restore the file's declared EOL
+  // Monaco's default EOL depends on the browser platform (CRLF on Windows).
+  // Explicitly restore either LF or CRLF from the document before replaying
   // before replaying offset-based edits so CRLF offsets and the protected body
   // remain byte-for-byte aligned.
-  if((draft.newline||(!draft.newline&&draft.base.includes('\r\n')?'CRLF':'LF'))==='CRLF')model.setEOL(monaco.editor.EndOfLineSequence.CRLF)
+  model.setEOL((draft.newline|| (draft.base.includes('\r\n')?'CRLF':'LF'))==='CRLF'?monaco.editor.EndOfLineSequence.CRLF:monaco.editor.EndOfLineSequence.LF)
   const entry:DocumentModel={model,recovering:true,historyEpoch:draft.historyEpoch||0,historyRebuildPending:false};models.set(cacheKey,entry)
   try{await restoreHistory(model,draft)}catch(error){model.dispose();models.delete(cacheKey);throw error}
   entry.recovering=false
