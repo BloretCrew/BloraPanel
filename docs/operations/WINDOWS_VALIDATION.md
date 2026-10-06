@@ -1,5 +1,13 @@
 # Run Windows validation and return the report
 
+**2026-10-06: the current ordinary-device requirement is complete.** Fixed
+`e546c8f0fc2a766c678d8bef58417b60e1a36392` passed all eight preparation/run stages
+and all fourteen real Windows checks; report identity and all archive checksums
+were verified. See the [device report](../acceptance/reports/windows-device-passed-2026-10-06.md).
+No repeat is currently requested. The commands below are retained as reproduction
+instructions, not an outstanding test request. E08 remains unmet and release work
+remains deferred.
+
 ## Current required scope — 2026-10-05
 
 The user requested delegated review instead of impractical environment tests.

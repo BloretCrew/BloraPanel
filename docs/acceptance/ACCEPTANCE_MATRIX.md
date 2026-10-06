@@ -1,5 +1,7 @@
 # Blora Panel 全范围验收矩阵
 
+2026-10-06 R4普通Windows真机入口完成：e546c8f0报告固定source/runner身份及全checksum吻合，八阶段exit0、14必需真实检查唯一PASS，无缺失或失败；浏览器LF保存核对、停止状态重启和资源清理通过，见[真机证据](reports/windows-device-passed-2026-10-06.md)。R4关闭，不重跑同组或已关闭native/WebKit组。当前非发行剩余只有R1 E08严格延迟，发行按用户延期；未测特殊环境不升级PASS，历史FAILED保留。下方旧R4待验证描述为历史，不作为下一动作。
+
 2026-10-06 R4 cf83c5ea真机报告身份及全归档校验通过：下载/构建已通过，11项真实功能+cleanup通过，browser正文读回失败、停机重启未执行，整体仍FAILED。Windows-UA真实后端复现LF变CRLF，修复模型创建/历史重建显式EOL；本地当前真实后端生产包Windows-UA14/14及LF/CRLF定向2/2通过，见[报告](reports/windows-device-editor-eol-2026-10-06.md)。UA复现不计Windows原生PASS，新版需设备确认，E08未达及发行延期保持。
 
 2026-10-06 R4再次源码阶段阻塞：ba68e5d -ArchiveOnly下载30.2秒exit -1，14项未开始，不计产品失败或Windows通过。删除两层EncodedCommand，使用文件启动及JSON参数，新增child PID/start/download边界日志。隔离PS7完整wrapper回归通过；精确下载路径实取固定GitHub ZIP4.0秒、1219文件安全解压通过，见[追加证据](reports/windows-device-source-2026-10-06.md)。当前Windows根因及新版设备结果未验证，R1/延期发行状态保持。

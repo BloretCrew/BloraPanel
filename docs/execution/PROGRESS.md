@@ -1,5 +1,7 @@
 # Blora Panel 执行进度与续接记录
 
+2026-10-06 R4普通Windows真机验证完成：收到e546c8f0唯一ZIP，12文件逐项读取、11项完整checksum/固定source及runner SHA吻合。Windows/amd64八阶段exit0、14必需检查各唯一PASS，无缺失/失败，整体CHECKS_PASSED_WITH_SCOPE_LIMITS；本地时间11:53:56～11:54:55，真实检查7.411秒。LF浏览器刷新保存、停止状态重启及cleanup均实际通过，见[真机通过报告](../acceptance/reports/windows-device-passed-2026-10-06.md)。R4关闭，无需再给用户同组脚本；此前失败保留历史，不提升未测环境。更新当前剩余表和Windows入口文档。下一具体工作仅R1 E08严格延迟诊断优化，仍不满足50ms且不降低目标/改变冻结UI；R5发行继续按用户要求延期。当前无活动运行会话，本轮只核验报告及记录，无产品改动。
+
 2026-10-06 收到cf83c5ea唯一Windows报告：归档SHA/全覆盖checksum/runner固定源码身份吻合；源码下载3.99秒及全部构建通过，11项真实功能和cleanup通过，browser save-readback失败，stopped-state restart未执行，整体12PASS/1FAIL/1未执行。以当前真实后端和Windows-UA Chromium本地复现HTTP200但unexpected-crlf，确认Monaco默认EOL按Windows平台选CRLF，而LF分支未显式设置。documentModel和history rebuild现在双向设置LF/CRLF，保持逐字断言；新增安全readback状态/类别日志。类型生产构建、Windows-UA LF/CRLF保存刷新2/2（48.4秒）、真实后端生产包Windows-UA完整14/14（exit0）、JS语法/diff检查通过。见[报告](../acceptance/reports/windows-device-editor-eol-2026-10-06.md)。所属浏览器/服务/容器已退出，无活动接管；下一动作交付固定新版整段{}命令确认Windows修复。R4尚需真机新证据，R1 E08未满足，发行延期。
 
 2026-10-06 第二次源码阶段失败：用户ba68e5d的-ArchiveOnly下载30.2秒exit -1，无child输出，14项未开始；不是脚本150秒超时，未收到ZIP，不确定网络或外部终止根因。移除stage和download的嵌套EncodedCommand，改任务自有ps1文件和UTF8 JSON参数；日志保留PID/启动/下载开始完成标记，helper/spec不进报告。隔离PS7 harness通过路径空格/中文特殊参数/stderr/exit7/缺命令1/启动标记/归档安全/校验隐私；精确新版下载函数经新版stage实取ba68e5d ZIP，4.0秒完成、1219文件安全解压。见[追加报告](../acceptance/reports/windows-device-source-2026-10-06.md)。本地容器已退出、无活动会话；不更改产品/UI/14项合同、不提升Windows状态。下一动作交付固定新版-ArchiveOnly命令收取唯一报告；R1严格延迟和R4 Windows真实证据仍未完成，发行延期。
