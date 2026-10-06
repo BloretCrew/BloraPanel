@@ -7,7 +7,7 @@ $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot
 if ($errors.Count) { throw ($errors | Out-String) }
 foreach ($f in $ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst]},$false)) { Invoke-Expression $f.Extent.Text }
 $utf8=New-Object Text.UTF8Encoding($false)
-$run=Join-Path ([IO.Path]::GetTempPath()) ('blora-device-wrapper-test-'+[guid]::NewGuid().ToString('N'))
+$run=Join-Path ([IO.Path]::GetTempPath()) ('blora device wrapper test '+[guid]::NewGuid().ToString('N'))
 $reportDir=Join-Path $run 'report'
 [void](New-Item -ItemType Directory $reportDir)
 $steps=New-Object 'System.Collections.Generic.List[object]'
@@ -36,6 +36,8 @@ try {
     Save-Text $argumentProbe 'param([string]$Value) Write-Output $Value'
     Invoke-DeviceStage 'literal-arguments' $command @('-NoProfile','-File',$argumentProbe,$literal) $run 15
     if (![IO.File]::ReadAllText((Join-Path $reportDir '01-literal-arguments.log')).Contains($literal)) { throw 'Child argument escaping changed the literal value' }
+    if (!(Get-Content (Join-Path $reportDir '01-literal-arguments.log') -Raw).Contains('BLORA_STAGE_CHILD_STARTED')) { throw 'Missing child startup diagnostic' }
+    if ((Get-Content (Join-Path $PSScriptRoot 'windows-device-validation.ps1') -Raw).Contains('-EncodedCommand')) { throw 'Encoded child launcher returned' }
     Invoke-DeviceStage 'stderr-progress' $command @('-NoProfile','-Command','[Console]::Error.WriteLine("ordinary native progress"); exit 0') $run 15
     if (![IO.File]::ReadAllText((Join-Path $reportDir '02-stderr-progress.log')).Contains('ordinary native progress')) { throw 'Native stderr was lost or treated as failure' }
     $failed=$false

@@ -33,6 +33,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref $ref
 If Git fails to reach GitHub, add `-ArchiveOnly` to the last command. This uses
 the HTTPS source ZIP for the same full commit, validates the archive root and
 paths, and still requires the downloaded script to match the extracted source.
+Stages use task-owned `.ps1` launchers and UTF-8 JSON argument files, without
+encoded commands. `BLORA_STAGE_CHILD_STARTED` confirms that the stage shell
+started; `BLORA_SOURCE_DOWNLOAD_STARTED` and `BLORA_SOURCE_DOWNLOAD_COMPLETED`
+identify the actual download boundary. Launcher/spec files stay outside the
+report ZIP. An exit code of `-1` is a failure, never a successful download.
 Git is not required in this mode. Without this switch, a failed Git clone or
 checkout automatically tries that same archive; the original failed stage stays
 in the report with `sourceAcquisitionRecovered: true`. This is a source-download

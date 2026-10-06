@@ -19,7 +19,6 @@ $commit = ''; $failure = ''; $active = $null; $exitCode = 1
 $sourceMethod = ''; $sourceAcquisitionRecovered = $false; $sourceArchiveHash = ''
 $runnerHash = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
-function Quote-Literal([string]$Value) { return "'" + $Value.Replace("'", "''") + "'" }
 function Save-Text([string]$Path, [string]$Text) { [IO.File]::WriteAllText($Path, $Text, $utf8) }
 function Assert-DeviceReport($Device) {
     if ($Device.platform -notmatch '^windows/' -or $Device.outcome -ne 'CHECKS_PASSED_WITH_SCOPE_LIMITS') { throw 'Actual Windows device checks did not pass' }
@@ -78,28 +77,35 @@ function Invoke-DeviceStage([string]$Name, [string]$Command, [string[]]$Argument
     $process = New-Object Diagnostics.Process
     try {
         $spec = @{command=$Command;arguments=@($Arguments);directory=$Directory} | ConvertTo-Json -Compress
-        $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($spec))
-        $body = @"
-`$ProgressPreference='SilentlyContinue'
-`$env:GIT_TERMINAL_PROMPT='0'
-`$OutputEncoding=[Console]::OutputEncoding=New-Object Text.UTF8Encoding(`$false)
+        $specPath = Join-Path $run ('stage-'+$number+'.json')
+        $launcherPath = Join-Path $run ('stage-'+$number+'.ps1')
+        Save-Text $specPath $spec
+        $body = @'
+param([string]$SpecPath)
+$ProgressPreference='SilentlyContinue'
+$env:GIT_TERMINAL_PROMPT='0'
+$OutputEncoding=[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
+[Console]::Out.WriteLine('BLORA_STAGE_CHILD_STARTED')
 try {
-    `$s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$payload')) | ConvertFrom-Json
-    Set-Location -LiteralPath `$s.directory -ErrorAction Stop
-    `$tool=Get-Command `$s.command -ErrorAction Stop
-    `$a=@(`$s.arguments)
+    $s=Get-Content -LiteralPath $SpecPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
+    Set-Location -LiteralPath $s.directory -ErrorAction Stop
+    $tool=Get-Command $s.command -ErrorAction Stop
+    $a=@($s.arguments)
     # Git/npm routinely print ordinary progress to stderr. A diagnostic line
     # must not abort Windows PowerShell 5.1 before the real exit code is read.
-    `$ErrorActionPreference='Continue'
-    `$PSNativeCommandUseErrorActionPreference=`$false
-    & `$tool @a
-    if (`$null -eq `$LASTEXITCODE) { throw 'Native command did not return an exit code' }
-    exit `$LASTEXITCODE
-} catch { [Console]::Error.WriteLine(`$_.Exception.Message); exit 1 }
-"@
-        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($body))
+    $ErrorActionPreference='Continue'
+    $PSNativeCommandUseErrorActionPreference=$false
+    & $tool @a
+    if ($null -eq $LASTEXITCODE) { throw 'Native command did not return an exit code' }
+    exit $LASTEXITCODE
+} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }
+'@
+        Save-Text $launcherPath $body
         $process.StartInfo.FileName = (Get-Process -Id $PID).Path
-        $process.StartInfo.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + $encoded
+        # Both arguments are owned file paths, ending in .ps1/.json; Windows
+        # filenames cannot contain a quote and neither has a trailing slash.
+        if ($launcherPath.Contains('"') -or $specPath.Contains('"')) { throw 'Unsupported quote in stage path' }
+        $process.StartInfo.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $launcherPath + '" "' + $specPath + '"'
         $process.StartInfo.UseShellExecute = $false
         $process.StartInfo.RedirectStandardOutput = $true
         $process.StartInfo.RedirectStandardError = $true
@@ -108,6 +114,7 @@ try {
         $process.StartInfo.CreateNoWindow = $true
         if (!$process.Start()) { throw 'Owned stage process did not start' }
         $processStarted = $true
+        $log.WriteLine('LAUNCH: file-based PowerShell; child PID '+$process.Id); $log.Flush()
         $script:active = $process
         $reads = @($process.StandardOutput.ReadLineAsync(), $process.StandardError.ReadLineAsync())
         $streams = @($process.StandardOutput, $process.StandardError)
@@ -180,9 +187,19 @@ try {
         if (Test-Path -LiteralPath $repo) { Remove-Item -LiteralPath $repo -Recurse -Force }
         $archivePath = Join-Path $run 'fixed-source.zip'
         $uri = 'https://codeload.github.com/BloretCrew/BloraPanel/zip/' + $Ref.ToLowerInvariant()
-        $download = 'try { $ProgressPreference=''SilentlyContinue''; [Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri ' + (Quote-Literal $uri) + ' -OutFile ' + (Quote-Literal $archivePath) + ' -TimeoutSec 120 -ErrorAction Stop; exit 0 } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }'
-        $downloadEncoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($download))
-        Invoke-DeviceStage 'fixed-source-archive-download' (Get-Process -Id $PID).Path @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand',$downloadEncoded) $run 150
+        $downloadPath = Join-Path $run 'download-source.ps1'
+        Save-Text $downloadPath @'
+param([string]$Uri,[string]$OutputPath)
+$ProgressPreference='SilentlyContinue'
+[Console]::Out.WriteLine('BLORA_SOURCE_DOWNLOAD_STARTED')
+try {
+    [Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -UseBasicParsing -Uri $Uri -OutFile $OutputPath -TimeoutSec 120 -ErrorAction Stop
+    [Console]::Out.WriteLine('BLORA_SOURCE_DOWNLOAD_COMPLETED')
+    exit 0
+} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }
+'@
+        Invoke-DeviceStage 'fixed-source-archive-download' (Get-Process -Id $PID).Path @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',$downloadPath,$uri,$archivePath) $run 150
         Expand-FixedSourceArchive $archivePath $repo $Ref
         $sourceArchiveHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
         $commit = $Ref.ToLowerInvariant()

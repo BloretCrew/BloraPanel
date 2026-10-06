@@ -44,3 +44,29 @@ Windows execution of the revised wrapper remains unverified. The next ordinary
 device command uses the newly delivered fixed version with `-ArchiveOnly` to
 bypass the already failed Git path. The original failed report remains historical
 evidence; E08 performance and deferred release work remain separate.
+
+## Follow-up: identical archive-stage exit
+
+The user's console for fixed `ba68e5d444e6a5c1307a3928252a1042a3d994cc`
+with `-ArchiveOnly` reports the download stage exiting `-1` after 30.2 seconds,
+with no child diagnostics shown. This is not a timeout under the script's
+150-second deadline. No ZIP from that run has been received; the network,
+child startup or external termination cause cannot be certified from console.
+None of the fourteen product checks started.
+
+Both stage and downloader now use plain task-owned `.ps1` files rather than
+nested encoded PowerShell commands. Stage arguments are read from UTF-8 JSON
+without shell interpolation. Logs include the child PID and explicit stage
+startup/download-start/download-complete markers. Helper/spec files remain
+outside the report archive; all original requirements and failure retention
+remain intact.
+
+The updated portable harness passed in PowerShell 7.4's isolated Linux container,
+including paths containing spaces, Unicode/literal arguments, normal stderr,
+exit 7, missing-command exit 1, startup marker, report checksums, private-file
+exclusion and unsafe ZIP rejection. It rejects any reintroduced encoded launcher.
+The exact new downloader, invoked through the new stage launcher, downloaded
+the actual fixed `ba68e5d` GitHub source archive in 4.0 seconds and safely
+extracted 1,219 files. Task-owned containers and temporary files were cleaned.
+These are local wrapper results, not Windows acceptance or proof of the user's
+root cause. The next action is one fixed-version Windows run with `-ArchiveOnly`.
