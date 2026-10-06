@@ -3,7 +3,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][ValidatePattern('^[a-fA-F0-9]{40}$')][string]$Ref,
-    [string]$WorkRoot = (Join-Path $env:TEMP 'BloraDeviceValidation')
+    [string]$WorkRoot = (Join-Path $env:TEMP 'BloraDeviceValidation'),
+    [switch]$ArchiveOnly
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -15,6 +16,7 @@ $reportDir = Join-Path $run 'report'
 [void](New-Item -ItemType Directory -Path $reportDir -Force)
 $steps = New-Object 'System.Collections.Generic.List[object]'
 $commit = ''; $failure = ''; $active = $null; $exitCode = 1
+$sourceMethod = ''; $sourceAcquisitionRecovered = $false; $sourceArchiveHash = ''
 $runnerHash = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
 function Quote-Literal([string]$Value) { return "'" + $Value.Replace("'", "''") + "'" }
@@ -28,41 +30,96 @@ function Assert-DeviceReport($Device) {
     }
     if (@($Device.checks | Where-Object { $_.status -ne 'PASS' }).Count) { throw 'Device report includes a failed check' }
 }
+function Expand-FixedSourceArchive([string]$ArchivePath, [string]$RepositoryPath, [string]$ExpectedRef) {
+    if ((Get-Item -LiteralPath $ArchivePath).Length -gt 128MB) { throw 'Source archive exceeds download size bound' }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [IO.Compression.ZipFile]::OpenRead($ArchivePath)
+    try {
+        $prefix = 'BloraPanel-' + $ExpectedRef.ToLowerInvariant() + '/'
+        $root = [IO.Path]::GetFullPath($RepositoryPath) + [IO.Path]::DirectorySeparatorChar
+        $seen = @{}; [long]$total = 0
+        if ($archive.Entries.Count -gt 20000) { throw 'Source archive has too many entries' }
+        # Validate the complete archive before creating or replacing source files.
+        foreach ($entry in $archive.Entries) {
+            $name = $entry.FullName
+            if (!$name.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or $name.Contains('\')) { throw 'Source archive does not match the fixed commit root' }
+            $relative = $name.Substring($prefix.Length)
+            if (!$relative) { continue }
+            if ((($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000) { throw 'Source archive symlink is unsupported' }
+            foreach ($part in $relative.TrimEnd('/') -split '/') {
+                if (!$part -or $part -eq '.' -or $part -eq '..' -or $part -match '[:\x00-\x1f]' -or $part -match '[. ]$' -or $part -match '^(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)') { throw 'Unsafe source archive path' }
+            }
+            $target = [IO.Path]::GetFullPath((Join-Path $RepositoryPath $relative))
+            if (!$target.StartsWith($root,[StringComparison]::OrdinalIgnoreCase) -or $seen.ContainsKey($target)) { throw 'Source archive path escapes or duplicates a target' }
+            $seen[$target] = $true
+            $total += $entry.Length
+            if ($entry.Length -gt 128MB -or $total -gt 512MB) { throw 'Source archive exceeds expansion bound' }
+        }
+        if (Test-Path -LiteralPath $RepositoryPath) { throw 'Archive target must be a new task-owned directory' }
+        [void](New-Item -ItemType Directory -Path $RepositoryPath)
+        foreach ($entry in $archive.Entries) {
+            $relative = $entry.FullName.Substring($prefix.Length)
+            if (!$relative) { continue }
+            $target = Join-Path $RepositoryPath $relative
+            if ($entry.FullName.EndsWith('/')) { [void](New-Item -ItemType Directory -Path $target -Force); continue }
+            [void](New-Item -ItemType Directory -Path ([IO.Path]::GetDirectoryName($target)) -Force)
+            [IO.Compression.ZipFileExtensions]::ExtractToFile($entry,$target,$false)
+        }
+    } finally { $archive.Dispose() }
+}
 function Invoke-DeviceStage([string]$Name, [string]$Command, [string[]]$Arguments, [string]$Directory, [int]$TimeoutSeconds) {
     $at = [DateTime]::UtcNow
     $number = $steps.Count + 1
     $logName = '{0:D2}-{1}.log' -f $number,$Name
     $log = New-Object IO.StreamWriter((Join-Path $reportDir $logName),$false,$utf8)
-    $status = 'FAILED'; $code = -1
+    $status = 'FAILED'; $code = $null; $detail = ''
     $processStarted = $false
     Write-Host "[$number] RUN $Name"
     $process = New-Object Diagnostics.Process
     try {
-        $parts = @($Arguments | ForEach-Object { Quote-Literal $_ })
-        $body = '$ProgressPreference=''SilentlyContinue''; $ErrorActionPreference=''Stop''; Set-Location -LiteralPath ' + (Quote-Literal $Directory) + '; & ' + (Quote-Literal $Command) + ' ' + ($parts -join ' ') + '; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }'
+        $spec = @{command=$Command;arguments=@($Arguments);directory=$Directory} | ConvertTo-Json -Compress
+        $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($spec))
+        $body = @"
+`$ProgressPreference='SilentlyContinue'
+`$env:GIT_TERMINAL_PROMPT='0'
+`$OutputEncoding=[Console]::OutputEncoding=New-Object Text.UTF8Encoding(`$false)
+try {
+    `$s=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$payload')) | ConvertFrom-Json
+    Set-Location -LiteralPath `$s.directory -ErrorAction Stop
+    `$tool=Get-Command `$s.command -ErrorAction Stop
+    `$a=@(`$s.arguments)
+    # Git/npm routinely print ordinary progress to stderr. A diagnostic line
+    # must not abort Windows PowerShell 5.1 before the real exit code is read.
+    `$ErrorActionPreference='Continue'
+    `$PSNativeCommandUseErrorActionPreference=`$false
+    & `$tool @a
+    if (`$null -eq `$LASTEXITCODE) { throw 'Native command did not return an exit code' }
+    exit `$LASTEXITCODE
+} catch { [Console]::Error.WriteLine(`$_.Exception.Message); exit 1 }
+"@
         $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($body))
         $process.StartInfo.FileName = (Get-Process -Id $PID).Path
-        $process.StartInfo.Arguments = '-NoProfile -NonInteractive -EncodedCommand ' + $encoded
+        $process.StartInfo.Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand ' + $encoded
         $process.StartInfo.UseShellExecute = $false
         $process.StartInfo.RedirectStandardOutput = $true
         $process.StartInfo.RedirectStandardError = $true
+        $process.StartInfo.StandardOutputEncoding = $utf8
+        $process.StartInfo.StandardErrorEncoding = $utf8
         $process.StartInfo.CreateNoWindow = $true
         if (!$process.Start()) { throw 'Owned stage process did not start' }
         $processStarted = $true
         $script:active = $process
-        $stdout = $process.StandardOutput.ReadLineAsync()
-        $stderr = $process.StandardError.ReadLineAsync()
+        $reads = @($process.StandardOutput.ReadLineAsync(), $process.StandardError.ReadLineAsync())
+        $streams = @($process.StandardOutput, $process.StandardError)
         $heartbeat = $at
-        while (!$process.HasExited -or $null -ne $stdout -or $null -ne $stderr) {
-            foreach ($stream in @('stdout','stderr')) {
-                $pending = Get-Variable -Name $stream -ValueOnly
-                if ($null -ne $pending -and $pending.IsCompleted) {
-                    $line = $pending.GetAwaiter().GetResult()
-                    if ($null -eq $line) { Set-Variable -Name $stream -Value $null }
+        while ($null -ne $reads[0] -or $null -ne $reads[1]) {
+            for ($i=0; $i -lt 2; $i++) {
+                if ($null -ne $reads[$i] -and $reads[$i].IsCompleted) {
+                    $line = $reads[$i].GetAwaiter().GetResult()
+                    if ($null -eq $line) { $reads[$i] = $null }
                     else {
                         Write-Host $line; $log.WriteLine($line); $log.Flush()
-                        $reader = $(if ($stream -eq 'stdout') { $process.StandardOutput } else { $process.StandardError })
-                        Set-Variable -Name $stream -Value ($reader.ReadLineAsync())
+                        $reads[$i] = $streams[$i].ReadLineAsync()
                     }
                 }
             }
@@ -80,10 +137,15 @@ function Invoke-DeviceStage([string]$Name, [string]$Command, [string[]]$Argument
             }
             Start-Sleep -Milliseconds 50
         }
-        $process.WaitForExit()
+        if (!$process.WaitForExit(10000)) { throw 'Child closed output streams but did not terminate' }
         $code = $process.ExitCode
         if ($code -ne 0) { throw "Stage exited with code $code" }
         $status = 'PASS'
+    } catch {
+        $detail = $_.Exception.Message
+        $log.WriteLine($detail); $log.Flush()
+        Write-Host $detail -ForegroundColor Red
+        throw
     } finally {
         if ($processStarted -and !$process.HasExited) {
             & taskkill.exe /PID $process.Id /T /F 2>&1 | Out-Null
@@ -91,22 +153,42 @@ function Invoke-DeviceStage([string]$Name, [string]$Command, [string[]]$Argument
         $script:active = $null
         $log.Dispose(); $process.Dispose()
         $seconds = ([DateTime]::UtcNow-$at).TotalSeconds
-        $steps.Add([pscustomobject]@{name=$Name;status=$status;exitCode=$code;seconds=$seconds;log=$logName})
+        $steps.Add([pscustomobject]@{name=$Name;status=$status;exitCode=$code;seconds=$seconds;detail=$detail;log=$logName})
         Write-Host ('[{0}] {1} {2} ({3:N1}s)' -f $number,$status,$Name,$seconds)
     }
 }
 
 try {
     if ($env:OS -ne 'Windows_NT') { throw 'Run this script in native Windows PowerShell, not WSL' }
-    foreach ($tool in @('git.exe','go.exe','node.exe','npm.cmd')) {
+    $requiredTools = @('go.exe','node.exe','npm.cmd')
+    if (!$ArchiveOnly) { $requiredTools += 'git.exe' }
+    foreach ($tool in $requiredTools) {
         if (!(Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Missing $tool; install Git, Go 1.25+ and Node.js 24+ first" }
     }
     Save-Text (Join-Path $reportDir 'run.json') (([ordered]@{runId=$runId;requestedRef=$Ref.ToLowerInvariant();startedAt=$started.ToString('o');runMode='real-device-non-release'}) | ConvertTo-Json)
     $repo = Join-Path $run 'source'
-    Invoke-DeviceStage 'clone' 'git.exe' @('clone','--no-checkout','https://github.com/BloretCrew/BloraPanel.git',$repo) $run 300
-    Invoke-DeviceStage 'checkout-fixed-source' 'git.exe' @('checkout','--detach',$Ref) $repo 60
-    $commit = (& git.exe -C $repo rev-parse HEAD | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or $commit -ne $Ref.ToLowerInvariant()) { throw 'Fetched source does not match the fixed requested commit' }
+    try {
+        if ($ArchiveOnly) { throw 'Fixed source archive selected' }
+        Invoke-DeviceStage 'clone' 'git.exe' @('-c','core.autocrlf=false','-c','core.askPass=','-c','credential.interactive=false','clone','--no-checkout','https://github.com/BloretCrew/BloraPanel.git',$repo) $run 180
+        Invoke-DeviceStage 'checkout-fixed-source' 'git.exe' @('-c','core.autocrlf=false','checkout','--detach',$Ref) $repo 60
+        $commit = (& git.exe -C $repo rev-parse HEAD | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or $commit -ne $Ref.ToLowerInvariant()) { throw 'Fetched source does not match the fixed requested commit' }
+        $sourceMethod = 'git-fixed-commit'
+    } catch {
+        if ($ArchiveOnly) { Write-Host 'Downloading GitHub HTTPS source archive for the fixed commit.' }
+        else { Write-Host 'Git source acquisition failed; trying GitHub HTTPS archive for the same fixed commit.' -ForegroundColor Yellow }
+        if (Test-Path -LiteralPath $repo) { Remove-Item -LiteralPath $repo -Recurse -Force }
+        $archivePath = Join-Path $run 'fixed-source.zip'
+        $uri = 'https://codeload.github.com/BloretCrew/BloraPanel/zip/' + $Ref.ToLowerInvariant()
+        $download = 'try { $ProgressPreference=''SilentlyContinue''; [Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri ' + (Quote-Literal $uri) + ' -OutFile ' + (Quote-Literal $archivePath) + ' -TimeoutSec 120 -ErrorAction Stop; exit 0 } catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }'
+        $downloadEncoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($download))
+        Invoke-DeviceStage 'fixed-source-archive-download' (Get-Process -Id $PID).Path @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand',$downloadEncoded) $run 150
+        Expand-FixedSourceArchive $archivePath $repo $Ref
+        $sourceArchiveHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $commit = $Ref.ToLowerInvariant()
+        $sourceMethod = 'https-fixed-commit-archive'
+        $sourceAcquisitionRecovered = !$ArchiveOnly
+    }
     $sourceRunnerHash = (Get-FileHash -LiteralPath (Join-Path $repo 'scripts/windows-device-validation.ps1') -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($sourceRunnerHash -ne $runnerHash) { throw 'Downloaded runner does not match the fixed source; download the script from the same commit' }
     $web = Join-Path $repo 'web'
@@ -131,7 +213,7 @@ try {
 } finally {
     if ($null -ne $active) { & taskkill.exe /PID $active.Id /T /F 2>&1 | Out-Null }
     $outcome = $(if ($exitCode -eq 0) { 'CHECKS_PASSED_WITH_SCOPE_LIMITS' } else { 'FAILED' })
-    $summary = [ordered]@{runId=$runId;requestedRef=$Ref.ToLowerInvariant();commit=$commit;runnerSHA256=$runnerHash;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');runMode='real-device-non-release';outcome=$outcome;failure=$failure;steps=@($steps.ToArray());limitations=@('No release packaging, upgrades or compatible release rollback.','No E08 performance certification, privileged host changes, containers, disk exhaustion or physical power-loss testing.','Previous native/browser reports are preserved independently, not imported as current checks.')}
+    $summary = [ordered]@{runId=$runId;requestedRef=$Ref.ToLowerInvariant();commit=$commit;sourceMethod=$sourceMethod;sourceAcquisitionRecovered=$sourceAcquisitionRecovered;sourceArchiveSHA256=$sourceArchiveHash;runnerSHA256=$runnerHash;startedAt=$started.ToString('o');finishedAt=[DateTime]::UtcNow.ToString('o');runMode='real-device-non-release';outcome=$outcome;failure=$failure;steps=@($steps.ToArray());limitations=@('No release packaging, upgrades or compatible release rollback.','No E08 performance certification, privileged host changes, containers, disk exhaustion or physical power-loss testing.','Previous native/browser reports are preserved independently, not imported as current checks.')}
     Save-Text (Join-Path $reportDir 'report.json') ($summary | ConvertTo-Json -Depth 8)
     $lines = @(Get-ChildItem -LiteralPath $reportDir -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' } | Sort-Object Name | ForEach-Object { ((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + $_.Name) })
     Save-Text (Join-Path $reportDir 'SHA256SUMS.txt') (($lines -join "`n") + "`n")

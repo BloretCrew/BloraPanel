@@ -36,15 +36,40 @@ try {
     Save-Text $argumentProbe 'param([string]$Value) Write-Output $Value'
     Invoke-DeviceStage 'literal-arguments' $command @('-NoProfile','-File',$argumentProbe,$literal) $run 15
     if (![IO.File]::ReadAllText((Join-Path $reportDir '01-literal-arguments.log')).Contains($literal)) { throw 'Child argument escaping changed the literal value' }
+    Invoke-DeviceStage 'stderr-progress' $command @('-NoProfile','-Command','[Console]::Error.WriteLine("ordinary native progress"); exit 0') $run 15
+    if (![IO.File]::ReadAllText((Join-Path $reportDir '02-stderr-progress.log')).Contains('ordinary native progress')) { throw 'Native stderr was lost or treated as failure' }
     $failed=$false
     try { Invoke-DeviceStage 'intentional-failure' $command @('-NoProfile','-Command','exit 7') $run 15 } catch { $failed=$true }
     if (!$failed -or $steps[-1].status -ne 'FAILED' -or $steps[-1].exitCode -ne 7) { throw 'Failed child was accepted' }
+    $missing=$false
+    try { Invoke-DeviceStage 'missing-command' 'blora-command-does-not-exist' @() $run 15 } catch { $missing=$true }
+    if (!$missing -or $steps[-1].exitCode -ne 1 -or !$steps[-1].detail -or !(Get-Content (Join-Path $reportDir '04-missing-command.log') -Raw).Contains('blora-command-does-not-exist')) { throw 'Child shell error was not captured' }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    foreach ($kind in @('valid','traversal','wrong-ref','duplicate','symlink')) {
+        $path=Join-Path $run ($kind+'.zip')
+        $archive=[IO.Compression.ZipFile]::Open($path,[IO.Compression.ZipArchiveMode]::Create)
+        try {
+            $prefix='BloraPanel-'+$Ref+'/'
+            $entryName=$(switch ($kind) { 'traversal' {$prefix+'../escape.txt'} 'wrong-ref' {'BloraPanel-'+('b'*40)+'/safe.txt'} default {$prefix+'scripts/safe.txt'} })
+            $entry=$archive.CreateEntry($entryName)
+            if ($kind -eq 'symlink') { $entry.ExternalAttributes=0xA000 -shl 16 }
+            $writer=[IO.StreamWriter]::new($entry.Open())
+            try { $writer.Write('owned source') } finally { $writer.Dispose() }
+            if ($kind -eq 'duplicate') { [void]$archive.CreateEntry($entryName.ToUpperInvariant()) }
+        } finally { $archive.Dispose() }
+        $target=Join-Path $run ('source-'+$kind)
+        $rejected=$false
+        try { Expand-FixedSourceArchive $path $target $Ref } catch { $rejected=$true }
+        if ($kind -eq 'valid') {
+            if ($rejected -or (Get-Content (Join-Path $target 'scripts/safe.txt') -Raw) -ne 'owned source') { throw 'Valid fixed archive was rejected' }
+        } elseif (!$rejected -or (Test-Path $target)) { throw "Unsafe archive created source: $kind" }
+    }
     Save-Text (Join-Path $run 'private-credentials.json') 'do-not-bundle'
     $final=$ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.TryStatementAst] } | Select-Object -Last 1
     & ([scriptblock]::Create($final.Finally.Extent.Text.Trim().Substring(1,$final.Finally.Extent.Text.Trim().Length-2)))
     $result=Get-Content (Join-Path $reportDir 'report.json') -Raw | ConvertFrom-Json
-    if ($result.outcome -ne 'FAILED' -or $result.commit -ne $Ref -or $result.runnerSHA256 -ne $runnerHash -or $result.steps.Count -ne 2) { throw 'Final report lost failure/source/stages' }
-    $archives=@(Get-ChildItem -LiteralPath $run -Filter '*.zip' -File)
+    if ($result.outcome -ne 'FAILED' -or $result.commit -ne $Ref -or $result.runnerSHA256 -ne $runnerHash -or $result.steps.Count -ne 4) { throw 'Final report lost failure/source/stages' }
+    $archives=@(Get-ChildItem -LiteralPath $run -Filter 'Blora-Windows-Device-*.zip' -File)
     if ($archives.Count -ne 1) { throw 'Expected one current report archive' }
     $archive=[IO.Compression.ZipFile]::OpenRead($archives[0].FullName)
     try {

@@ -1,5 +1,7 @@
 # Blora Panel 全范围验收矩阵
 
+2026-10-06 R4源码获取阻塞：用户固定2bfac47的clone阶段30.3秒exit -1，14项真实联调尚未开始，不计产品14fail或Windows PASS。wrapper增加完整child错误输出及固定提交HTTPS源码ZIP路径，-ArchiveOnly避开该Git失败；原failed stage/恢复标记、script-source SHA和14项必需断言保持。隔离PowerShell回归与实际GitHub固定ZIP1218文件安全解压通过，见[报告](reports/windows-device-source-2026-10-06.md)。原Windows失败根因未凭console确定；新版Windows效果仍须回传，E08/发行状态不变。
+
 2026-10-05 用户排除发行后的本地增量：R2门禁已修并通过5/5浏览器及类型检查；R3普通Windows真实联调入口已实现，Linux最新源码实际14/14通过（11.388秒）、Go安全2/2/vet/Windows交叉编译、正式frontend与PowerShell报告harness通过，见[本轮证据](reports/local-remaining-2026-10-05.md)。Windows真实后端结果仍须一次新普通设备脚本回传，不从Linux提升Windows状态、不重跑已关闭补测组。R1新布局隔离仅微探针、截图一致但仍远超50ms，未采纳，见[诊断](reports/render-layout-diagnostic-2026-10-05.md)；原E08失败保留。R5发行打包/兼容回退/发布按用户最新要求延期。**当前非发行剩余只有R1严格延迟与R4新入口的Windows真实执行证据**，下方R2/R3待做文字是历史记录，不能重新加入当前清单。未强制环境和历史失败继续保留，不称原全环境认证通过。
 
 2026-10-05 用户要求调整本次必测范围：已由三个子代理分别审查存储/备份/传输/调度、Windows平台能力和终端恢复/性能，主代理核对源码与既有证据，见[范围调整报告](reports/scope-review-2026-10-05.md)。物理掉电/缓存丢失、宿主/NTFS实际写满、浏览器真实驱逐、公网多主机/证书运维、超过24h及多桌面全组合，以及Windows通知/IME/额外headless/特权服务任务修改等改为本次不强制，保持未实测事实而不记PASS。普通错误处理/权限/源保护及已有安全测试不删除。Windows防火墙规则变更本就不属支持子集，不能再要求用户验证其回滚；新增确认的读写门禁错误仍待修复。旧Vim字节/单次撤权超时转为非阻塞历史观察，不声称根因已修复。**当前阻塞清单只保留R1～R5：E08目标、门禁修复、Windows正常真实后端/发行演练入口、一次正常真机结果、最终发行验收收尾**，详见[最新剩余表](../execution/NON_UI_REMAINING_2026-09-26.md)。下方历史范围/未测说明不自动重新成为本次阻塞项；不宣称原全环境认证完成。

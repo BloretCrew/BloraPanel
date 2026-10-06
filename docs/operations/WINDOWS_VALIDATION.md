@@ -30,8 +30,17 @@ Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/BloretCrew
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Ref $ref
 ```
 
-Use a normal Windows PowerShell terminal with Git, Go 1.25+ and Node.js 24+
-already installed. No administrator access, VM or race compiler is required.
+If Git fails to reach GitHub, add `-ArchiveOnly` to the last command. This uses
+the HTTPS source ZIP for the same full commit, validates the archive root and
+paths, and still requires the downloaded script to match the extracted source.
+Git is not required in this mode. Without this switch, a failed Git clone or
+checkout automatically tries that same archive; the original failed stage stays
+in the report with `sourceAcquisitionRecovered: true`. This is a source-download
+recovery, not a passed Git test. Archive SHA-256 and `sourceMethod` are recorded.
+
+Use a normal Windows PowerShell terminal with Go 1.25+ and Node.js 24+
+already installed; the default Git path also needs Git. No administrator access,
+VM or race compiler is required.
 Each invocation clones into a fresh temporary directory, installs locked frontend
 dependencies and Chromium only, and builds ordinary test executables. It does
 not produce or publish a release.
