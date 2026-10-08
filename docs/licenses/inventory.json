@@ -832,8 +832,8 @@
         }
       ],
       "name": "dompurify",
-      "origin": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.15.tgz",
-      "version": "3.4.15"
+      "origin": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.16.tgz",
+      "version": "3.4.16"
     },
     {
       "declaredLicense": "MIT",
@@ -1176,8 +1176,8 @@
         }
       ],
       "name": "source-map-js",
-      "origin": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
-      "version": "1.2.1"
+      "origin": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.2.tgz",
+      "version": "1.2.2"
     },
     {
       "declaredLicense": "MIT",
@@ -1332,6 +1332,12 @@
     "node_modules/@tailwindcss/oxide-linux-arm64-musl",
     "node_modules/@tailwindcss/oxide-linux-x64-musl",
     "node_modules/@tailwindcss/oxide-wasm32-wasi",
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/core",
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/runtime",
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/wasi-threads",
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@napi-rs/wasm-runtime",
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@tybys/wasm-util",
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/tslib",
     "node_modules/@tailwindcss/oxide-win32-arm64-msvc",
     "node_modules/@tailwindcss/oxide-win32-x64-msvc",
     "node_modules/fsevents",

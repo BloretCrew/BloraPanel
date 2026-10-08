@@ -248,6 +248,8 @@ Each archive also contains a per-file `MANIFEST.json`. Fixed timestamps, orderin
 
 **Blora Panel is in active development.** Implementation and verification are tracked separately in the [acceptance matrix](docs/acceptance/ACCEPTANCE_MATRIX.md).
 
+The first public build is **v0.1.0-beta.1**, a prerelease for initial hands-on evaluation. It has automated and agent-run validation, but has not yet been personally tested by the project owner. Stable-release readiness is not claimed.
+
 [Non-release source closeout](docs/acceptance/reports/non-release-closeout-2026-10-08.md) covers backend race checks, builds, 123 frontend units, all 51 real functional scenarios across a complete run and independent follow-ups, recovery repairs and strict native rendering checks. Earlier failures and the limits of combined evidence remain visible; final release packaging and validation are deferred.
 
 [Ordinary Windows real-device validation](docs/acceptance/reports/windows-device-passed-2026-10-06.md) passed all fourteen checks; earlier native Job/ConPTY and visible-WebKit results retain their fixed-source scope. The [current remaining-work record](docs/execution/NON_UI_REMAINING_2026-09-26.md) separates source regression from deferred final release. Extra physical-failure and deployment combinations were waived for this delivery, rather than marked as passed.
@@ -278,4 +280,4 @@ The API's `sessionCookie`, `X-CSRF-Token`, and `Idempotency-Key` describe checks
 
 ## Third-party notices
 
-Dependency licenses and original notices are recorded in the [dependency inventory](docs/licenses/inventory.json) and [third-party notices](docs/licenses/THIRD-PARTY-NOTICES.txt), and are included in release archives. A project-level license has not yet been selected.
+Blora Panel is licensed under the **GNU General Public License version 3 only** (SPDX: `GPL-3.0-only`); see [LICENSE](LICENSE). Third-party components retain their own licenses. Their original texts and notices are recorded in the [dependency inventory](docs/licenses/inventory.json) and [third-party notices](docs/licenses/THIRD-PARTY-NOTICES.txt), and accompany the release archives.

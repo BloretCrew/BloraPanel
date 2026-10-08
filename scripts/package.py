@@ -100,11 +100,20 @@ def run():
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", options.version):
         parser.error("version must be a simple 1..64 character release label")
     options.output.mkdir(parents=True, exist_ok=True)
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    modified = bool(subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=ROOT, text=True).strip())
+    if "-beta." in options.version and modified:
+        raise ValueError("Beta packages require a clean committed source tree")
+    source_notice = (f"Blora Panel {options.version}\n"
+                     f"Source revision: {revision}\n"
+                     f"Modified working tree: {str(modified).lower()}\n"
+                     f"Source: https://github.com/BloretCrew/BloraPanel/tree/{revision}\n"
+                     "License: GPL-3.0-only; see LICENSE. Third-party terms remain separate.\n").encode()
     final = options.output / options.version
     staging = Path(tempfile.mkdtemp(prefix=".blora-package-", dir=options.output))
     try:
-        documentation = ["README.md", "sdk/README.md"] + tree("docs")
-        common = [(name, name, 0o644) for name in documentation]
+        documentation = ["LICENSE", "README.md", "README.zh-CN.md", "sdk/README.md"] + tree("docs")
+        common = [(name, name, 0o644) for name in documentation] + [("SOURCE-REVISION.txt", source_notice, 0o644)]
         web = [(name, name, 0o644) for name in tree("web/dist")]
         image = [(name, name, 0o644) for name in ["Dockerfile.isolated", "go.mod", "go.sum"] + tree("cmd/exec-helper") + tree("internal/containerterm/helper")]
         for platform in ("linux-amd64", "windows-amd64"):
@@ -116,7 +125,8 @@ def run():
                 invocation = f".\\{binary}" if extension else f"./{binary}"
                 command = f"{invocation} --config /private/node.json" if component == "daemon" else f"{invocation} --state-dir /private/master --static-dir web/dist"
                 start = (f"Blora {component} / {platform} / {options.version}\n\n"
-                         "This is a local development release, not a claim of full platform acceptance.\n"
+                         "This is a prerelease/development build, not a stable-release or full platform acceptance claim.\n"
+                         "Blora Panel is licensed GPL-3.0-only; see LICENSE and the third-party notices.\n"
                          "Use platform-appropriate private paths. Initialize Master once with --init and --password-file.\n"
                          f"Run from the extracted directory: {command}\n"
                          "See docs/operations/OPERATIONS.md for TLS, identities, backup and upgrade procedures.\n"
@@ -125,9 +135,9 @@ def run():
                 entries = common + [(binary, f"dist/{binary}", 0o755), ("START.txt", start, 0o644)] + (web if component == "master" else image)
                 archive(staging / f"blora-{component}-{options.version}-{platform}{suffix}", entries, options.version, component, platform)
         notices = ("THIRD-PARTY-NOTICES.txt", "docs/licenses/THIRD-PARTY-NOTICES.txt", 0o644)
-        archive(staging / f"blora-web-{options.version}.tar.gz", [(name.removeprefix("web/dist/"), source, mode) for name, source, mode in web] + [notices], options.version, "web", "browser")
+        archive(staging / f"blora-web-{options.version}.tar.gz", [(name.removeprefix("web/dist/"), source, mode) for name, source, mode in web] + [notices, ("LICENSE", "LICENSE", 0o644), ("SOURCE-REVISION.txt", source_notice, 0o644)], options.version, "web", "browser")
         sdk_sources = tree("sdk")
-        sdk = [(name, name, 0o644) for name in sdk_sources] + [notices]
+        sdk = [(name, name, 0o644) for name in sdk_sources] + [notices, ("LICENSE", "LICENSE", 0o644), ("SOURCE-REVISION.txt", source_notice, 0o644)]
         for platform, extension in (("linux-amd64", ""), ("windows-amd64", ".exe")):
             source = f"dist/blora-extension-sign{extension}"
             executable(source, platform)

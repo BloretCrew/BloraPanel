@@ -226,6 +226,8 @@ Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race 
 
 **Blora Panel 正在持续开发。** 实现状态与验证状态分别记录在[验收矩阵](docs/acceptance/ACCEPTANCE_MATRIX.md)中。
 
+首个公开版本为 **v0.1.0-beta.1**，是用于初次实际体验的预发布版本。已有自动化及代理执行的验证，项目负责人尚未亲自试用，不宣称达到正式稳定版标准。
+
 [非发行源码收尾](docs/acceptance/reports/non-release-closeout-2026-10-08.md)包含后端竞态、构建、123 项前端单测、完整运行与后续单项复验合并覆盖的 51 个真实功能场景、恢复修复和严格原生绘制校验。原失败与合并证据的限制仍保留，最终包制作与验证延期。
 
 [Windows 普通真机验证](docs/acceptance/reports/windows-device-passed-2026-10-06.md)的十四项已全部通过；此前 Job/ConPTY 与可见 WebKit 结果保留各自固定源码范围。[当前剩余工作](docs/execution/NON_UI_REMAINING_2026-09-26.md)分别记录源码回归与延期的最终发行。额外物理故障和部署组合按本次范围免测，未执行不记为通过。
@@ -252,4 +254,4 @@ Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race 
 
 ## 第三方许可
 
-依赖许可证与原始通知见[依赖清单](docs/licenses/inventory.json)和[第三方通知](docs/licenses/THIRD-PARTY-NOTICES.txt)，并随发行包提供。项目自身许可证尚未选定。
+Blora Panel 采用 **GNU General Public License 第 3 版（仅限第 3 版）**，SPDX 标识为 `GPL-3.0-only`，全文见 [LICENSE](LICENSE)。第三方组件保留各自许可证；原始文本及通知见[依赖清单](docs/licenses/inventory.json)和[第三方通知](docs/licenses/THIRD-PARTY-NOTICES.txt)，随发行包提供。

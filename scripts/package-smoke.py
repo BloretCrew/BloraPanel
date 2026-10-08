@@ -27,10 +27,13 @@ def main():
     parser.add_argument('--daemon-task-crash', action='store_true', help='SIGKILL the owning Daemon in the STOPPING phase and verify interruption')
     parser.add_argument('--scheduled-backup-crash', action='store_true', help='SIGKILL Master and the owning Daemon after a real scheduled backup occurrence is accepted')
     parser.add_argument('--state-restore', action='store_true', help='Back up stopped owned state, change it, restore, and verify identities/permissions/files')
+    parser.add_argument('--upgrade-from', type=Path, help='Initialize and seed with this older Linux release, then upgrade the same stopped state to the current release')
     parser.add_argument('--rollback-release', type=Path, help='Use this compatible older Linux release after restoring the stopped snapshot')
     args = parser.parse_args()
     if args.rollback_release and not args.state_restore:
         parser.error('--rollback-release requires --state-restore')
+    if args.upgrade_from and not args.state_restore:
+        parser.error('--upgrade-from requires --state-restore')
     if args.state_restore and (args.master_crash or args.daemon_crash or args.daemon_task_crash or args.scheduled_backup_crash):
         parser.error('Run stopped-state restoration separately from crash scenarios')
     if args.scheduled_backup_crash and (args.master_crash or args.daemon_crash or args.daemon_task_crash):
@@ -47,6 +50,18 @@ def main():
                 raise ValueError(f'Expected one {component} archive')
             with tarfile.open(matches[0]) as archive:
                 archive.extractall(root / component, filter='data')
+        initial_master, initial_daemon = root / 'master', root / 'daemon'
+        if args.upgrade_from:
+            older = args.upgrade_from.resolve()
+            if older == release:
+                raise ValueError('Upgrade source must differ from the current release')
+            for component in ('master', 'daemon'):
+                matches = list(older.glob(f'blora-{component}-*-linux-amd64.tar.gz'))
+                if len(matches) != 1:
+                    raise ValueError(f'Expected one upgrade-source {component} archive')
+                with tarfile.open(matches[0]) as archive:
+                    archive.extractall(root / ('upgrade-from-' + component), filter='data')
+            initial_master, initial_daemon = root / 'upgrade-from-master', root / 'upgrade-from-daemon'
         env = dict(os.environ, GOCACHE='/tmp/blora-go-grant-idem', GOMODCACHE='/tmp/blora-go-mod', GOPATH='/tmp/blora-go', npm_config_cache='/tmp/blora-npm-cache')
         for directory in (root / 'sdk/sdk', root / 'sdk/sdk/examples/reference-app'):
             for command in (['npm', 'ci', '--offline'], ['npm', 'run', 'build' if directory.name == 'sdk' else 'package']):
@@ -60,8 +75,8 @@ def main():
         password_file.touch(mode=0o600)
         password_file.write_text(password)
         state = root / 'state'
-        binary = str(root / 'master/blora-master')
-        subprocess.run([binary, '--state-dir', str(state), '--init', '--password-file', str(password_file)], cwd=root / 'master', check=True, timeout=30)
+        binary = str(initial_master / 'blora-master')
+        subprocess.run([binary, '--state-dir', str(state), '--init', '--password-file', str(password_file)], cwd=initial_master, check=True, timeout=30)
         with socket.socket() as listener:
             listener.bind(('127.0.0.1', 0))
             port = listener.getsockname()[1]
@@ -72,7 +87,7 @@ def main():
             logs.append(log)
             processes.append(subprocess.Popen(command, cwd=cwd, stdout=log, stderr=log))
 
-        start('master', [binary, '--state-dir', str(state), '--listen', f'127.0.0.1:{port}', '--origin', origin, '--static-dir', 'web/dist'], root / 'master')
+        start('master', [binary, '--state-dir', str(state), '--listen', f'127.0.0.1:{port}', '--origin', origin, '--static-dir', 'web/dist'], initial_master)
         client = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=str(state / 'tls.crt'))), urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         csrf = ''
 
@@ -99,7 +114,7 @@ def main():
             config = root / f'node-{index}.json'
             config.touch(mode=0o600)
             config.write_text(json.dumps({'stateDir': str(root / f'node-{index}'), 'masterUrl': origin, 'caFile': str(state / 'tls.crt'), 'enrollmentFile': str(ticket), 'allowPGIDFallback': True}))
-            start(f'daemon-{index}', [str(root / 'daemon/blora-daemon'), '--config', str(config)], root / 'daemon')
+            start(f'daemon-{index}', [str(initial_daemon / 'blora-daemon'), '--config', str(config)], initial_daemon)
         for attempt in range(100):
             nodes = json.loads(call('/api/v1/nodes'))['items']
             if len(nodes) == 2 and all(node['state'] == 'ONLINE' for node in nodes):
@@ -161,6 +176,40 @@ def main():
                         pass
                     time.sleep(.2)
                 raise RuntimeError('Restored node identities did not return ONLINE')
+
+            if args.upgrade_from:
+                # The seed was created by the older extracted programs. Start
+                # the current extracted programs against exactly those stopped
+                # directories/configurations before making any restore copy.
+                stop_owned()
+                start_owned(root / 'master', root / 'daemon')
+                assert (state / 'tls.crt').read_bytes() == certificate
+                assert b'<html' in call('/')
+                csrf = json.loads(call('/api/v1/login', {'name': 'admin', 'password': password}))['csrfToken']
+                users = json.loads(call('/api/v1/users'))['items']
+                assert any(user['userId'] == member['userId'] and user['name'] == 'snapshot-member' for user in users)
+                upgraded = json.loads(call('/api/v1/instances/' + instance['instanceId']))['instance']
+                assert upgraded['name'] == 'snapshot-instance' and upgraded['state'] == 'STOPPED'
+                assert marker.read_text(encoding='utf-8') == 'snapshot resource content\n'
+                assert json.loads(call('/api/v1/instances/' + instance['instanceId'] + '/files/content?path=restore-marker.txt'))['text'] == 'snapshot resource content\n'
+                replayed_task = json.loads(call(file_endpoint, file_request, file_key))['task']
+                assert replayed_task['taskId'] == file_task['taskId'] and replayed_task['state'] == 'SUCCEEDED'
+                assert (directory / 'task-created').is_dir()
+                member_client = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=str(state / 'tls.crt'))), urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+                request = urllib.request.Request(origin + '/api/v1/login', data=json.dumps({'name': 'snapshot-member', 'password': member_password}).encode(), headers={'Content-Type': 'application/json', 'Origin': origin})
+                with member_client.open(request, timeout=5) as response:
+                    member_csrf = json.loads(response.read())['csrfToken']
+                with member_client.open(origin + '/api/v1/instances', timeout=5) as response:
+                    assert [item['instanceId'] for item in json.loads(response.read())['items']] == [instance['instanceId']]
+                request = urllib.request.Request(origin + '/api/v1/instances/' + instance['instanceId'] + '/actions', data=b'{"action":"start"}', headers={'Content-Type': 'application/json', 'Origin': origin, 'X-CSRF-Token': member_csrf, 'Idempotency-Key': str(uuid.uuid4())})
+                try:
+                    member_client.open(request, timeout=5).close()
+                except urllib.error.HTTPError as error:
+                    assert error.code == 403
+                    error.close()
+                else:
+                    raise AssertionError('Upgraded read-only grant unexpectedly allowed start')
+                print('PASS: older packaged Master/Daemons upgraded in place to current package; TLS, both node identities, login, read-only grant, task receipt and resource bytes retained', flush=True)
 
             # All resources are stopped; directories and configurations belong
             # solely to this randomly-created test root. No live DB is copied.
