@@ -12,4 +12,5 @@ import './appearance/palette-wallpapers.css'
 import './appearance/wallpaper-styles.css'
 import './appearance/dark-surfaces.css'
 import './appearance/dark-apps.css'
+import './appearance/cached-material.css'
 createApp(App).use(createPinia()).use(VueQueryPlugin, { queryClient: new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 1500 } } }) }).mount('#app')

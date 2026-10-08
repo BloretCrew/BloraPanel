@@ -235,6 +235,11 @@ func (s *Server) terminalStream(w http.ResponseWriter, r *http.Request, u model.
 		fail(w, 400, "INVALID_CURSOR", "无效输出游标")
 		return
 	}
+	encoding := r.URL.Query().Get("encoding")
+	if encoding != "" && encoding != "events-v1" {
+		fail(w, 400, "INVALID_ENCODING", "不支持的终端输出编码")
+		return
+	}
 	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
 	if err != nil {
 		return
@@ -380,16 +385,18 @@ func (s *Server) terminalStream(w http.ResponseWriter, r *http.Request, u model.
 			sendError("AUTHORIZATION_REVOKED", "终端权限已撤销")
 			return
 		}
-		for _, event := range batch.Events {
-			if event.Sequence <= cursor {
-				continue
-			}
-			payload, _ := json.Marshal(event)
+		frames, err := terminalDataFrames(batch.Events, cursor, encoding == "events-v1")
+		if err != nil {
+			sendError("OUTPUT_UNAVAILABLE", "终端输出无法编码")
+			return
+		}
+		for _, frame := range frames {
+			payload := frame.payload
 			sent += uint64(len(payload))
 			if err := c.Send(ctx, protocol.Envelope{Type: protocol.TypeData, StreamID: session.ID, Sequence: sent, Payload: payload}); err != nil {
 				return
 			}
-			cursor = event.Sequence
+			cursor = frame.cursor
 		}
 		// Do not read another archived batch until xterm has parsed this one.
 		ackDeadline := time.Now().Add(45 * time.Second)

@@ -127,13 +127,13 @@
 
 :root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
   border-color: var(--dark-control-edge);
-  background: var(--surface-high);
+  background-color: var(--surface-high);
   color: var(--on-surface);
 }
 
 :root[data-theme="dark"] :is(.in-window-dialog, .workspace-menu, .shortcut-rename-dialog)
   :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
-  background: var(--surface-highest);
+  background-color: var(--surface-highest);
 }
 
 :root[data-theme="dark"] :is(input, textarea)::placeholder {

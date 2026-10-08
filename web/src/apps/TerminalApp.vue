@@ -3,6 +3,7 @@ import {computed,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {useDesktop} from '../desktop/store'
 import {api,type Task} from '../services/api'
 import {TerminalModel,type TerminalEvent} from '../services/terminals'
+import {decodeTerminalEvents} from '../services/terminal-events'
 import {ByteWindow,decodeEnvelope,decodeJSON,encodeEnvelope,encodeJSON,INTERACTIVE_WINDOW,MessageType,type Envelope} from '../services/protocol'
 import {json} from '../recovery/state'
 import type {ResourceRef} from '../app-host/types'
@@ -66,7 +67,7 @@ async function attach(id:string){
   },uiTheme.value)
   terminal=model;await model.mount(container.value);if(disposed||generation!==connection){model.dispose();return}
   const protocol=location.protocol==='https:'?'wss:':'ws:'
-  const ws=new WebSocket(`${protocol}//${location.host}/api/v1/terminals/${encodeURIComponent(id)}/stream?viewId=${encodeURIComponent(props.viewTabId)}&sequence=${model.sequence}`);socket=ws;ws.binaryType='arraybuffer'
+  const ws=new WebSocket(`${protocol}//${location.host}/api/v1/terminals/${encodeURIComponent(id)}/stream?viewId=${encodeURIComponent(props.viewTabId)}&sequence=${model.sequence}&encoding=events-v1`);socket=ws;ws.binaryType='arraybuffer'
   let processing=false,queuedBytes=0,canReconnect=true
   const pending:{frame:Envelope;size:number}[]=[]
   function fail(e:unknown){if(generation!==connection||disposed)return;error.value=String(e);status.value='连接已停止 · 原检查点保留';writable.value=false;connected.value=false;model.setLease(false);canReconnect=false;ws.close(4002,'terminal protocol failed')}
@@ -99,10 +100,10 @@ async function attach(id:string){
         }
         try{
           if(first.frame.type===MessageType.Data){
-            const events=group.map(({frame})=>{
+            const events=group.flatMap(({frame})=>{
               if(frame.protocolVersion!==1||frame.generation!==1||frame.channel!==2||frame.streamId!==id)throw new Error('终端消息身份或连接代次不匹配')
               bytes.receive(frame.sequence||0,frame.payload!.byteLength)
-              return decodeJSON<TerminalEvent>(frame.payload)
+              return decodeTerminalEvents(frame.payload)
             })
             await model.receiveBatch(events)
             if(generation!==connection||disposed)return
@@ -156,8 +157,9 @@ function zoom(delta:number){const value=Math.max(9,Math.min(28,fontSize.value+de
 async function copySelection(){const text=terminal?.terminal.getSelection();if(!text)return;try{await navigator.clipboard.writeText(text)}catch(e){error.value='浏览器拒绝复制：'+String(e)}}
 watch(()=>props.visible,visible=>{if(visible)requestSize()})
 watch(uiTheme,mode=>{void terminal?.setColorMode(mode).catch(e=>{error.value='终端主题恢复保护失败：'+String(e)})})
-onMounted(load)
-onBeforeUnmount(()=>{disposed=true;if(taskTimer)clearTimeout(taskTimer);if(endTimer)clearTimeout(endTimer);stopConnection()})
+const notifyPaintHost=()=>container.value?.dispatchEvent(new CustomEvent('terminal-paint-host-changed',{bubbles:true}))
+onMounted(()=>{notifyPaintHost();void load()})
+onBeforeUnmount(()=>{notifyPaintHost();disposed=true;if(taskTimer)clearTimeout(taskTimer);if(endTimer)clearTimeout(endTimer);stopConnection()})
 </script>
 <template>
   <div class="terminal-app">
@@ -165,7 +167,7 @@ onBeforeUnmount(()=>{disposed=true;if(taskTimer)clearTimeout(taskTimer);if(endTi
     <p v-if="error" class="error notice" role="alert">{{error}}</p>
     <div v-if="sessionId" class="terminal-sessionbar"><select :value="sessionId" aria-label="选择终端会话" @change="attach(($event.target as HTMLSelectElement).value)"><option v-for="s in sessions" :key="s.sessionId" :value="s.sessionId">{{s.sessionId}} · {{s.state}}</option></select><button @click="anotherView">同会话新窗口</button><button :disabled="!!endRequest?.taskId&&!['SUCCEEDED','FAILED','CANCELLED','INTERRUPTED'].includes(endRequest.state||'')||selected?.state==='closed'" @click="askEnd">结束会话…</button><span v-if="endRequest?.taskId">结束任务：{{endRequest.state}}</span></div>
     <div v-if="!sessionId" class="terminal-sessions"><p class="muted">刷新与移窗只恢复原会话，不重发历史输入。创建会话通过后台任务执行。</p><button v-for="s in sessions" :key="s.sessionId" @click="attach(s.sessionId)">{{s.sessionId}} · {{s.state}} · {{s.backend}}</button></div>
-    <div ref="container" class="terminal-container" :data-session-id="sessionId" :data-terminal-writable="writable"></div>
+    <div class="terminal-paint-region"><div class="terminal-paint-viewport"><div ref="container" class="terminal-container" :data-session-id="sessionId" :data-terminal-writable="writable"></div></div></div>
     <footer class="editor-status"><span>{{view.resourceRef?.nodeId}} · {{sessionId || '未选择会话'}}</span><span v-if="selected">{{selected.backend}} · 会话上限 {{selected.maxSessions}} · 归档 {{Math.round(selected.archive.maxBytes/1024/1024)}} MiB</span></footer>
     <form v-if="endDialog&&endRequest" class="in-window-dialog" role="dialog" aria-label="结束终端会话" @submit.prevent="endSession"><h3>结束终端会话</h3><p class="selectable">{{endRequest.sessionId}}</p><p>此操作结束这个交互会话、关联 Shell 及其前台程序。独立托管的实例仍按原状态运行。</p><p>仅关闭窗口可以保留会话以便稍后继续。</p><div class="action-row"><button type="button" @click="endDialog=false">返回</button><button class="primary" :disabled="busy">确认结束会话</button></div></form>
   </div>

@@ -4,6 +4,20 @@ import {decodeEnvelope,encodeEnvelope,encodeJSON,MessageType} from '../../src/se
 // Transport doubles are confined to this test. The xterm parser, serializer,
 // browser recovery storage and binary protocol implementation are real.
 for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[true,true]])test(`xterm checkpoints resume the same session, ACK parsed bytes and never replay input (${forceFallback?'fallback':'automatic'} renderer, ${forceSnapshotFallback?'main':'worker'} checkpoints)`,async({page,validationPhase})=>{
+  // Storage now also writes in a separate realm. Exercise the same real IDB
+  // failure there; all preexisting failed-protection/withheld-ACK assertions
+  // remain unchanged, rather than faulting only an unused foreground writer.
+  await page.route('**/recovery/snapshot.worker.ts?**',async route=>{
+    const response=await route.fetch(),source=await response.text()
+    const preamble=`self.addEventListener('message',event=>{if(event.data?.kind==='test-native-idb-failure'){event.stopImmediatePropagation();const put=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(...args){if(this.name==='snapshots')throw new DOMException('terminal quota test','QuotaExceededError');return put.apply(this,args)};self.postMessage({kind:'test-native-idb-failure-armed'})}});\n`
+    await route.fulfill({response,body:preamble+source})
+  })
+  await page.addInitScript(()=>{
+    const Native=window.Worker,workers:Worker[]=[];(window as any).__recoveryWorkers=workers
+    window.Worker=class extends Native{
+      constructor(url:string|URL,options?:WorkerOptions){super(url,options);if(String(url).includes('/recovery/snapshot.worker'))workers.push(this)}
+    }
+  })
   if(forceSnapshotFallback)await page.addInitScript(()=>{
     const Original=Worker
     window.Worker=class extends Original{
@@ -78,7 +92,10 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   const ack=received.find(message=>message.type===MessageType.Ack)!;expect(ack.sequence).toBe(ack.credit)
   releaseReplay();await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-writable','true')
   await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-checkpoint',forceSnapshotFallback?'main':'worker')
-  if(forceFallback)await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-renderer','default')
+  // This is an automatic product path, without a GL API override. The pinned
+  // Linux WebKit returns the same generic Apple identifier on every device.
+  const maskedLinuxWebKit=await page.evaluate(()=>/AppleWebKit\//.test(navigator.userAgent)&&/Linux|X11/.test(navigator.platform+' '+navigator.userAgent)&&!/(?:Chrome|Chromium|Edg)\//.test(navigator.userAgent))
+  if(forceFallback||maskedLinuxWebKit)await expect(page.locator('.terminal-container')).toHaveAttribute('data-terminal-renderer','default')
   validationPhase('live input and incremental output')
   await page.locator('.xterm-helper-textarea').focus();await page.keyboard.type('abc')
   await expect.poll(()=>received.filter(message=>message.type===MessageType.Data).map(message=>message.text).join('')).toBe('abc')
@@ -140,7 +157,11 @@ for(const [forceFallback,forceSnapshotFallback] of [[false,false],[true,false],[
   await page.getByRole('button',{name:'重新挂载',exact:true}).click()
   await expect(page.getByText('已连接 · 只读观察',{exact:true})).toBeVisible()
   const ackCount=received.filter(message=>message.type===MessageType.Ack).length
-  await page.evaluate(()=>{
+  await page.evaluate(async()=>{
+    await Promise.all(((window as any).__recoveryWorkers as Worker[]).map(worker=>new Promise<void>(resolve=>{
+      const armed=(event:MessageEvent)=>{if(event.data?.kind==='test-native-idb-failure-armed'){worker.removeEventListener('message',armed);resolve()}}
+      worker.addEventListener('message',armed);worker.postMessage({kind:'test-native-idb-failure'})
+    })))
     const set=Storage.prototype.setItem,put=IDBObjectStore.prototype.put
     Storage.prototype.setItem=function(key,value){if(key.startsWith('blora:tail:'))throw new DOMException('terminal quota test','QuotaExceededError');return set.call(this,key,value)}
     IDBObjectStore.prototype.put=function(...args:Parameters<IDBObjectStore['put']>){if(this.name==='snapshots')throw new DOMException('terminal quota test','QuotaExceededError');return put.apply(this,args)}

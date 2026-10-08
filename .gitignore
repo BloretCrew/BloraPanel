@@ -26,6 +26,7 @@ web/playwright-report/
 web/real-test-results/
 web/real-playwright-report/
 web/browser-test-results/
+web/experiment-test-results/
 web/ui-screenshots/*
 !web/ui-screenshots/all-appearance-20260926/
 web/ui-screenshots/all-appearance-20260926/*

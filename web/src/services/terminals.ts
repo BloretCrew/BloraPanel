@@ -4,13 +4,14 @@ import {FitAddon} from '@xterm/addon-fit'
 import {WebglAddon} from '@xterm/addon-webgl'
 import {TerminalSnapshot} from './terminal-snapshot'
 import {pendingUtf8} from './terminal-utf8'
+import {nativePaintFallback} from './rendering-capabilities'
 import {terminalParserAtBoundary} from './terminal-parser-state'
 import {captureTerminalControlState,restoreTerminalControlState} from './terminal-control-state'
 import {captureTerminalColors,terminalColorSequence} from './terminal-colors'
 import {captureTerminalLinks,restoreTerminalLinks} from './terminal-links'
 import type {TerminalJournalEvent} from '../app-host/types'
 import type {RecoveryService} from '../recovery/service'
-import {json,terminalJournalEvent,terminalJournalBytes,TERMINAL_OUTPUT_JOURNAL_BYTES,TERMINAL_OUTPUT_JOURNAL_EVENTS} from '../recovery/state'
+import {json,terminalJournalEvent,terminalJournalBytes,TERMINAL_OUTPUT_JOURNAL_BYTES,TERMINAL_OUTPUT_JOURNAL_EVENTS,type Mutation} from '../recovery/state'
 import '@xterm/xterm/css/xterm.css'
 export interface TerminalEvent {sequence:number;kind:'output'|'resize';data?:string;cols?:number;rows?:number}
 function decodeOutput(value:string){
@@ -69,10 +70,12 @@ export class TerminalModel {
         const renderer=diagnostic?String(probe.getParameter(diagnostic.UNMASKED_RENDERER_WEBGL)):''
         // Some ANGLE configurations accept failIfMajorPerformanceCaveat even
         // while reporting a software Vulkan device. Honor that actual result.
-        const software=/SwiftShader|llvmpipe|softpipe|software|Microsoft Basic Render/i.test(renderer)
+        const software=nativePaintFallback(navigator.userAgent,renderer,navigator.platform)
         probe.getExtension('WEBGL_lose_context')?.loseContext()
         if(!software){
-          const webgl=new WebglAddon()
+          // Preserve native pixels when an idle, partly clipped viewport is
+          // revealed. WebKit can otherwise present a stale cropped texture.
+          const webgl=new WebglAddon(true)
           webgl.onContextLoss(()=>{webgl.dispose();container.dataset.terminalRenderer='default'})
           try{this.terminal.loadAddon(webgl);container.dataset.terminalRenderer='webgl'}catch(error){webgl.dispose();throw error}
         }
@@ -126,9 +129,15 @@ export class TerminalModel {
     if(this.snapshot)try{await operation(this.snapshot)}catch(error){if(import.meta.env.DEV)console.debug('Terminal checkpoint fallback',error);this.disableSnapshot()}
   }
   private async write(data:string|Uint8Array){
-    await new Promise<void>(resolve=>this.terminal.write(data,resolve))
+    // These independent native parsers consume the same ordered batch. Start
+    // both now rather than waiting for another main/Worker message turn after
+    // visible parsing. The serial receive queue, checkpoint and ACK boundary
+    // still wait for both; no unparsed output can become protected/confirmed.
+    const visible=new Promise<void>(resolve=>this.terminal.write(data,resolve))
+    const checkpoint=this.mirror(snapshot=>snapshot.write(data))
+    await visible
     if(typeof data!=='string')this.utf8Tail=pendingUtf8(this.utf8Tail,data)
-    await this.mirror(snapshot=>snapshot.write(data))
+    await checkpoint
   }
   receive(event:TerminalEvent){return this.receiveBatch([event])}
   receiveBatch(events:TerminalEvent[]){
@@ -192,12 +201,18 @@ export class TerminalModel {
     })
   }
   private protectView(){
-    if(this.disposed||!this.recovery.state.terminals[this.checkpointKey])return
+    const saved=this.recovery.state.terminals[this.checkpointKey]
+    if(this.disposed||!saved)return
     const selection=this.terminal.getSelectionPosition()
-    this.recovery.commit([
-      {kind:'set',path:['terminals',this.checkpointKey,'scroll'],value:this.terminal.buffer.active.viewportY},
-      selection?{kind:'set',path:['terminals',this.checkpointKey,'selection'],value:json(selection)}:{kind:'delete',path:['terminals',this.checkpointKey,'selection']},
-    ])
+    const scroll=this.terminal.buffer.active.viewportY,previous=saved.selection
+    const sameSelection=selection&&previous?selection.start.x===previous.start.x&&selection.start.y===previous.start.y&&selection.end.x===previous.end.x&&selection.end.y===previous.end.y:!selection&&!previous
+    // Delayed native scroll/selection callbacks can repeat the view boundary
+    // already protected with parsed output. Persist every actual change, but
+    // do not invalidate a cold snapshot for an identical notification.
+    const mutations:Mutation[]=[]
+    if(saved.scroll!==scroll)mutations.push({kind:'set',path:['terminals',this.checkpointKey,'scroll'],value:scroll})
+    if(!sameSelection)mutations.push(selection?{kind:'set',path:['terminals',this.checkpointKey,'selection'],value:json(selection)}:{kind:'delete',path:['terminals',this.checkpointKey,'selection']})
+    if(mutations.length)this.recovery.commit(mutations)
   }
   private async protectOutputs(events:TerminalEvent[]){
     const saved=this.recovery.state.terminals[this.checkpointKey]

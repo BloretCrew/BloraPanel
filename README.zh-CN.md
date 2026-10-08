@@ -226,9 +226,13 @@ Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race 
 
 **Blora Panel 正在持续开发。** 实现状态与验证状态分别记录在[验收矩阵](docs/acceptance/ACCEPTANCE_MATRIX.md)中。
 
-已有 Linux 功能与发行验证证据，`make windows` 可构建 Windows amd64 二进制。Windows Job/ConPTY 真机、服务管理器部署、远端环境与物理故障仍需各自验证。当前完整通透材质混合负载的性能目标尚未通过；构建或本地功能通过不代表全范围验收完成。
+[非发行源码收尾](docs/acceptance/reports/non-release-closeout-2026-10-08.md)包含后端竞态、构建、123 项前端单测、完整运行与后续单项复验合并覆盖的 51 个真实功能场景、恢复修复和严格原生绘制校验。原失败与合并证据的限制仍保留，最终包制作与验证延期。
 
-真实 systemd 服务/定时器生命周期、委派 cgroup 进程管理、CPU 限流及有界内存/PID耗尽已有[隔离 Linux 容器证据](docs/acceptance/reports/systemd-cgroup-2026-09-29.md)；[Linux原生通知绘制与鼠标点击](docs/acceptance/reports/native-notifications-2026-09-29.md)也已在X11/Dunst验证。可按[平台指南](docs/operations/PLATFORM_VALIDATION.md)复现，不替代Windows真机、其他桌面平台或生产主机部署验证。
+[Windows 普通真机验证](docs/acceptance/reports/windows-device-passed-2026-10-06.md)的十四项已全部通过；此前 Job/ConPTY 与可见 WebKit 结果保留各自固定源码范围。[当前剩余工作](docs/execution/NON_UI_REMAINING_2026-09-26.md)分别记录源码回归与延期的最终发行。额外物理故障和部署组合按本次范围免测，未执行不记为通过。
+
+[E08 已按用户调整范围收尾](docs/acceptance/reports/e08-bounded-closeout-2026-10-08.md)：Chromium 为 38.8ms、Firefox 为 66ms、WebKit 为 89～132ms，最后一次为 95ms。所有浏览器统一 50ms 的原目标仍未通过；这些固定源码的压力结果不保证每轮都低于 100ms。
+
+真实 systemd 服务/定时器生命周期、委派 cgroup 进程管理、CPU 限流及有界内存/PID耗尽已有[隔离 Linux 容器证据](docs/acceptance/reports/systemd-cgroup-2026-09-29.md)；[Linux原生通知绘制与鼠标点击](docs/acceptance/reports/native-notifications-2026-09-29.md)也已在 X11/Dunst 验证。各报告只覆盖其注明环境，可按[平台指南](docs/operations/PLATFORM_VALIDATION.md)复现；本地回归不认证生产部署和其他平台组合。
 
 仓库包含源码、测试、依赖锁文件、文档及两张 README 展示截图。凭据、运行数据库、已安装依赖、发行归档、生成的参考包与其他历史截图图库不进入版本控制。
 
@@ -238,6 +242,7 @@ Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race 
 | :--- | :--- |
 | [运维手册](docs/operations/OPERATIONS.md) | 状态布局、健康检查、备份、升级与回退。 |
 | [平台验收](docs/operations/PLATFORM_VALIDATION.md) | Windows、systemd、远端 Engine 与故障验证流程。 |
+| [本地回归](docs/operations/LOCAL_REGRESSION.md) | 当前源码构建、浏览器守卫、真实功能自动回归与独立实验入口。 |
 | [API 说明](docs/api/openapi.yaml) | 请求、授权、幂等、任务、WebSocket 与结构化错误。 |
 | [扩展 SDK](sdk/README.md) | 应用清单、沙箱能力、签名与生命周期合同。 |
 | [验收矩阵](docs/acceptance/ACCEPTANCE_MATRIX.md) | 已实现、已验证、待验证及环境相关要求。 |

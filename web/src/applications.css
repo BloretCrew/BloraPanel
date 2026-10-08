@@ -245,7 +245,7 @@
 .file-actions button:hover:not(:disabled){background:var(--surface-container)}
 .file-actions button:disabled{color:var(--muted)}
 .files-content>.filterbar:not(.file-pathbar) input,.files-content>.filterbar:not(.file-pathbar) select{font-size:11px;padding:4px 7px}
-.files-content>.filterbar:not(.file-pathbar) select{max-width:90px}
+.files-content>.filterbar:not(.file-pathbar) select{max-width:90px;padding-inline-end:28px}
 .file-view-switch{display:flex;gap:2px;margin-left:auto;padding:2px;border:1px solid var(--line);border-radius:var(--shape-sm);background:var(--surface-container)}
 .file-view-switch button{padding:3px 8px;border:0;border-radius:var(--shape-xs);background:transparent;box-shadow:none;color:var(--muted);font-size:10px}
 .file-view-switch button.selected{background:var(--primary-container);color:var(--on-primary-container)}
@@ -294,6 +294,10 @@
 
 .editor-app,.terminal-app{border-radius:var(--shape-xl);overflow:hidden;height:100%;min-height:0;display:flex;flex-direction:column;position:relative;background:var(--surface);color:var(--on-surface);font-size:12px}
 .editor-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:41px;padding:6px 10px;background:var(--surface-low);border-bottom:1px solid var(--line);flex-shrink:0}
+/* Chromium can rerasterize a sibling toolbar pill's edge when the native
+   terminal viewport changes its clip. Retain only this unchanged toolbar;
+   terminal rows, dimensions and the viewport keep their original ownership. */
+.desktop[data-material-body-paint="native"] .terminal-app>.editor-toolbar{will-change:transform}
 .editor-toolbar>span,.editor-toolbar>strong{flex:1;font-size:11px;min-width:140px;font-weight:500;overflow-wrap:anywhere;color:var(--muted)}
 .editor-toolbar button{font-size:10px;padding:4px 7px;min-height:24px}
 .editor-panes{display:flex;flex:1;min-width:0;min-height:0;overflow:hidden}
@@ -301,6 +305,9 @@
 .editor-panes.split .monaco-container+.monaco-container{border-left:1px solid var(--line)}
 .monaco-container,.terminal-container{min-width:0;min-height:0;flex:1;overflow:hidden}
 .terminal-container{padding:10px;background:#111917}
+.terminal-paint-region{flex:1;min-width:0;min-height:0;position:relative}
+.terminal-paint-viewport{position:absolute;inset:0;overflow:hidden}
+.terminal-paint-viewport>.terminal-container{position:absolute;inset:0}
 .editor-preview{display:flex;flex:1;min-height:0;flex-direction:column;background:var(--surface)}
 .editor-preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface-low);flex-shrink:0}
 .editor-preview-toolbar>div:first-child{display:flex;align-items:baseline;gap:10px;min-width:0}
@@ -322,7 +329,7 @@
 .editor-conflict textarea{display:block;width:100%;min-height:100px;margin:8px 0;font-family:ui-monospace,monospace}
 .editor-conflict p{font-size:10px;color:var(--muted)}
 .terminal-sessionbar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--surface-low);font-size:10px}
-.terminal-sessionbar select{max-width:290px;font-size:10px;padding:4px 6px}
+.terminal-sessionbar select{max-width:290px;font-size:10px;padding:4px 28px 4px 6px}
 .terminal-sessionbar button{white-space:nowrap;font-size:10px}
 .terminal-sessionbar span{color:var(--muted)}
 .terminal-sessions{padding:20px;background:var(--surface)}
@@ -331,7 +338,7 @@
 
 .instance-console{display:flex;flex-direction:column;gap:10px;padding-top:6px}
 .console-toolbar{display:flex;flex-wrap:wrap;gap:5px;font-size:11px;align-items:center}
-.console-toolbar select{max-width:260px;padding:5px 7px;font-size:11px}
+.console-toolbar select{max-width:260px;padding:5px 28px 5px 7px;font-size:11px}
 .console-toolbar button{font-size:11px}
 .instance-console .filterbar{margin:0}
 .instance-console .filterbar small{max-width:240px;color:var(--muted);font-size:10px}

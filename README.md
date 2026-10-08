@@ -168,7 +168,7 @@ With the local fixture running, use its private credential file:
 BLORA_E2E_CREDENTIALS=/absolute/private/fixture/browser-credentials.json npm --prefix web run test:e2e:real
 ```
 
-The real runner uses Playwright's installed browsers by default; `BLORA_CHROMIUM` can select a system Chromium. See the [desktop report](docs/acceptance/reports/desktop-2026-09-09.md) and [current local functional report](docs/acceptance/reports/local-functional-2026-09-27.md) for setup and coverage.
+The real runner uses Playwright's installed browsers by default; `BLORA_CHROMIUM` can select a system Chromium. The [local regression guide](docs/operations/LOCAL_REGRESSION.md) includes a current-source Linux runner that builds the project, owns its HTTPS fixture and runs the complete real functional suite. Private credentials and raw evidence stay outside version control. See the [desktop report](docs/acceptance/reports/desktop-2026-09-09.md) for individual scenario setup.
 
 **Sustained mixed load.** Start `./dist/blora-devfixture --performance`, then run in a second terminal:
 
@@ -248,9 +248,13 @@ Each archive also contains a per-file `MANIFEST.json`. Fixed timestamps, orderin
 
 **Blora Panel is in active development.** Implementation and verification are tracked separately in the [acceptance matrix](docs/acceptance/ACCEPTANCE_MATRIX.md).
 
-Linux functional and release evidence is available, and Windows amd64 binaries can be built with `make windows`. Native Windows Job/ConPTY, service-manager deployments, remote environments, and physical failure scenarios still have separate validation requirements. The performance target for eight windows with translucent materials and concurrent terminal/file activity has not passed; a successful build or local functional run does not imply complete acceptance.
+[Non-release source closeout](docs/acceptance/reports/non-release-closeout-2026-10-08.md) covers backend race checks, builds, 123 frontend units, all 51 real functional scenarios across a complete run and independent follow-ups, recovery repairs and strict native rendering checks. Earlier failures and the limits of combined evidence remain visible; final release packaging and validation are deferred.
 
-Real systemd service/timer lifecycles and delegated cgroup process control have [isolated Linux container evidence](docs/acceptance/reports/systemd-cgroup-2026-09-29.md), including CPU throttling and bounded memory/PID exhaustion. [Native Linux notification rendering and mouse clicks](docs/acceptance/reports/native-notifications-2026-09-29.md) are also verified with X11/Dunst. The [platform guide](docs/operations/PLATFORM_VALIDATION.md) provides reproducible runners; these do not replace native Windows, other desktops, or production-host validation.
+[Ordinary Windows real-device validation](docs/acceptance/reports/windows-device-passed-2026-10-06.md) passed all fourteen checks; earlier native Job/ConPTY and visible-WebKit results retain their fixed-source scope. The [current remaining-work record](docs/execution/NON_UI_REMAINING_2026-09-26.md) separates source regression from deferred final release. Extra physical-failure and deployment combinations were waived for this delivery, rather than marked as passed.
+
+[E08 optimization is closed under the user's adjusted scope](docs/acceptance/reports/e08-bounded-closeout-2026-10-08.md): Chromium measured 38.8ms, Firefox 66ms, and WebKit 89–132ms, with its last repetition at 95ms. The original universal 50ms target remains unmet; these source-specific stress results do not guarantee every run stays below 100ms.
+
+Real systemd service/timer lifecycles and delegated cgroup process control have [isolated Linux container evidence](docs/acceptance/reports/systemd-cgroup-2026-09-29.md), including CPU throttling and bounded memory/PID exhaustion. [Native Linux notification rendering and mouse clicks](docs/acceptance/reports/native-notifications-2026-09-29.md) are also verified with X11/Dunst. Each report covers its stated environment; the [platform guide](docs/operations/PLATFORM_VALIDATION.md) provides reproducible runners. Production deployment and other platform combinations are not certified by local regression.
 
 The repository includes source, tests, dependency lockfiles, documentation, and the two README screenshots. Credentials, runtime databases, installed dependencies, release archives, generated reference packages, and the remaining historical screenshot galleries stay outside version control.
 
@@ -262,6 +266,7 @@ Detailed engineering documents and the SDK guide are currently maintained in Chi
 | :--- | :--- |
 | [Operations](docs/operations/OPERATIONS.md) | State layout, health checks, backups, upgrades, and rollback. |
 | [Platform validation](docs/operations/PLATFORM_VALIDATION.md) | Windows, systemd, remote Engine, and fault-validation procedures. |
+| [Local regression](docs/operations/LOCAL_REGRESSION.md) | Current-source builds, ordinary browser checks, real functional validation and opt-in experiments. |
 | [API specification](docs/api/openapi.yaml) | Requests, authorization, idempotency, tasks, WebSockets, and structured errors. |
 | [Extension SDK](sdk/README.md) | App manifests, sandbox capabilities, signatures, and lifecycle contracts. |
 | [Acceptance matrix](docs/acceptance/ACCEPTANCE_MATRIX.md) | Implemented, verified, pending, and environment-dependent requirements. |

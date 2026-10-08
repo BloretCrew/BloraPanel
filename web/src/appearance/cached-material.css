@@ -1,0 +1,74 @@
+/* Shared prefiltered wallpaper; no recursive filtering of live app contents. */
+/* Atlas coordinates are local to one surface. Inherited coordinates would
+   invalidate every terminal row and editor token whenever a window moves. */
+@property --material-x{syntax:"<length>";inherits:false;initial-value:0px}
+@property --material-y{syntax:"<length>";inherits:false;initial-value:0px}
+@property --window-x{syntax:"<length>";inherits:false;initial-value:0px}
+@property --window-y{syntax:"<length>";inherits:false;initial-value:0px}
+/* Software painting uses the same native window context at absolute offsets.
+   Fractional pixels retain the original transform ownership automatically. */
+@media (resolution:1dppx) and (min-width:761px){.app-window[data-window-position="offset"]{transform:translate(0px,0px)!important;left:var(--window-x);top:var(--window-y)}}
+/* Keep only the active window's native layer across gestures. Repeatedly
+   rebuilding it on pointerdown/up adds an extra input frame in Firefox. */
+.app-window:is(.moving,.focused){will-change:transform}
+/* Absolute windows have explicit outer dimensions. Keep size/layout work
+   local without paint containment, which would cut off native shadow edges. */
+.app-window{contain:size layout style}
+/* Native shadows have their own retained surface, separate from changing app
+   contents. Preserve the existing native blur, colors and gesture elevation. */
+.app-window{box-shadow:none!important}
+.window-shadow-plane{position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;z-index:-1;will-change:transform;box-shadow:var(--window-shadow)}
+.app-window.focused>.window-shadow-plane{box-shadow:var(--window-shadow-focus)}
+.app-window[data-shadow-low="true"]>.window-shadow-plane{box-shadow:var(--window-shadow)}
+.shadow-piece{display:none}
+.window-shadow-plane[data-shadow-cache]{box-shadow:none!important;will-change:auto}
+.window-shadow-plane[data-shadow-cache]>.shadow-piece{display:var(--shadow-normal-display,block);position:absolute;background-image:var(--shadow-normal);background-size:100% 100%;background-repeat:no-repeat;--shadow-piece-width:var(--shadow-normal-width);--shadow-piece-height:var(--shadow-normal-height);--shadow-trim-left:var(--shadow-normal-left);--shadow-trim-top:var(--shadow-normal-top);--shadow-trim-right:var(--shadow-normal-right);--shadow-trim-bottom:var(--shadow-normal-bottom)}
+.app-window.focused>.window-shadow-plane[data-shadow-cache]>.shadow-piece{display:var(--shadow-focused-display,block);background-image:var(--shadow-focused);--shadow-piece-width:var(--shadow-focused-width);--shadow-piece-height:var(--shadow-focused-height);--shadow-trim-left:var(--shadow-focused-left);--shadow-trim-top:var(--shadow-focused-top);--shadow-trim-right:var(--shadow-focused-right);--shadow-trim-bottom:var(--shadow-focused-bottom)}
+.app-window[data-shadow-low="true"]>.window-shadow-plane[data-shadow-cache]>.shadow-piece{display:var(--shadow-normal-display,block);background-image:var(--shadow-normal);--shadow-piece-width:var(--shadow-normal-width);--shadow-piece-height:var(--shadow-normal-height);--shadow-trim-left:var(--shadow-normal-left);--shadow-trim-top:var(--shadow-normal-top);--shadow-trim-right:var(--shadow-normal-right);--shadow-trim-bottom:var(--shadow-normal-bottom)}
+.shadow-piece[data-shadow-empty="true"]{display:none!important}
+.shadow-piece:is(.nw,.ne,.sw,.se){width:var(--shadow-piece-width,var(--shadow-width));height:var(--shadow-piece-height,var(--shadow-width))}
+.shadow-piece:is(.nw,.n,.ne){top:calc(-1 * var(--shadow-outset) + var(--shadow-trim-top,0px))}
+.shadow-piece:is(.sw,.s,.se){bottom:calc(-1 * var(--shadow-outset) + var(--shadow-trim-bottom,0px))}
+.shadow-piece:is(.nw,.w,.sw){left:calc(-1 * var(--shadow-outset) + var(--shadow-trim-left,0px))}
+.shadow-piece:is(.ne,.e,.se){right:calc(-1 * var(--shadow-outset) + var(--shadow-trim-right,0px))}
+.shadow-piece:is(.n,.s){left:var(--shadow-corner);right:var(--shadow-corner);height:var(--shadow-piece-height,var(--shadow-width))}
+.shadow-piece:is(.w,.e){top:var(--shadow-corner);bottom:var(--shadow-corner);width:var(--shadow-piece-width,var(--shadow-width))}
+.window-body{contain:layout paint style}
+:root[data-translucency="on"][data-material-cache="ready"] .desktop{background-image:var(--material-desktop)!important;background-size:100% 100%;background-position:center;background-repeat:no-repeat}
+:root[data-translucency="on"][data-material-cache="ready"] .app-window::before,
+:root[data-translucency="on"][data-material-cache="ready"] .app-window>.window-body::before,
+:root[data-translucency="on"][data-material-cache="ready"] :is(.topbar,.launcher,.account-popover,.workspace-menu,.context-menu,.window-picker,.notification-panel,.shortcut-rename-dialog){
+ backdrop-filter:none!important;
+ background-image:var(--material-surface);
+ background-size:var(--material-size);
+ background-position:var(--material-x,0px) var(--material-y,0px);
+ background-repeat:no-repeat;
+ background-origin:border-box;
+ background-color:transparent;
+}
+:root[data-material-cache="ready"] .app-window{--material-surface:var(--material-window)}
+:root[data-translucency="on"][data-material-cache="ready"] .app-window{backdrop-filter:none!important;background-image:none;background-color:transparent}
+:root[data-translucency="on"][data-material-cache="ready"] .app-window>.window-body{background-image:none;background-color:transparent}
+/* Updating settled wallpaper coordinates must not rerasterize application
+   text. Only this independent, known-opaque material plane changes. */
+:root[data-translucency="on"][data-material-cache="ready"] .app-window>.window-body::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;will-change:transform;--material-x:inherit;--material-y:inherit}
+/* Chromium must repaint this wallpaper-only plane with the native rounded
+   body clip. A separate retained plane leaves changing alpha at odd resizes. */
+:root[data-translucency="on"][data-material-cache="ready"] .desktop[data-material-body-paint="native"] .app-window>.window-body::before{will-change:auto}
+:root[data-translucency="on"][data-material-cache="ready"] .app-window::before{
+ --material-x:inherit;--material-y:inherit;
+ content:"";position:absolute;inset:0 0 auto;height:var(--material-header-size,86px);pointer-events:none;
+ border-radius:calc(var(--material-frame-radius,var(--shape-xl)) - 1px) calc(var(--material-frame-radius,var(--shape-xl)) - 1px) 0 0;
+ background-position:calc(var(--material-x) - 1px) calc(var(--material-y) - 1px);
+}
+:root[data-translucency="on"][data-material-cache="ready"] :is(.window-titlebar,.view-tabs,.window-body){position:relative}
+/* A frozen atlas can end outside its finite viewport when a partly offscreen
+   window is dragged back. Keep these known-opaque planes filled there too. */
+:root[data-translucency="on"][data-material-cache="ready"][data-material-cache-opaque="true"] .app-window::before,
+:root[data-translucency="on"][data-material-cache="ready"][data-material-cache-opaque="true"] .app-window>.window-body::before{background-color:var(--surface-container)}
+:root[data-material-cache="ready"] .topbar{--material-surface:var(--material-face)}
+:root[data-material-cache="ready"] :is(.launcher,.account-popover,.workspace-menu,.context-menu,.window-picker,.notification-panel,.shortcut-rename-dialog){--material-surface:var(--material-menu)}
+:root[data-translucency="on"][data-material-cache="ready"] .dock-backdrop{
+ backdrop-filter:none!important;background-image:var(--material-wallpaper);background-size:var(--material-size);
+ background-position:var(--material-x,0px) var(--material-y,0px);background-repeat:no-repeat;background-origin:border-box;
+}

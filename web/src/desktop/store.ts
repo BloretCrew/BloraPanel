@@ -76,7 +76,11 @@ export const useDesktop = defineStore('desktop', () => {
     }
     await ensureExternalApps(service)
     await restoreAppStates(service)
-    if (generation === startup) { recovery.value = service; state.value = service.state }
+    if (generation === startup) {
+      await service.enableBackgroundPersistence()
+      if(generation!==startup){service.stopBackgroundPersistence();return}
+      recovery.value?.stopBackgroundPersistence();recovery.value = service; state.value = service.state
+    }
   }
   async function switchWorkspace(slot:string) {
     if(slot===activeWorkspace.value || !workspaces.value.some(w=>w.slot===slot))return
@@ -86,6 +90,8 @@ export const useDesktop = defineStore('desktop', () => {
     await service.restore()
     await ensureExternalApps(service)
     await restoreAppStates(service)
+    await service.enableBackgroundPersistence()
+    previous.stopBackgroundPersistence()
     sessionStorage.setItem(catalogKey,slot)
     activeWorkspace.value=slot;recovery.value=service;state.value=service.state
   }
@@ -199,7 +205,15 @@ export const useDesktop = defineStore('desktop', () => {
     const captured=getApp(view.appId).captureState({...copy(view.state),[key]:json(value)})
     commit([{kind:'set',path:['views',viewTabId,'state'],value:json(captured)}])
   }
-  function geometry(windowId: string, rect: Rect) { commit([{ kind: 'set', path: ['windows', windowId, 'rect'], value: json(rect) }]) }
+  function geometry(windowId: string, rect: Rect) {
+    // A completed native gesture may return to its already protected geometry.
+    // Keep that object/receipt instead of invalidating every dependent view and
+    // publishing a redundant recovery transaction. Real changes still commit
+    // synchronously, including release, cancellation and beforeunload.
+    const current=state.value!.windows[windowId]?.rect
+    if(current&&current.x===rect.x&&current.y===rect.y&&current.width===rect.width&&current.height===rect.height)return
+    commit([{ kind: 'set', path: ['windows', windowId, 'rect'], value: json(rect) }])
+  }
   function minimize(windowId: string) {
     const s=state.value!,next=[...s.order].reverse().find(id=>id!==windowId && !s.windows[id]!.minimized)
     const changes:Mutation[]=[{kind:'set',path:['windows',windowId,'minimized'],value:true}]

@@ -29,11 +29,18 @@ type terminalClient struct {
 }
 
 func openTerminal(t *testing.T, c *testClient, id, view string, cursor uint64) *terminalClient {
+	return openTerminalEncoding(t, c, id, view, cursor, "")
+}
+func openTerminalEncoding(t *testing.T, c *testClient, id, view string, cursor uint64, encoding string) *terminalClient {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	t.Cleanup(cancel)
 	header := http.Header{"Origin": []string{c.base}}
-	ws, _, err := websocket.Dial(ctx, strings.Replace(c.base, "https://", "wss://", 1)+fmt.Sprintf("/api/v1/terminals/%s/stream?viewId=%s&sequence=%d", id, view, cursor), &websocket.DialOptions{HTTPClient: c.client, HTTPHeader: header})
+	endpoint := fmt.Sprintf("/api/v1/terminals/%s/stream?viewId=%s&sequence=%d", id, view, cursor)
+	if encoding != "" {
+		endpoint += "&encoding=" + encoding
+	}
+	ws, _, err := websocket.Dial(ctx, strings.Replace(c.base, "https://", "wss://", 1)+endpoint, &websocket.DialOptions{HTTPClient: c.client, HTTPHeader: header})
 	if err != nil {
 		t.Fatal(err)
 	}

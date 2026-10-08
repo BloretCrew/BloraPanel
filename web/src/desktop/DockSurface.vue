@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useElementSize } from '@vueuse/core'
 import { APP_CORNER_RATIO, continuousRectPath } from '../app-host/surface-geometry'
+import { installDockCache } from '../appearance/dock-cache'
 
 const props = defineProps<{ inset: number }>()
 const surface = ref<HTMLElement>()
+let disposeCache:(()=>void)|undefined
+onMounted(()=>{if(surface.value)disposeCache=installDockCache(surface.value)})
+onBeforeUnmount(()=>disposeCache?.())
 const { width, height } = useElementSize(surface)
 const contour = computed(() => {
   const w = width.value - 2 * props.inset, h = height.value - 2 * props.inset
@@ -26,4 +30,5 @@ const contour = computed(() => {
 .dock-surface{z-index:0}
 .dock-backdrop{position:absolute;inset:0;backdrop-filter:var(--dock-backdrop-filter,none)}
 .dock-surface>svg{overflow:visible;filter:var(--dock-shadow,none)}
+.dock-surface[data-dock-cache="ready"]>svg{display:none}
 </style>

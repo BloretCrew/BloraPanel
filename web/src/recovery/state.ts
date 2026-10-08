@@ -1,4 +1,5 @@
 import type { Draft, Json, TextEdit, Workspace, TerminalJournalEvent } from '../app-host/types'
+import {markRaw} from 'vue'
 
 export const TERMINAL_OUTPUT_JOURNAL_BYTES = 128 * 1024
 export const TERMINAL_OUTPUT_JOURNAL_EVENTS = 128
@@ -20,6 +21,34 @@ export function terminalJournalEvent(event:TerminalJournalEvent):TerminalJournal
 }
 export const terminalJournalBytes=(event:TerminalJournalEvent)=>event.kind==='resize'?64:(event.data?.length||0)*2
 export type JournalEntry = { revision: number; mutations: Mutation[] }
+// Output owned by recovery is immutable. Cache only the validated summary of
+// arrays built here; imported/app-written arrays must pass the complete checks.
+// Frozen plain values also avoid Vue wrapping every historical event in a
+// proxy on each append. No output is delayed or dropped at this boundary.
+const terminalJournals=new WeakMap<readonly TerminalJournalEvent[],{baseSequence:number;sequence:number;bytes:number}>()
+function appendTerminalJournal(existing:TerminalJournalEvent[],baseSequence:number,sequence:number,events:TerminalJournalEvent[],nextSequence:number){
+  const owned=terminalJournals.get(existing)
+  let persistedSequence=baseSequence,existingBytes=0
+  if(owned&&owned.baseSequence===baseSequence&&owned.sequence===sequence){persistedSequence=owned.sequence;existingBytes=owned.bytes}
+  else for(const event of existing){
+    terminalJournalEvent(event)
+    if(event.sequence!==++persistedSequence)throw new Error('终端已有输出日志不连续')
+    existingBytes+=terminalJournalBytes(event)
+  }
+  if(persistedSequence!==sequence||existingBytes>TERMINAL_OUTPUT_JOURNAL_BYTES)throw new Error('终端已有输出日志与检查点不匹配')
+  let expected=sequence,addedBytes=0
+  const added=events.map(event=>{
+    const value=terminalJournalEvent(event)
+    if(value.sequence!==++expected)throw new Error('终端本地输出日志不连续')
+    addedBytes+=terminalJournalBytes(value)
+    return Object.freeze(value)
+  })
+  if(nextSequence!==expected||existingBytes+addedBytes>TERMINAL_OUTPUT_JOURNAL_BYTES)throw new Error('终端本地输出日志超出保护预算')
+  const retained=owned?existing:existing.map(event=>Object.freeze(terminalJournalEvent(event)))
+  const journal=Object.freeze([...retained,...added])
+  terminalJournals.set(journal,{baseSequence,sequence:nextSequence,bytes:existingBytes+addedBytes})
+  return journal as unknown as TerminalJournalEvent[]
+}
 // Recovery values are structured data; avoid serializing large terminal output strings on every journal entry.
 // Vue proxies and non-cloneable app values retain the JSON fallback used before this optimization.
 export const copy = <T>(value: T): T => {
@@ -45,7 +74,17 @@ export function inverseEdits(text: string, edits: TextEdit[]): TextEdit[] {
 }
 function editStepBytes(step:Draft['history'][number]){return historyEncoder.encode(JSON.stringify(step)).byteLength}
 function historyPayloadBytes(history:Draft['history']){return history.reduce((total,step)=>total+editStepBytes(step),0)}
+// Committed undo operations are immutable values; only the owning history
+// array/cursor changes. Copy before taking ownership so app-supplied operations
+// cannot mutate a protected step, and keep Vue from retraversing every old
+// offset/text pair on each new input. The marker is non-enumerable and is
+// reconstructed after native/JSON cloning when a workspace is restored.
+function ownedHistoryStep(step:Draft['history'][number]):Draft['history'][number]{
+  const operations=(edits:TextEdit[])=>Object.freeze(edits.map(edit=>Object.freeze({offset:edit.offset,length:edit.length,text:edit.text})))
+  return Object.freeze(markRaw({...step,forward:operations(step.forward),reverse:operations(step.reverse)})) as unknown as Draft['history'][number]
+}
 export function initializeDraftHistory(draft:Draft){
+  draft.history=draft.history.map(ownedHistoryStep)
   draft.historyBytes=historyPayloadBytes(draft.history)
   draft.historyEpoch=Number.isSafeInteger(draft.historyEpoch)&&draft.historyEpoch!>=0?draft.historyEpoch:0
   draft.historyTrimmed=!!draft.historyTrimmed
@@ -114,7 +153,7 @@ export function applyEntry(state: Workspace, entry: JournalEntry) {
       if(draft.historyBytes===undefined)draft.historyBytes=historyPayloadBytes(draft.history)
       const removed=draft.history.splice(draft.cursor)
       draft.historyBytes-=removed.reduce((total,step)=>total+editStepBytes(step),0)
-      const step={ forward: op.forward, reverse: op.reverse,group:op.group }
+      const step=ownedHistoryStep({forward:op.forward,reverse:op.reverse,group:op.group})
       draft.history.push(step)
       draft.historyBytes+=editStepBytes(step)
       draft.cursor++
@@ -136,28 +175,9 @@ export function applyEntry(state: Workspace, entry: JournalEntry) {
       if (!Number.isSafeInteger(checkpoint.sequence) || checkpoint.sequence < 0 || !Number.isSafeInteger(baseSequence) || baseSequence < 0 || baseSequence > checkpoint.sequence || !Number.isSafeInteger(op.baseSequence) || op.baseSequence !== baseSequence || !Number.isSafeInteger(op.previousSequence) || op.previousSequence !== checkpoint.sequence || !Number.isSafeInteger(op.sequence) || op.sequence <= checkpoint.sequence || !Number.isSafeInteger(op.scroll) || op.scroll < 0) throw new Error('终端输出日志检查点不连续')
       const existing = checkpoint.outputJournal ?? []
       if (!Array.isArray(existing) || existing.length > TERMINAL_OUTPUT_JOURNAL_EVENTS || !Array.isArray(op.events) || !op.events.length || existing.length + op.events.length > TERMINAL_OUTPUT_JOURNAL_EVENTS) throw new Error('终端本地输出日志超出保护预算')
-      let persistedSequence = baseSequence
-      let existingBytes = 0
-      for (const event of existing) {
-        terminalJournalEvent(event)
-        if (event.sequence !== ++persistedSequence) throw new Error('终端已有输出日志不连续')
-        existingBytes += terminalJournalBytes(event)
-      }
-      if (persistedSequence !== checkpoint.sequence || existingBytes > TERMINAL_OUTPUT_JOURNAL_BYTES) throw new Error('终端已有输出日志与检查点不匹配')
-      let expected = checkpoint.sequence
-      let addedBytes = 0
-      for (const event of op.events) {
-        terminalJournalEvent(event)
-        if (event.sequence !== ++expected) throw new Error('终端本地输出日志不连续')
-        addedBytes += terminalJournalBytes(event)
-      }
-      if (op.sequence !== expected || existingBytes + addedBytes > TERMINAL_OUTPUT_JOURNAL_BYTES) throw new Error('终端本地输出日志超出保护预算')
+      const journal=appendTerminalJournal(existing,baseSequence,checkpoint.sequence,op.events,op.sequence)
       checkpoint.baseSequence = baseSequence
-      // Keep the stored array raw. Spreading a Vue-proxied array retains its
-      // proxied entries inside a new raw array, making IDB/native cloning fail.
-      // All sequence/budget checks above complete before this append mutates it.
-      checkpoint.outputJournal ??= []
-      checkpoint.outputJournal.push(...op.events.map(terminalJournalEvent))
+      checkpoint.outputJournal = journal
       checkpoint.sequence = op.sequence
       checkpoint.scroll = op.scroll
     } else {
@@ -166,7 +186,13 @@ export function applyEntry(state: Workspace, entry: JournalEntry) {
       for (const part of op.path.slice(0, -1)) target = target[part] as Record<string, Json>
       const key = op.path.at(-1)!
       if (op.kind === 'delete') delete target[key]
-      else target[key] = copy(op.value)
+      else {
+        const value=copy(op.value)
+        // Save-as/workspace copies enter through the same journal boundary as
+        // newly created drafts. Their copied history now has this owner too.
+        if(op.path.length===2&&op.path[0]==='drafts'&&value&&typeof value==='object'&&!Array.isArray(value)&&Array.isArray(value.history))value.history=(value as unknown as Draft).history.map(ownedHistoryStep) as unknown as Json[]
+        target[key]=value
+      }
     }
   }
   state.revision = entry.revision

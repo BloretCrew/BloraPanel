@@ -14,11 +14,14 @@ button:active:not(:disabled){background:var(--state-pressed)}
 button:disabled{opacity:.42;cursor:default}
 button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
 input,select,textarea{border:1px solid transparent;border-radius:var(--shape-md);background:var(--surface-container);color:var(--on-surface);padding:6px 9px;min-width:0;outline:none;box-shadow:none}
+/* Native select chrome can bevel CSS corners and clip compact text in WebKit.
+   Keep its menu/keyboard semantics, but paint the filled field ourselves. */
+select:where(:not([multiple]):not([size])){appearance:none;line-height:1.5;min-height:calc(1.5em + 14px);padding-inline-end:28px;background-image:linear-gradient(45deg,transparent 50%,var(--on-surface-variant) 50%),linear-gradient(135deg,var(--on-surface-variant) 50%,transparent 50%);background-position:right 14px center,right 10px center;background-size:4px 4px;background-repeat:no-repeat}
 input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:none}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-1px}
 summary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
 /* Filled fields remain distinct on elevated menu and dialog surfaces. */
-:is(.in-window-dialog,.workspace-menu,.shortcut-rename-dialog) :is(input:not([type=checkbox]):not([type=radio]),select,textarea){background:var(--surface-lowest)}
+:is(.in-window-dialog,.workspace-menu,.shortcut-rename-dialog) :is(input:not([type=checkbox]):not([type=radio]),select,textarea){background-color:var(--surface-lowest)}
 input:disabled,select:disabled,textarea:disabled{opacity:.38;cursor:default}
 input::file-selector-button{font:inherit;color:var(--on-secondary-container);background:var(--secondary-container);border:0;border-radius:var(--shape-sm);padding:5px 10px;margin-right:10px;cursor:pointer}
 progress{accent-color:var(--primary);border:0;border-radius:var(--shape-full);overflow:hidden;background:var(--surface-highest)}
@@ -36,6 +39,7 @@ input[type=checkbox]:hover:not(:disabled){box-shadow:0 0 0 6px var(--state-hover
 input[type=checkbox]:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px}
 input[type=checkbox]:disabled{opacity:.38;cursor:default}
 @media(forced-colors:active){input[type=checkbox]{appearance:auto;background:revert;border:revert;color:revert;box-shadow:none}input[type=checkbox]::after{display:none}}
+@media(forced-colors:active){select:not([multiple]):not([size]){appearance:auto;background-image:none}}
 h1,h2,h3,p{margin:0}
 h2{font-size:21px;line-height:1.3;font-weight:650;letter-spacing:-.5px}
 h3{font-size:14px;font-weight:600}
@@ -253,7 +257,7 @@ svg{display:block}
 @keyframes app-spin{to{transform:rotate(360deg)}
 }
 
-.desktop:has(.app-window.moving) .app-window{box-shadow:var(--window-shadow)}
+.app-window[data-shadow-low="true"]{box-shadow:var(--window-shadow)}
 
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}
 }
