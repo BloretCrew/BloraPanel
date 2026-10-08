@@ -226,11 +226,11 @@ Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race 
 
 **Blora Panel 正在持续开发。** 实现状态与验证状态分别记录在[验收矩阵](docs/acceptance/ACCEPTANCE_MATRIX.md)中。
 
-首个公开版本为 **v0.1.0-beta.1**，是用于初次实际体验的预发布版本。已有自动化及代理执行的验证，项目负责人尚未亲自试用，不宣称达到正式稳定版标准。
+首个公开版本为 **[v0.1.0-beta.1](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.1)**，是用于初次实际体验的预发布版本。已有自动化及代理执行的验证，项目负责人尚未亲自试用，不宣称达到正式稳定版标准。[beta 验收报告](docs/acceptance/reports/beta-0.1.0-2026-10-08.md)记录包与源码一致性、解包后的实际启动/恢复、兼容升级回退及远端附件核对结果。
 
-[非发行源码收尾](docs/acceptance/reports/non-release-closeout-2026-10-08.md)包含后端竞态、构建、123 项前端单测、完整运行与后续单项复验合并覆盖的 51 个真实功能场景、恢复修复和严格原生绘制校验。原失败与合并证据的限制仍保留，最终包制作与验证延期。
+[非发行源码收尾](docs/acceptance/reports/non-release-closeout-2026-10-08.md)包含后端竞态、构建、123 项前端单测、完整运行与后续单项复验合并覆盖的 51 个真实功能场景、恢复修复和严格原生绘制校验。原失败与合并证据的限制仍保留；beta 包制作与验证已随后完成，正式稳定版等待本人实际体验。
 
-[Windows 普通真机验证](docs/acceptance/reports/windows-device-passed-2026-10-06.md)的十四项已全部通过；此前 Job/ConPTY 与可见 WebKit 结果保留各自固定源码范围。[当前剩余工作](docs/execution/NON_UI_REMAINING_2026-09-26.md)分别记录源码回归与延期的最终发行。额外物理故障和部署组合按本次范围免测，未执行不记为通过。
+[Windows 普通真机验证](docs/acceptance/reports/windows-device-passed-2026-10-06.md)的十四项已全部通过；此前 Job/ConPTY 与可见 WebKit 结果保留各自固定源码范围，新 beta Windows 包尚未在真机重跑。[当前剩余工作](docs/execution/NON_UI_REMAINING_2026-09-26.md)区分已交付 beta 与等待体验的正式版。额外物理故障和部署组合按本次范围免测，未执行不记为通过。
 
 [E08 已按用户调整范围收尾](docs/acceptance/reports/e08-bounded-closeout-2026-10-08.md)：Chromium 为 38.8ms、Firefox 为 66ms、WebKit 为 89～132ms，最后一次为 95ms。所有浏览器统一 50ms 的原目标仍未通过；这些固定源码的压力结果不保证每轮都低于 100ms。
 
