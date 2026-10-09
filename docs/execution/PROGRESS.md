@@ -1,6 +1,12 @@
 # Blora Panel 当前执行进度
 
-更新：2026-10-08。全部此前逐轮记录保存在[完整历史归档](archive/PROGRESS-before-closeout-2026-10-08.md)。历史结果保留各自源码、环境和失败记录。
+更新：2026-10-09。全部此前逐轮记录保存在[完整历史归档](archive/PROGRESS-before-closeout-2026-10-08.md)。历史结果保留各自源码、环境和失败记录。
+
+## 最新文档任务：三个组件的生产启动与职责
+
+中英 README 已增加独立可见的生产启动章节，分别说明 Master 一次初始化/常驻命令、Daemon 私有配置/一次登记/身份复用、前端由 Master 托管或 Nginx 同源独立部署；包含 Linux systemd 示例、Windows PowerShell 命令及平台前置条件。前端不是第三个必须常驻的 Node 进程，SDK 也不是运行服务。Nginx 示例保留 HTTPS 后端证书校验、全部 `/api/` WSS 与 API 转发和对应内容安全策略；主服务的外部 origin、Daemon 的入口 URL 随部署方式一致变更。
+
+核对当前二进制 `--help`、真实 JSON 配置字段及同源 API/证书/身份代码；87 个中英 README 本地链接、JSON/命令引号和 `git diff --check` 通过。systemd 原样示例校验因尚未安装 `/opt/blora/...` 二进制返回非零；仅将两个示例的可执行文件/工作路径替换为现有本地 `dist` 后，`systemd-analyze verify --man=no` 退出 0，未安装或启动服务。本机没有 Nginx，配置对照官方文档与实际路由审阅，未声称生产代理链路已运行。本次只改文档/示例，beta 标签及附件保持不变；没有部署服务或新增运行会话。
 
 ## 最新授权：首个 beta 预发布
 

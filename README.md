@@ -22,6 +22,7 @@
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
+  <a href="#production-startup">Production startup</a> ·
   <a href="#features">Features</a> ·
   <a href="#documentation">Documentation</a> ·
   <a href="sdk/README.md">Extension SDK</a>
@@ -129,15 +130,124 @@ See the [operations guide](docs/operations/OPERATIONS.md) for state directories,
 
 </details>
 
+## Production startup
+
+Use the matching [beta release archives](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.1), verify `SHA256SUMS`, and extract each component into its own directory. These commands start the real services without fixture accounts or demo resources. The current release remains a beta pending the owner's hands-on evaluation.
+
+The examples use `panel.example.com` and Linux paths: extract Master to `/opt/blora/master`, Daemon to `/opt/blora/daemon` on each managed machine, and optionally the standalone Web archive to `/opt/blora/web`. Replace the domain and paths. Prepare dedicated `blora-master` / `blora-daemon` accounts and private state/config directories owned by the corresponding account (directories `0700`, secret files `0600`). Give Master read access to its TLS key and both services access to their required resources. Use a trusted certificate whose names include your management domain; the automatically generated localhost certificate is for local testing.
+
+Point the management domain at the entry host and allow the chosen HTTPS port (`8443` for direct Master hosting, `443` for the Nginx example) from browsers and nodes. Managed applications' business ports are configured separately; these examples expose only the management entry.
+
+### 1. Master — initialize once, then start
+
+Create `/etc/blora/initial-password` with a local editor (12–72 bytes, readable only by the Master account). Initialization exits after creating the administrator; **do not put `--init` in the ongoing service command**.
+
+```sh
+sudo -u blora-master /opt/blora/master/blora-master \
+  --state-dir /var/lib/blora/master --init \
+  --password-file /etc/blora/initial-password
+
+sudo -u blora-master /opt/blora/master/blora-master \
+  --state-dir /var/lib/blora/master \
+  --listen 0.0.0.0:8443 --origin https://panel.example.com:8443 \
+  --static-dir /opt/blora/master/web/dist \
+  --tls-cert /etc/blora/tls/fullchain.pem --tls-key /etc/blora/tls/privkey.pem \
+  --extensions-dir /var/lib/blora/master/extensions
+```
+
+Open **`https://panel.example.com:8443`** and sign in as `admin` using your initial password. Master serves the bundled frontend, so a separate frontend server is optional. Remove the initial password file after successful initialization; preserve the state directory across restarts. `--extensions-dir` enables persistent extension installation; `blora-master --help` lists optional catalog-source and trusted-publisher-key flags.
+
+### 2. Daemon — one per managed machine
+
+In the node application, generate a one-time enrollment ticket and save it privately on the target machine as `/etc/blora/node.enrollment`. Save the following as `/etc/blora/node.json`:
+
+```json
+{
+  "stateDir": "/var/lib/blora/node",
+  "masterUrl": "https://panel.example.com:8443",
+  "enrollmentFile": "/etc/blora/node.enrollment",
+  "allowPGIDFallback": false
+}
+```
+
+```sh
+sudo -u blora-daemon /opt/blora/daemon/blora-daemon --config /etc/blora/node.json
+```
+
+Publicly trusted certificates use the system CA store. For a private CA, add `"caFile": "/etc/blora/master-ca.pem"` containing the trusted **CA certificate**, not a private key. After the node appears online, remove the ticket file and `enrollmentFile` configuration entry; later starts reuse the identity in `stateDir`. Each node needs its own state directory and ticket. Daemon makes outbound HTTPS/WSS connections; it needs no inbound management listening port. To manage the Master machine itself, run a Daemon there too.
+
+This minimal configuration brings the node online. Linux native instances additionally require an administrator-prepared writable `cgroupRoot`; Docker/Compose requires an accessible `dockerEndpoint` and its runtime dependencies. Choose the service account's permissions for the intended node capabilities. Leave `allowPGIDFallback` disabled for normal deployment; it is an explicit trusted-workload fallback, not container isolation. See [operations](docs/operations/OPERATIONS.md) for platform capability and state/backup requirements.
+
+### 3. Frontend — bundled or separately hosted
+
+The frontend is a compiled static website executed in the browser. **With the Master command above, it is already available; there is no third application process to start.** Installing Node.js or running `npm run dev` / `vite preview` is not required on the production host.
+
+For separate hosting, extract the matching standalone Web archive directly into `/opt/blora/web` (`index.html` is at that directory's root). Use the provided [Nginx configuration](docs/operations/examples/nginx.conf) inside Nginx's `http {}` context. It serves the website at **`https://panel.example.com`**, proxies `/api/` including node/browser WebSockets and `/healthz` to Master, and verifies backend TLS. Keep the frontend and API on the **same HTTPS origin**: the current frontend uses relative `/api/v1` URLs and same-origin cookies; it has no separate production API-base setting.
+
+For this alternative, replace the Master's ongoing command with:
+
+```sh
+sudo -u blora-master /opt/blora/master/blora-master \
+  --state-dir /var/lib/blora/master \
+  --listen 127.0.0.1:8443 --origin https://panel.example.com --static-dir= \
+  --tls-cert /etc/blora/tls/fullchain.pem --tls-key /etc/blora/tls/privkey.pem \
+  --extensions-dir /var/lib/blora/master/extensions
+
+# After installing and configuring Nginx, validate before starting it:
+sudo nginx -t
+sudo systemctl enable --now nginx
+```
+
+In the Nginx example, replace the domain/certificate paths and prepare `/etc/blora/backend-ca.pem` as a CA bundle that trusts Master's backend certificate. That certificate must also cover `panel.example.com`; Master always serves HTTPS, even behind a proxy. Change each Daemon's `masterUrl` to `https://panel.example.com` and use the CA for the browser-facing certificate if private. If Nginx is already running, reload it after a successful configuration check. [Nginx's WebSocket guide](https://nginx.org/en/docs/http/websocket.html) and [proxy TLS documentation](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_verify) explain the forwarding and certificate settings.
+
+<details>
+<summary><strong>Keep services running on Linux / start on Windows</strong></summary>
+
+For Linux, the example [Master unit](docs/operations/examples/blora-master.service) and [Daemon unit](docs/operations/examples/blora-daemon.service) use the paths/accounts above. Create those accounts and directories first, initialize Master manually, then copy each unit to `/etc/systemd/system/` on its respective host. For separate frontend hosting, adjust Master's `ExecStart` to the loopback address, external origin without `:8443`, and `--static-dir=` as above. Do not start a unit and a foreground copy against the same state directory.
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now blora-master.service  # On the Master host
+sudo systemctl enable --now blora-daemon.service  # On each node, when configured
+sudo systemctl status blora-master.service       # Or blora-daemon.service
+sudo journalctl -u blora-master.service -f        # Or blora-daemon.service
+```
+
+The Daemon unit deliberately stops only the Daemon process, preserving independently owned runs/log helpers. This is not a stop-all-resources operation: explicitly stop instances and PTYs and wait for task completion before a consistent backup or upgrade. The sample does not provision a delegated cgroup or install Docker.
+
+On Windows, extract Master to `C:\Blora\master` and Daemon to `C:\Blora\daemon`, create private directories with ACLs restricted to their runtime accounts, and provide the domain certificate/key. Run Master in PowerShell:
+
+```powershell
+# Once only, after creating the private initial-password file:
+& 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --init --password-file 'C:\Blora\private\initial-password'
+
+# Ongoing service process; built frontend is bundled with Master:
+& 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --listen '0.0.0.0:8443' --origin 'https://panel.example.com:8443' --static-dir 'C:\Blora\master\web\dist' --tls-cert 'C:\Blora\private\fullchain.pem' --tls-key 'C:\Blora\private\privkey.pem' --extensions-dir 'C:\Blora\state\master\extensions'
+```
+
+On the node, use the same Daemon JSON keys, replace `stateDir` / `enrollmentFile` / optional `caFile` with Windows paths such as `C:/Blora/state/node` and `C:/Blora/private/node.enrollment`, then start:
+
+```powershell
+& 'C:\Blora\daemon\blora-daemon.exe' --config 'C:\Blora\private\node.json'
+```
+
+Windows executables are console applications; they are not native SCM services and cannot be installed directly with `sc create`. For unattended startup, configure your chosen service wrapper/supervisor to launch these exact programs and preserve their state and independently owned helper processes. The new beta Windows packages have not been rerun on a device; earlier validation retains its recorded source identity.
+
+</details>
+
+Confirm `https://<management-origin>/healthz` succeeds with certificate verification, then check node-online status, permissions and intended resource operations in the desktop. `/healthz` checks the Master database, not all nodes/resources. These are deployment instructions; no production host or service has been changed by this documentation update.
+
 ## Architecture
 
 | Component | Responsibility |
 | :--- | :--- |
-| **Desktop** · Vue 3 / TypeScript | Windows, tabs, default apps, extension hosting, and local workspace recovery. |
-| **Master** · Go | Authentication, authorization, node coordination, resource indexes, persistent tasks, and the management gateway. |
-| **Daemon** · Go | Node-local process control, PTYs, files, containers, backups, monitoring, and task execution. |
+| **Frontend / Desktop** · Vue 3 / TypeScript | Runs in the browser: windows, tabs, default apps, extension hosting, user interaction and local workspace recovery. Distributed as static files, served by Master or a web server. |
+| **Master** · Go | Central management service: accounts/sessions, server-side authorization, node enrollment, resource indexes, persistent task coordination and the API/WSS gateway. Usually one per deployment; it can also serve the frontend. |
+| **Daemon** · Go | Execution service on each managed machine: local process lifecycle, PTYs, files, Docker/Compose, backups, monitoring and task execution/reporting. Only resources on a machine with a Daemon can be managed there. |
 
 Nodes establish outbound management connections to the Master. HTTPS and WSS carry management data; managed services keep their own business networking. Resource authorization is enforced on the server, and extensions do not receive host command execution by default.
+
+The normal management path is **browser frontend → Master → target Daemon**. The SDK is an extension-development toolkit, not a fourth running service. Closing the browser does not stop server-side instances, schedules or tasks; an offline node remains offline/unknown in the UI rather than being reported as stopped.
 
 ```text
 cmd/        Master, Daemon, fixtures, and helper entry points

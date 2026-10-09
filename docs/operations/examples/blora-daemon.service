@@ -1,0 +1,21 @@
+[Unit]
+Description=Blora Panel node Daemon
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=blora-daemon
+Group=blora-daemon
+WorkingDirectory=/opt/blora/daemon
+ExecStart=/opt/blora/daemon/blora-daemon --config /etc/blora/node.json
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+# Runs and log helpers have their own recorded lifetimes. Stop only the Daemon.
+# Explicitly stop resources/PTYs before upgrades or consistent state backups.
+KillMode=process
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

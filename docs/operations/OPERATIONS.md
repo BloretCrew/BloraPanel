@@ -2,6 +2,8 @@
 
 本手册对应当前源码和命令行入口。初始化与双节点本机验收见[项目说明](../../README.md)；完整实现和验证边界见[验收矩阵](../acceptance/ACCEPTANCE_MATRIX.md)。本文没有执行公开部署、系统服务安装或生产节点变更。
 
+生产环境的三个组件分别启动方式见 [English README](../../README.md#production-startup) / [中文 README](../../README.zh-CN.md#生产环境启动)：包括真实 Master 初始化/常驻、Daemon 登记、Master 托管或独立前端、Linux systemd 与 Windows 命令。可编辑示例为 [Master unit](examples/blora-master.service)、[Daemon unit](examples/blora-daemon.service)和 [Nginx 配置](examples/nginx.conf)。示例需匹配目标账号、域名、证书、目录和节点能力；示例文档本身不代表已执行生产部署。
+
 Linux有限系统管理只接受明确的单元名称：服务操作使用完整`.service`名称（如`sshd.service`），计划任务启用/禁用使用`.timer`名称（如`backup.timer`）。不接受文件路径，不通过服务接口操作`.target`、`.mount`或`.socket`。Windows继续使用其服务名和任务路径合同。
 
 ## 文件与运行身份

@@ -22,6 +22,7 @@
 
 <p align="center">
   <a href="#快速开始">快速开始</a> ·
+  <a href="#生产环境启动">生产环境启动</a> ·
   <a href="#功能概览">功能概览</a> ·
   <a href="#文档导航">文档导航</a> ·
   <a href="sdk/README.md">扩展 SDK</a>
@@ -87,15 +88,124 @@ make fixture
 
 打开测试环境输出的网址，默认为 **`https://127.0.0.1:9443`**。工具生成本机测试证书及私有 `.local/fixture-*` 目录；随机管理员与成员凭据只写入权限 `0600` 的 `browser-credentials.json`，没有可复用默认密码。按 **Ctrl+C** 停止本测试环境所属的资源与服务。
 
+## 生产环境启动
+
+下载匹配的 [beta 发行包](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.1)，核对 `SHA256SUMS`，各组件解压到独立目录。以下命令启动真实服务，不创建 fixture 测试账号或演示资源。当前版本仍是等待项目负责人实际体验的 beta。
+
+示例使用 `panel.example.com` 和 Linux 路径：Master 解压到 `/opt/blora/master`；各被管理机器上的 Daemon 解压到 `/opt/blora/daemon`；独立前端可选解压到 `/opt/blora/web`。请替换域名和路径。先创建专用运行账号 `blora-master` / `blora-daemon`，将私有状态、配置目录交给对应账号（目录 `0700`，敏感文件 `0600`），赋予 Master 读取 TLS 私钥的权限，以及两端所需的资源访问权限。准备覆盖管理域名的受信 TLS 证书；初始化自动生成的 localhost 证书用于本地测试。
+
+管理域名解析到入口机器，允许浏览器和节点访问选定的 HTTPS 端口（Master 直接托管使用 `8443`，Nginx 示例使用 `443`）。被管理应用的业务端口另行配置，示例只开放管理入口。
+
+### 1. Master：初始化一次，然后常驻运行
+
+用本地编辑器创建 `/etc/blora/initial-password`（12～72 字节，仅 Master 运行账号可读）。初始化会创建管理员后退出，**不要在常驻启动命令中加 `--init`**。
+
+```sh
+sudo -u blora-master /opt/blora/master/blora-master \
+  --state-dir /var/lib/blora/master --init \
+  --password-file /etc/blora/initial-password
+
+sudo -u blora-master /opt/blora/master/blora-master \
+  --state-dir /var/lib/blora/master \
+  --listen 0.0.0.0:8443 --origin https://panel.example.com:8443 \
+  --static-dir /opt/blora/master/web/dist \
+  --tls-cert /etc/blora/tls/fullchain.pem --tls-key /etc/blora/tls/privkey.pem \
+  --extensions-dir /var/lib/blora/master/extensions
+```
+
+浏览器打开 **`https://panel.example.com:8443`**，使用 `admin` 和自己的初始密码登录。Master 已托管发行包内的前端，无需另起前端服务。初始化成功后删除初始密码文件，重启始终保留同一个状态目录。`--extensions-dir` 开启扩展安装的持久目录；注册源与可信发布者公钥等可选参数见 `blora-master --help`。
+
+### 2. Daemon：每台被管理机器运行一个
+
+在节点应用中生成一次性登记票据，在目标机器私有保存为 `/etc/blora/node.enrollment`。配置文件 `/etc/blora/node.json`：
+
+```json
+{
+  "stateDir": "/var/lib/blora/node",
+  "masterUrl": "https://panel.example.com:8443",
+  "enrollmentFile": "/etc/blora/node.enrollment",
+  "allowPGIDFallback": false
+}
+```
+
+```sh
+sudo -u blora-daemon /opt/blora/daemon/blora-daemon --config /etc/blora/node.json
+```
+
+公网受信证书使用系统 CA。若用私有 CA，添加 `"caFile": "/etc/blora/master-ca.pem"`，文件放受信 **CA 证书**，不放私钥。确认节点上线后，删除票据文件及配置中的 `enrollmentFile`；后续启动使用 `stateDir` 中的已登记身份。每个节点独立使用状态目录和票据。Daemon 主动向 Master 建立 HTTPS/WSS 连接，不需要开放节点的入站管理端口；要管理 Master 所在机器，也需要在那台机器上运行一个 Daemon。
+
+这份最小配置能让节点上线。Linux 原生实例还需要管理员预先准备可写、已委派的 `cgroupRoot`；Docker/Compose 需要可访问的 `dockerEndpoint` 及相应运行依赖。运行账号权限按所需节点能力配置。正常部署保持 `allowPGIDFallback` 关闭，它是管理员对可信工作负载显式启用的后备方式，不提供容器隔离。平台能力、状态和备份要求见[运维手册](docs/operations/OPERATIONS.md)。
+
+### 3. 前端：由 Master 托管，或独立部署
+
+前端是编译后的静态网站，实际在浏览器中运行。**使用上面的 Master 启动命令时，前端已可访问，不需要启动第三个应用进程。** 生产机器无需安装 Node.js，也无需运行 `npm run dev` 或 `vite preview`。
+
+要独立部署，将同版本 Web 包直接解压到 `/opt/blora/web`（`index.html` 位于这个目录根部），使用提供的 [Nginx 配置](docs/operations/examples/nginx.conf)，放在 Nginx 的 `http {}` 配置上下文中。它在 **`https://panel.example.com`** 提供页面，将 `/api/` 下全部 API、浏览器/节点 WebSocket 以及 `/healthz` 转发给 Master，并校验后端 TLS。前端和 API 保持**同一个 HTTPS 来源**：目前前端使用相对 `/api/v1` 路径和同源 Cookie，没有单独设置生产 API 地址的功能。
+
+此方式将 Master 的常驻命令替换为：
+
+```sh
+sudo -u blora-master /opt/blora/master/blora-master \
+  --state-dir /var/lib/blora/master \
+  --listen 127.0.0.1:8443 --origin https://panel.example.com --static-dir= \
+  --tls-cert /etc/blora/tls/fullchain.pem --tls-key /etc/blora/tls/privkey.pem \
+  --extensions-dir /var/lib/blora/master/extensions
+
+# 安装、配置 Nginx 后，先检查再启动：
+sudo nginx -t
+sudo systemctl enable --now nginx
+```
+
+替换 Nginx 示例中的域名、证书路径，准备 `/etc/blora/backend-ca.pem`，内容为能信任 Master 后端证书的 CA 集合；后端证书也必须覆盖 `panel.example.com`。Master 在代理后仍使用 HTTPS。各 Daemon 的 `masterUrl` 改为 `https://panel.example.com`，若入口使用私有证书则配置该入口的 CA。Nginx 已运行时，在配置检查通过后执行 reload。WebSocket 和证书参数依据 [Nginx WebSocket 文档](https://nginx.org/en/docs/http/websocket.html)及[代理 TLS 文档](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_verify)。
+
+<details>
+<summary><strong>Linux 后台运行 / Windows 启动方式</strong></summary>
+
+Linux 提供 [Master systemd 示例](docs/operations/examples/blora-master.service)和 [Daemon systemd 示例](docs/operations/examples/blora-daemon.service)，使用上述路径和账号。先准备账号、目录并手动初始化 Master，再把对应 unit 放到各自机器的 `/etc/systemd/system/`。若独立部署前端，将 Master 的 `ExecStart` 改成上文回环监听、去掉 `:8443` 的外部来源及 `--static-dir=`。同一状态目录不要同时运行前台副本和 systemd 服务。
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now blora-master.service  # 在 Master 机器上
+sudo systemctl enable --now blora-daemon.service  # 在配置好的各节点上
+sudo systemctl status blora-master.service       # 或 blora-daemon.service
+sudo journalctl -u blora-master.service -f        # 或 blora-daemon.service
+```
+
+Daemon unit 特意只终止 Daemon 进程，保留独立归属的实例与日志辅助进程。这不是“停止所有资源”：一致备份或升级前，应显式停止实例和 PTY、等待任务结束。示例不会自动准备 cgroup 委派或安装 Docker。
+
+Windows 将 Master 解压到 `C:\Blora\master`、Daemon 解压到 `C:\Blora\daemon`，创建 ACL 仅允许对应运行账号访问的私有目录，准备管理域名证书及私钥。PowerShell 启动 Master：
+
+```powershell
+# 先创建私有初始密码文件，仅执行一次：
+& 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --init --password-file 'C:\Blora\private\initial-password'
+
+# 常驻启动，Master 包已带前端：
+& 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --listen '0.0.0.0:8443' --origin 'https://panel.example.com:8443' --static-dir 'C:\Blora\master\web\dist' --tls-cert 'C:\Blora\private\fullchain.pem' --tls-key 'C:\Blora\private\privkey.pem' --extensions-dir 'C:\Blora\state\master\extensions'
+```
+
+节点使用同样的 JSON 字段，将 `stateDir`、`enrollmentFile` 和可选 `caFile` 换成 Windows 路径，例如 `C:/Blora/state/node`、`C:/Blora/private/node.enrollment`，然后启动：
+
+```powershell
+& 'C:\Blora\daemon\blora-daemon.exe' --config 'C:\Blora\private\node.json'
+```
+
+Windows 二进制是控制台程序，不能直接使用 `sc create` 注册为原生 SCM 服务。无人值守运行时，由选定的服务包装器/进程管理器执行这些命令，并保留状态与独立辅助进程。新 beta Windows 包尚未真机重跑，已有设备结果保留原源码身份。
+
+</details>
+
+启动后，使用正常证书校验访问 `https://<管理入口>/healthz`，再在桌面确认节点上线、权限和实际资源操作。`/healthz` 检查 Master 数据库，不代表全部节点或资源健康。本次仅补部署文档，没有变更生产机器或系统服务。
+
 ## 技术架构
 
 | 组件 | 职责 |
 | :--- | :--- |
-| **桌面** · Vue 3 / TypeScript | 窗口、标签、默认应用、扩展宿主与本地工作现场恢复。 |
-| **Master** · Go | 身份与授权、节点协调、资源索引、持久任务与管理网关。 |
-| **Daemon** · Go | 节点本地进程控制、PTY、文件、容器、备份、监控与任务执行。 |
+| **前端 / 桌面** · Vue 3 / TypeScript | 在浏览器中运行，负责窗口、标签、默认应用、扩展宿主、交互和本地工作现场恢复；以静态文件交付，由 Master 或 Web 服务器托管。 |
+| **Master** · Go | 中央管理服务，负责账号/会话、服务端授权、节点登记、资源索引、持久任务协调及 API/WSS 网关；通常一套部署运行一个，也可直接托管前端。 |
+| **Daemon** · Go | 每台被管理机器上的执行服务，负责本机进程生命周期、PTY、文件、Docker/Compose、备份、监控及任务执行和回报；管理哪台机器，就需要在那台机器运行。 |
 
 节点主动向 Master 建立管理连接。HTTPS 与 WSS 只承载管理数据，被管理服务的业务网络独立配置。资源授权由服务端落实，第三方扩展默认不获得宿主机命令执行权限。
+
+日常管理链路是 **浏览器前端 → Master → 目标机器的 Daemon**。SDK 是扩展开发工具，不是第四个常驻服务。关闭浏览器不会停止服务端实例、计划和任务；节点失联按离线/结果待确认呈现，不冒充实例已停止。
 
 ## 开发与验证
 
