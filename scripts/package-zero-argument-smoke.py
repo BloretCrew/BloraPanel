@@ -14,6 +14,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 
 def wait_for(check, label):
@@ -79,7 +80,8 @@ def main():
             def api(path, value=None):
                 request = urllib.request.Request(origin + path,
                     data=None if value is None else json.dumps(value).encode(),
-                    headers={'Content-Type': 'application/json', 'Origin': origin, 'X-CSRF-Token': csrf})
+                    headers={'Content-Type': 'application/json', 'Origin': origin, 'X-CSRF-Token': csrf,
+                             'Idempotency-Key': str(uuid.uuid4())})
                 with client.open(request, timeout=5) as response:
                     payload = response.read()
                     return json.loads(payload) if payload.startswith((b'{', b'[')) else payload
