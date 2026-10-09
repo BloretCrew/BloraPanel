@@ -134,7 +134,7 @@ Both programs start with **no arguments**. Master reads `master.json` and Daemon
 
 Master defaults to **`http://127.0.0.1:37861`**. Nginx handles public HTTPS and certificates; the normal Master/Daemon setup needs no local certificates. Cleartext management is restricted to actual loopback connections. Remote Daemons use the Nginx HTTPS entry.
 
-**Version scope:** these configuration/startup/transport defaults are newer than published `v0.1.0-beta.1`. Build current source (`make build && make web`); the old beta archives keep their original startup behavior and are not overwritten.
+**Version scope:** use the [v0.1.0-beta.2 prebuilt release](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2) for these configuration/startup/transport defaults; no production compilation is needed. The older beta.1 archives retain their original startup behavior and are not overwritten. Source builds remain available for development.
 
 ### 1. Master
 
@@ -263,7 +263,7 @@ Omitting these settings uses this repository and the `beta` channel. `stable` ex
 
 The updater verifies `SHA256SUMS`, `CORE-UPDATE.json`, archive paths and per-file `MANIFEST.json`, then checks the binary's embedded compatibility information. A stable launcher prepares an immutable version directory and switches only after the previous management child exits. Configuration, identities, databases and instance directories remain in their original locations. Failed candidate startup returns to the previous version. The bundled frontend follows Master; a separately configured frontend remains administrator-managed.
 
-Compatibility is required, rather than assumed from the version number: mismatched database migration fingerprints, unsupported peer protocols or uncertain live-instance ownership block an online update. Incompatible architecture/schema changes need a maintenance procedure; the updater does not run database downgrades or a patch chain. Missing update metadata also blocks old archives, including published `v0.1.0-beta.1`. Install an update-capable build once before using this feature; no new Release is published by adding this code. New Windows update runtime behavior still requires device validation.
+Compatibility is required, rather than assumed from the version number: mismatched database migration fingerprints, unsupported peer protocols or uncertain live-instance ownership block an online update. Incompatible architecture/schema changes need a maintenance procedure; the updater does not run database downgrades or a patch chain. Missing update metadata also blocks old archives, including `v0.1.0-beta.1`. Manually install beta.2 once before using the update controls for subsequent compatible Releases. New Windows update runtime behavior still requires device validation.
 
 Use a separate production installation, such as `/data/instances/blora-panel-runtime`, instead of placing live state in this development checkout. See the [update and production directory contract](docs/plan/Blora-03-在线更新与生产部署.md).
 

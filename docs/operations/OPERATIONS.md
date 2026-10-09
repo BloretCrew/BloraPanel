@@ -38,7 +38,7 @@ Master 默认读取可执行文件同目录的 `master.json`，Daemon 默认读�
 curl --fail http://127.0.0.1:37861/healthz
 ```
 
-外部入口用自己的 Nginx HTTPS 地址检查；`/healthz` 只验证 Master 数据库，不等于节点可运行。关闭面板窗口不会停止后端资源。详细步骤见 [README](../../README.md#production-startup)。本次默认值晚于 beta.1，需构建当前源码，不改变旧版本附件。程序仍保留可选直接 HTTPS 配置及旧 fixture 参数兼容。
+外部入口用自己的 Nginx HTTPS 地址检查；`/healthz` 只验证 Master 数据库，不等于节点可运行。关闭面板窗口不会停止后端资源。详细步骤见 [README](../../README.md#production-startup)。本次默认值由 beta.2 预构建发行包提供，生产机器无需编译，不改变 beta.1 附件。程序仍保留可选直接 HTTPS 配置及旧 fixture 参数兼容。
 
 ## 在线更新与维护升级
 
