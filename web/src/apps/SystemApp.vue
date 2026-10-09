@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,ref} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {api,type Node,type Task} from '../services/api'
@@ -19,7 +20,7 @@ const servicesAvailable=computed(()=>available(caps.data.value?.services)),firew
 const services=useQuery({queryKey:['system-services',nodeId,serviceAfter],queryFn:()=>api<{items:{name:string;state:string;description?:string}[];nextAfter?:string}>(`/nodes/${encodeURIComponent(nodeId.value)}/system/services?limit=100&after=${encodeURIComponent(serviceAfter.value)}`),enabled:computed(()=>!!nodeId.value&&servicesAvailable.value)}),firewall=useQuery({queryKey:['system-firewall',nodeId],queryFn:()=>api<{backend:string;state:string;detail?:string}>(`/nodes/${encodeURIComponent(nodeId.value)}/system/firewall`),enabled:computed(()=>!!nodeId.value)}),tasks=useQuery({queryKey:['system-tasks',nodeId,taskAfter],queryFn:()=>api<{items:{name:string;state:string;schedule?:string}[];nextAfter?:string}>(`/nodes/${encodeURIComponent(nodeId.value)}/system/tasks?after=${encodeURIComponent(taskAfter.value)}`),enabled:computed(()=>!!nodeId.value&&tasksAvailable.value)})
 const firewallTask=useQuery({queryKey:['tasks','system-firewall',firewallTaskId],queryFn:({signal})=>readTaskQuery(signal,()=>api<{task:Task}>(`/tasks/${encodeURIComponent(firewallTaskId.value)}`,{signal})),enabled:computed(()=>!!firewallTaskId.value),refetchInterval:2000})
 const mutationRequests=computed<Record<string,string>>({get:()=>((view.value.state.systemMutationRequests||{}) as Record<string,string>),set:value=>desktop.patchView(props.viewTabId,'systemMutationRequests',value)})
-function mutationKey(scope:string){return mutationRequests.value[scope]||(mutationRequests.value={...mutationRequests.value,[scope]:crypto.randomUUID()},mutationRequests.value[scope])}
+function mutationKey(scope:string){return mutationRequests.value[scope]||(mutationRequests.value={...mutationRequests.value,[scope]:randomUUID()},mutationRequests.value[scope])}
 function mutationDone(scope:string){const next={...mutationRequests.value};delete next[scope];mutationRequests.value=next}
 const hasActiveFirewallTask=computed(()=>!!firewallTaskId.value&&!['SUCCEEDED','FAILED','CANCELLED','INTERRUPTED'].includes(firewallTask.data.value?.task.state||''))
 const canConfirm=computed(()=>firewallTask.data.value?.task.phase==='awaiting_confirmation'&&firewallTask.data.value?.task.state==='RUNNING'&&!!firewallTaskNode.value)

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import UIIcon from '../app-host/UIIcon.vue'
 import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
@@ -93,7 +94,7 @@ async function stat(filePath:string,instanceId=resourceInstanceId.value):Promise
 async function captureClipboard(mode:'copy'|'move',instanceId=resourceInstanceId.value,nodeId=view.value.resourceRef?.nodeId,paths=[...selected.value]){
   if(!paths.length)throw new Error('请先选择文件');const sources:FileEntry[]=[]
   for(const path of paths){const source=await stat(path,instanceId);if(!source?.version)throw new Error(`无法读取来源版本：${path}`);sources.push(source)}
-  const clip:FileClipboard={clipboardId:crypto.randomUUID(),mode,instanceId,nodeId,sources};setClipboard(clip);return clip
+  const clip:FileClipboard={clipboardId:randomUUID(),mode,instanceId,nodeId,sources};setClipboard(clip);return clip
 }
 async function copySelection(mode:'copy'|'move'){if(busy.value)return;busy.value=true;error.value='';try{await captureClipboard(mode)}catch(e){error.value=String(e)}finally{busy.value=false}}
 async function paste(clip=clipboard.value){
@@ -105,7 +106,7 @@ async function paste(clip=clipboard.value){
     // protect its local confirmation immediately; recheck source at submission.
     const only=clip.sources.length===1?clip.sources[0]:undefined;let target=only?join(directory,only.name):directory
     if(only&&clip.instanceId===instanceId&&target===only.path){if(clip.mode==='move')throw new Error('来源已在当前目录，无需移动');target+='.copy'}
-    dialog.value={action:clip.mode,sources:copy(clip.sources),target,requestId:crypto.randomUUID(),instanceId,sourceInstanceId:clip.instanceId,sourceNodeId:clip.nodeId,targetNodeId,clipboardId:clip.clipboardId,overwrite:false}
+    dialog.value={action:clip.mode,sources:copy(clip.sources),target,requestId:randomUUID(),instanceId,sourceInstanceId:clip.instanceId,sourceNodeId:clip.nodeId,targetNodeId,clipboardId:clip.clipboardId,overwrite:false}
   }catch(e){error.value=String(e)}finally{busy.value=false}
 }
 async function prepare(action:string,item?:TrashItem){
@@ -116,7 +117,7 @@ async function prepare(action:string,item?:TrashItem){
     if(!['mkdir','newfile','upload','restore'].includes(action))for(const filePath of paths){const source=await stat(filePath);if(!source)throw new Error(`来源不存在：${filePath}`);sources.push(source)}
     if(!['mkdir','newfile','upload','restore'].includes(action)&&!sources.length)throw new Error('请先选择文件')
     const target=action==='restore'?item!.originalPath:action==='mkdir'?join(path.value,'新建目录'):action==='newfile'?join(path.value,'未命名.txt'):action==='upload'?join(path.value,pickedFile.value?.name||''):sources.length===1?join(path.value,sources[0]!.name+(action==='compress'?'.tar.gz':action==='extract'?'.extracted':'.copy')):path.value
-    dialog.value={action,sources,target,requestId:crypto.randomUUID(),instanceId,overwrite:false,trashId:item?.id}
+    dialog.value={action,sources,target,requestId:randomUUID(),instanceId,overwrite:false,trashId:item?.id}
   }catch(e){error.value=String(e)}finally{busy.value=false}
 }
 function dialogField(key:'target'|'overwrite',value:string|boolean){if(dialog.value&&!dialog.value.submissions)dialog.value={...dialog.value,[key]:value}}

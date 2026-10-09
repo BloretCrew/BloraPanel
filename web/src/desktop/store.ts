@@ -1,3 +1,4 @@
+import { randomUUID } from '../services/uuid'
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import { apps, getApp, loadExternalSandboxApp, isSandboxApp } from '../app-host/registry'
@@ -114,7 +115,7 @@ export const useDesktop = defineStore('desktop', () => {
     if (!service) throw new Error('工作区尚未初始化')
     await service.flush()
     const pendingRequestId = String(service.state.preferences.cloudRequestId || '')
-    const requestId = pendingRequestId || crypto.randomUUID()
+    const requestId = pendingRequestId || randomUUID()
     if (!pendingRequestId) {
       service.commit([{kind:'set',path:['preferences','cloudRequestId'],value:json(requestId)}])
       await service.flush()

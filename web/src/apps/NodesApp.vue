@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,ref} from 'vue'
 import {useQuery,useQueryClient} from '@tanstack/vue-query'
 import {api,session,type Node} from '../services/api'
@@ -13,8 +14,8 @@ function patch(key:string,value:unknown){if(recovery.state.views[props.viewTabId
 const nodes=useQuery({queryKey:['nodes'],queryFn:()=>api<{items:Node[]}>('/nodes'),refetchInterval:5000}),instances=useQuery({queryKey:['instances'],queryFn:()=>api<{items:{instanceId:string;nodeId:string}[]}>('/instances'),refetchInterval:5000})
 const search=computed({get:()=>String(view.value.state.search||''),set:value=>patch('search',value)}),visibleNodes=computed(()=>nodes.data.value?.items.filter(node=>{const needle=search.value.toLowerCase();const haystack=[node.name,node.group||'',...(node.tags||[])].join(' ').toLowerCase();return(!view.value.resourceRef||node.nodeId===view.value.resourceRef.id)&&haystack.includes(needle)})||[])
 const configuration=computed<Configuration|undefined>({get:()=>view.value.state.configuration as unknown as Configuration|undefined,set:value=>patch('configuration',value||null)}),enrollOpen=computed({get:()=>!!view.value.state.enrollOpen,set:value=>patch('enrollOpen',value)}),enrollName=computed({get:()=>String(view.value.state.enrollName||''),set:value=>patch('enrollName',value)}),enrollRequestId=computed<string|undefined>({get:()=>String(view.value.state.enrollRequestId||'')||undefined,set:value=>patch('enrollRequestId',value||null)}),rotationTarget=computed<RotationTarget|undefined>({get:()=>view.value.state.rotationTarget as unknown as RotationTarget|undefined,set:value=>patch('rotationTarget',value||null)}),revokeRequestIds=computed<Record<string,string>>({get:()=>((view.value.state.revokeRequestIds||{}) as Record<string,string>),set:value=>patch('revokeRequestIds',value)})
-function configure(node:Node){configuration.value={nodeId:node.nodeId,name:node.name,group:node.group||'',tags:(node.tags||[]).join(', '),maintenance:!!node.maintenance,quota:node.quota??100,revision:node.configRevision??0,requestId:crypto.randomUUID()};error.value=''}
-function beginRotation(node:Node){rotationTarget.value={nodeId:node.nodeId,name:node.name,requestId:crypto.randomUUID()};error.value=''}
+function configure(node:Node){configuration.value={nodeId:node.nodeId,name:node.name,group:node.group||'',tags:(node.tags||[]).join(', '),maintenance:!!node.maintenance,quota:node.quota??100,revision:node.configRevision??0,requestId:randomUUID()};error.value=''}
+function beginRotation(node:Node){rotationTarget.value={nodeId:node.nodeId,name:node.name,requestId:randomUUID()};error.value=''}
 function field(key:'name'|'group'|'tags'|'maintenance'|'quota',value:string|boolean|number){if(configuration.value)configuration.value={...configuration.value,[key]:value}}
 function parseTags(value:string){return value.split(',').map(tag=>tag.trim()).filter(Boolean)}
 async function reloadConfiguration(){const id=configuration.value?.nodeId;if(!id)return;const {data}=await nodes.refetch(),current=data?.items.find(node=>node.nodeId===id);if(current)configure(current)}
@@ -25,7 +26,7 @@ async function saveConfiguration(){
 function download(text:string,name:string,type='application/json'){const url=URL.createObjectURL(new Blob([text],{type})),anchor=document.createElement('a');anchor.href=url;anchor.download=name;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 async function enroll(){
   if(busy.value)return;busy.value=true;error.value=''
-  const requestId=enrollRequestId.value||crypto.randomUUID();enrollRequestId.value=requestId
+  const requestId=enrollRequestId.value||randomUUID();enrollRequestId.value=requestId
   try{const result=await api<{token:string;expiresIn:number}>('/nodes/enrollments',{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({name:enrollName.value})});if(typeof result.token!=='string'||!result.token)throw new Error('登记服务没有返回有效票据');download(result.token,'blora-node.enrollment','text/plain');enrollRequestId.value=undefined;enrollOpen.value=false;notice.value=`登记票据已交给浏览器下载，${Math.floor(result.expiresIn/60)}分钟内供新 Daemon 的 enrollmentFile 使用。节点主动接入后才会出现在列表中。`}catch(e){error.value=String(e)}finally{busy.value=false}
 }
 async function rotate(){
@@ -34,7 +35,7 @@ async function rotate(){
 }
 async function revoke(node:Node){
   if(busy.value||!window.confirm(`确认撤销节点“${node.name}”的管理身份？现有实例和资源记录会保留，节点需换钥后才能重新接入。`))return
-  busy.value=true;error.value='';const requestId=revokeRequestIds.value[node.nodeId]||crypto.randomUUID();if(!revokeRequestIds.value[node.nodeId])revokeRequestIds.value={...revokeRequestIds.value,[node.nodeId]:requestId}
+  busy.value=true;error.value='';const requestId=revokeRequestIds.value[node.nodeId]||randomUUID();if(!revokeRequestIds.value[node.nodeId])revokeRequestIds.value={...revokeRequestIds.value,[node.nodeId]:requestId}
   try{await api<{revoked:boolean}>(`/nodes/${encodeURIComponent(node.nodeId)}/revoke`,{method:'POST',headers:{'Idempotency-Key':requestId}});const next={...revokeRequestIds.value};delete next[node.nodeId];revokeRequestIds.value=next;if(configuration.value?.nodeId===node.nodeId)configuration.value=undefined;if(rotationTarget.value?.nodeId===node.nodeId)rotationTarget.value=undefined;notice.value=`节点 ${node.name} 已撤销，旧连接已失效；完成换钥后可重新接入。`;await Promise.all([query.invalidateQueries({queryKey:['nodes']}),query.invalidateQueries({queryKey:['instances']})])}catch(e){error.value=String(e)}finally{busy.value=false}
 }
 </script>

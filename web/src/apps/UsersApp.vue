@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,onBeforeUnmount,ref,watch} from 'vue'
 import {useQuery,useQueryClient} from '@tanstack/vue-query'
 import {useDesktop} from '../desktop/store'
@@ -31,20 +32,20 @@ watch(()=>props.visible,visible=>{if(!visible)clearSecrets()});watch(createOpen,
 async function refresh(){await Promise.all([users.refetch(),roles.refetch(),grants.refetch(),audit.refetch()])}
 function auditTime(value:string){return new Date(value).toLocaleString()}
 async function createUser(){
-  error.value=passwordProblem(newPassword.value,newConfirmation.value);if(error.value||busy.value)return;busy.value=true;notice.value='';const requestId=createRequestId.value||crypto.randomUUID();if(!createRequestId.value)createRequestId.value=requestId
+  error.value=passwordProblem(newPassword.value,newConfirmation.value);if(error.value||busy.value)return;busy.value=true;notice.value='';const requestId=createRequestId.value||randomUUID();if(!createRequestId.value)createRequestId.value=requestId
   try{const {user}=await api<{user:User}>('/users',{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({name:newName.value,admin:newAdmin.value,password:newPassword.value})});createRequestId.value=undefined;selectedId.value=user.userId;createOpen.value=false;patch('newName','');patch('newAdmin',false);notice.value='账号已创建';await users.refetch()}catch(e){error.value=String(e)}finally{clearSecrets();busy.value=false}
 }
-function openCreate(){createOpen.value=true;if(!createRequestId.value)createRequestId.value=crypto.randomUUID()}
+function openCreate(){createOpen.value=true;if(!createRequestId.value)createRequestId.value=randomUUID()}
 function closeCreate(){createOpen.value=false;createRequestId.value=undefined;patch('newName','');patch('newAdmin',false);clearSecrets()}
-function editUser(user:User){edit.value={...copy(user),requestId:crypto.randomUUID()};error.value=''}
+function editUser(user:User){edit.value={...copy(user),requestId:randomUUID()};error.value=''}
 function editField(key:'name'|'admin'|'disabled',value:string|boolean){if(edit.value)edit.value={...edit.value,[key]:value}}
 async function saveUser(){const fixed=edit.value?copy(edit.value):undefined;if(!fixed||busy.value)return;busy.value=true;error.value='';try{await api(`/users/${encodeURIComponent(fixed.userId)}`,{method:'PATCH',headers:{'Idempotency-Key':fixed.requestId},body:JSON.stringify({name:fixed.name,admin:fixed.admin,disabled:fixed.disabled,revision:fixed.revision})});edit.value=undefined;if(session.user?.userId===fixed.userId){session.error='账号资料已更新，请重新登录。';session.user=undefined}else{notice.value='账号资料已更新，该账号的原会话已撤销';await users.refetch()}}catch(e){error.value=String(e)}finally{busy.value=false}}
-function editRole(role?:RoleTemplate){roleDraft.value=role&&!role.builtin?{...copy(role),requestId:crypto.randomUUID()}:{roleId:`custom-${crypto.randomUUID()}`,name:role?role.name+' 副本':'',actions:role?[...role.actions]:['instance.read'],nodeOnly:role?.nodeOnly||false,builtin:false,revision:0,requestId:crypto.randomUUID()};error.value=''}
+function editRole(role?:RoleTemplate){roleDraft.value=role&&!role.builtin?{...copy(role),requestId:randomUUID()}:{roleId:`custom-${randomUUID()}`,name:role?role.name+' 副本':'',actions:role?[...role.actions]:['instance.read'],nodeOnly:role?.nodeOnly||false,builtin:false,revision:0,requestId:randomUUID()};error.value=''}
 function roleField(key:'name'|'nodeOnly',value:string|boolean){if(roleDraft.value)roleDraft.value={...roleDraft.value,[key]:value}}
 function toggleAction(action:string){const draft=roleDraft.value;if(!draft)return;const actions=draft.actions.includes(action)?draft.actions.filter(value=>value!==action):[...draft.actions,action];roleDraft.value={...draft,actions,nodeOnly:draft.nodeOnly||actions.some(action=>nodeActions.has(action))}}
 async function saveRole(){const fixed=roleDraft.value?copy(roleDraft.value):undefined;if(!fixed||busy.value)return;busy.value=true;error.value='';try{await api(`/roles/${encodeURIComponent(fixed.roleId)}`,{method:'PUT',headers:{'Idempotency-Key':fixed.requestId},body:JSON.stringify({name:fixed.name,actions:fixed.actions,nodeOnly:fixed.nodeOnly,revision:fixed.revision})});roleDraft.value=undefined;notice.value='模板已保存。已有显式授权保持原样，需选择资源后明确应用此版本。';await roles.refetch()}catch(e){error.value=String(e)}finally{busy.value=false}}
-function prepareRole(revoke=false){const resource=scope(),role=chosenRole.value;if(!selected.value||!resource||!role)return;if(role.nodeOnly&&resource.kind!=='node'){error.value='此模板只适用于节点范围';return}authorization.value={userId:selected.value.userId,resource,roleId:role.roleId,roleName:role.name,actions:[...role.actions],revision:role.revision,revoke,requestId:crypto.randomUUID()}}
-function prepareGrant(existing?:Grant){const resource=existing?.resource||scope(),userId=existing?.userId||selected.value?.userId;if(!resource||!userId)return;authorization.value={userId,resource,actions:[existing?.action||action.value],revoke:!!existing,requestId:crypto.randomUUID()}}
+function prepareRole(revoke=false){const resource=scope(),role=chosenRole.value;if(!selected.value||!resource||!role)return;if(role.nodeOnly&&resource.kind!=='node'){error.value='此模板只适用于节点范围';return}authorization.value={userId:selected.value.userId,resource,roleId:role.roleId,roleName:role.name,actions:[...role.actions],revision:role.revision,revoke,requestId:randomUUID()}}
+function prepareGrant(existing?:Grant){const resource=existing?.resource||scope(),userId=existing?.userId||selected.value?.userId;if(!resource||!userId)return;authorization.value={userId,resource,actions:[existing?.action||action.value],revoke:!!existing,requestId:randomUUID()}}
 async function applyAuthorization(){const fixed=authorization.value?copy(authorization.value):undefined;if(!fixed||busy.value)return;busy.value=true;error.value='';try{if(fixed.roleId)await api(`/roles/${encodeURIComponent(fixed.roleId)}/apply`,{method:'POST',headers:{'Idempotency-Key':fixed.requestId},body:JSON.stringify({userId:fixed.userId,resource:fixed.resource,revision:fixed.revision,revoke:fixed.revoke})});else await api('/grants',{method:fixed.revoke?'DELETE':'POST',headers:{'Idempotency-Key':fixed.requestId},body:JSON.stringify({userId:fixed.userId,resource:fixed.resource,action:fixed.actions[0]})});authorization.value=undefined;notice.value='显式授权已更新，相关实时连接已撤销并需重新鉴权';await query.invalidateQueries({queryKey:['grants']})}catch(e){error.value=String(e)}finally{busy.value=false}}
 </script>
 <template>

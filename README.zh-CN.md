@@ -94,7 +94,7 @@ Master 和 Daemon 均可**不带参数直接运行**。分别默认读取**可�
 
 Master 默认是 **`http://127.0.0.1:37861`**。可在 `master.json` 中把 `listen` 改为 `0.0.0.0:37861` 监听所有 IPv4 网卡；HTTP/WS 也可用于远程访问，HTTPS/WSS 则可由 Nginx 终止 TLS，常规启动无需准备 Master/Daemon 本机证书。
 
-**版本范围：** [v0.1.0-beta.2 预构建 Release](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2) 包含这些配置与启动默认值，但仍会拒绝直接远程 HTTP。远程 HTTP 需要使用包含此改动的新构建。旧 beta.1 附件保持原启动方式，不会覆盖。
+**版本范围：** [v0.1.0-beta.4](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.4) 支持直接远程 HTTP，并包含非安全 HTTP 页面登录所需的浏览器 UUID 回退。beta.2 和 beta.3 尚未同时包含这两项修复。
 
 ### 1. Master
 
@@ -366,7 +366,7 @@ Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race 
 
 **Blora Panel 正在持续开发。** 实现状态与验证状态分别记录在[验收矩阵](docs/acceptance/ACCEPTANCE_MATRIX.md)中。
 
-当前预构建预发布版本为 **[v0.1.0-beta.2](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2)**，包含零参数启动和核心 Release 更新，见[包验收/公开核验](docs/acceptance/reports/beta-0.1.0-beta.2-2026-10-09.md)。首个 [v0.1.0-beta.1](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.1) 与[原验收报告](docs/acceptance/reports/beta-0.1.0-2026-10-08.md)保持不变。已有自动化及代理执行的验证，不能代替项目负责人的亲自体验，不宣称达到正式稳定版标准。
+当前预构建预发布版本为 **[v0.1.0-beta.4](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.4)**，包含零参数启动、核心 Release 更新、直接远程 HTTP，以及非安全 HTTP 页面登录所需的浏览器 UUID 回退。自动化及代理执行的验证不能代替项目负责人的亲自体验，不宣称达到正式稳定版标准。
 
 [非发行源码收尾](docs/acceptance/reports/non-release-closeout-2026-10-08.md)包含后端竞态、构建、123 项前端单测、完整运行与后续单项复验合并覆盖的 51 个真实功能场景、恢复修复和严格原生绘制校验。原失败与合并证据的限制仍保留；beta 包制作与验证已随后完成，正式稳定版等待本人实际体验。
 

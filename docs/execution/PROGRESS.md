@@ -2,6 +2,12 @@
 
 更新：2026-10-09。全部此前逐轮记录保存在[完整历史归档](archive/PROGRESS-before-closeout-2026-10-08.md)。历史结果保留各自源码、环境和失败记录。
 
+## 2026-10-09：远程 HTTP 登录兼容修复
+
+用户在 v0.1.0-beta.3 的远程 HTTP 页面遇到 `crypto.randomUUID is not a function`。根因是非安全上下文的浏览器不提供 `Crypto.randomUUID()`；登录 POST 在客户端生成 `Idempotency-Key` 时就抛错，尚未向 Master 发送登录请求。未登录时 `/session` 的 401 属于预期状态，`favicon.ico` 404 是独立的静态图标缺失，不是此次登录阻断原因。
+
+前端新增统一 UUID 生成器：优先使用原生 `randomUUID`，否则以 insecure-context 可用的 `getRandomValues` 生成 RFC 4122 v4；所有请求/视图/任务 ID 调用迁移到该入口。增加 fallback 格式测试和模拟缺少 `randomUUID` 的登录 API 回归测试。两项 UUID/API 测试 16/16、完整前端 126/126、`vue-tsc` 和生产构建通过；真实远程浏览器复测尚未完成。准备发布 beta.4，并在本地升级 Master 与 Web 资源；不触碰账号和运行状态。
+
 ## 最新授权：迁移后发布第二个 beta，生产仅提供指导
 
 用户已将开发树移动到 `/data/projects/blora-panel`，要求当前版本发布 prerelease，然后指导在 `/data/instances/blora-panel` 安装最新 Release；明确部署仅指导，不代为执行。接管时核对 HEAD 为 ed2facce577aa7a7860b6979884bcd5ff15f73fe，48 个交接文件摘要一致，远端 main 一致，已有公开 beta.1；选择 v0.1.0-beta.2。新版本包含零参数 JSON 启动、本地 HTTP/可配置反代信任、预构建 Release 更新与运行实例保护。将先复验构建、核心竞态/更新演练与包验收，从干净固定提交打包；不改 beta.1 标签/附件，不运行生产安装命令。Windows 新更新器只编译的边界保留。完成结果将在本节后续记录和 release provenance 交代。

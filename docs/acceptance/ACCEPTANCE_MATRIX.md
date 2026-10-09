@@ -2,7 +2,7 @@
 
 2026-10-09 最新启动合同：两程序无参数启动并读取可执行文件同目录配置，默认/相对路径以可执行文件目录为基准；Master 端口 `37861`，本机 HTTP，无需后端证书；Nginx 负责外部 HTTPS。默认信任转发头，`verifyProxyIPs` 开启时才要求可信 IP 列表，实际明文连接仍仅限回环。受影响后端完整竞态、实际双二进制零参数首次初始化/登记/恢复/代理开关及 Linux/Windows/前端构建通过，见[独立报告](reports/zero-argument-startup-2026-10-09.md)。替代下方前一轮 HTTPS/显式代理信任默认，不修改旧证据、beta 身份或增加 Nginx 部署/Windows 新真机 PASS。
 
-后续用户要求支持直接远程 HTTP。当前本地变更已允许 HTTP 模式接受非回环连接，并按请求 Host 校验浏览器 Origin；针对性 race 测试、配置测试、`go vet` 及 Linux/Windows Master 构建通过。完整 Master/启动集成测试因当前沙箱禁止监听临时回环端口而未运行；此变更尚未进入已发布 beta.2，也未发行新包。
+后续用户要求支持直接远程 HTTP。v0.1.0-beta.3 已允许 HTTP 模式接受非回环连接，并按请求 Host 校验浏览器 Origin。beta.3 暴露出远程 HTTP 登录前端兼容问题：非安全上下文没有 `crypto.randomUUID()`，登录 API 在发出请求之前生成幂等键失败。后续修复将所有前端 UUID 调用改用 native `randomUUID` / `getRandomValues` 回退，并增加“不提供 randomUUID 仍能提交登录请求”的回归测试；UUID 与 API 相关测试 16/16、完整前端单测 126/126、类型检查及生产构建通过。未将未认证时 `/session` 的 401 或 favicon 404 误判为根因；本轮未运行真实远程浏览器验证。
 
 当前判定：2026-10-08。实现与验证分别记录；以下“本次范围已验证”仅指用户确认的交付范围，**不是所有原环境通过**。历史全部结果及失败保存在[完整归档](archive/ACCEPTANCE_MATRIX-before-closeout-2026-10-08.md)，原规划合同保留。
 

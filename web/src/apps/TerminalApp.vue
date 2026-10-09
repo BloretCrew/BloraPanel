@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {useDesktop} from '../desktop/store'
 import {api,type Task} from '../services/api'
@@ -32,7 +33,7 @@ async function load(){
 }
 async function create(){
   if(!view.value.resourceRef||busy.value||pendingTask.value)return
-  const requestId=String(view.value.state.createRequestId||crypto.randomUUID());patch('createRequestId',requestId);busy.value=true;error.value=''
+  const requestId=String(view.value.state.createRequestId||randomUUID());patch('createRequestId',requestId);busy.value=true;error.value=''
   try{
     const target=view.value.state.containerTarget as {createdAt?:string}|undefined
     const {task}=await api<{task:Task}>(terminalPath(true),{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({cols:100,rows:28,...(hostContainer.value?{createdAt:target?.createdAt}:{})})})
@@ -135,7 +136,7 @@ function requestSize(){
 }
 function takeover(){try{send(MessageType.Open,encodeJSON({takeover:true}));status.value='正在请求输入和尺寸控制权'}catch(e){error.value=String(e)}}
 function anotherView(){desktop.open({appId:'blora.terminal',resourceRef:view.value.resourceRef,title:view.value.title,disposition:'new-window',state:{sessionId:sessionId.value,containerId:hostContainer.value,containerTarget:view.value.state.containerTarget||null}})}
-function askEnd(){endRequest.value={sessionId:sessionId.value,requestId:crypto.randomUUID()};endDialog.value=true}
+function askEnd(){endRequest.value={sessionId:sessionId.value,requestId:randomUUID()};endDialog.value=true}
 async function endSession(){
   const fixed=endRequest.value;if(!fixed||busy.value)return;busy.value=true;error.value='';endRequest.value={...fixed,state:'SUBMITTING'}
   try{const {task}=await api<{task:Task}>(`/terminals/${encodeURIComponent(fixed.sessionId)}/close`,{method:'POST',headers:{'Idempotency-Key':fixed.requestId},body:'{}'});endRequest.value={...fixed,taskId:task.taskId,state:task.state};endDialog.value=false;await trackEnd()}catch(e){error.value=String(e)}finally{busy.value=false}

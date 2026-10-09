@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,ref} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {api,APIError,type Node,type Instance} from '../services/api'
@@ -15,7 +16,7 @@ const submission=computed<Submission|undefined>({get:()=>view.value.state.create
 const templates=useQuery({queryKey:['instance-templates'],queryFn:()=>api<{items:{templateId:string;name:string;platform:string;description:string;config:Record<string,unknown>}[]}>('/instance-templates')})
 function field(key:string,value:unknown){patch('createDraft',{...draft.value,[key]:value})}
 function template(id:string){const chosen=templates.data.value?.items.find(item=>item.templateId===id);if(chosen)patch('createDraft',{...draft.value,templateId:id,config:copy(chosen.config)})}
-function review(){submission.value={requestId:crypto.randomUUID(),body:{name:draft.value.name,nodeId:draft.value.nodeId,config:copy(draft.value.config)},state:'PREPARED'}}
+function review(){submission.value={requestId:randomUUID(),body:{name:draft.value.name,nodeId:draft.value.nodeId,config:copy(draft.value.config)},state:'PREPARED'}}
 async function submit(){if(!submission.value||busy.value)return;const fixed=copy(submission.value);busy.value=true;submission.value={...fixed,state:'SUBMITTING'};try{const {instance}=await api<{instance:Instance}>('/instances',{method:'POST',headers:{'Idempotency-Key':fixed.requestId},body:JSON.stringify(fixed.body)});submission.value=undefined;emit('created',instance)}catch(e){submission.value={...fixed,state:e instanceof APIError&&e.status<500?'REJECTED':'UNKNOWN',error:String(e)}}finally{busy.value=false}}
 </script>
 <template>

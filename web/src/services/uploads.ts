@@ -1,3 +1,4 @@
+import { randomUUID } from './uuid'
 import {sha256} from '@noble/hashes/sha2.js'
 import {watch} from 'vue'
 import {bytesToHex} from '@noble/hashes/utils.js'
@@ -18,7 +19,7 @@ export function createUpload(recovery:RecoveryService,instanceId:string,nodeId:s
   if(active.size>=2)throw new Error('同时上传上限为2个，请等待或暂停当前上传')
   if(file.size>1024*1024*1024)throw new Error('当前上传上限为1 GiB')
   const uploadId=id('upload')
-  const record:BrowserUpload={uploadId,requestId:crypto.randomUUID(),instanceId,nodeId,path,sourceName:file.name,sourceModified:file.lastModified,total:file.size,hash:'',version,offset:0,hashOffset:0,stage:'waiting_client'}
+  const record:BrowserUpload={uploadId,requestId:randomUUID(),instanceId,nodeId,path,sourceName:file.name,sourceModified:file.lastModified,total:file.size,hash:'',version,offset:0,hashOffset:0,stage:'waiting_client'}
   recovery.commit([{kind:'set',path:['uploads',uploadId],value:json(record)}]);void resumeUpload(recovery,uploadId,file);return uploadId
 }
 function hashFile(file:File,signal:AbortSignal,progress:(offset:number)=>void){return new Promise<string>((resolve,reject)=>{

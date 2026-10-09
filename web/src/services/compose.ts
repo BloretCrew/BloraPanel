@@ -1,3 +1,4 @@
+import { randomUUID } from './uuid'
 import {watch} from 'vue'
 import {sha256} from '@noble/hashes/sha2.js'
 import {bytesToHex} from '@noble/hashes/utils.js'
@@ -40,7 +41,7 @@ export async function saveCompose(recovery:RecoveryService,draftId:string,nodeId
   let fixed=draft.composeSave
   if(!fixed||['FAILED','CANCELLED'].includes(fixed.state)){
     const bytes=new TextEncoder().encode(draft.text);if(bytes.length<1||bytes.length>1<<20)throw new Error('Compose 正文需要 1～1048576 个 UTF-8 字节')
-    fixed={saveId:crypto.randomUUID(),requestId:crypto.randomUUID(),nodeId,projectId,expectedRevision:Number(draft.baseVersion||0),text:draft.text,total:bytes.length,sha256:hash(bytes),offset:0,state:'PREPARING'}
+    fixed={saveId:randomUUID(),requestId:randomUUID(),nodeId,projectId,expectedRevision:Number(draft.baseVersion||0),text:draft.text,total:bytes.length,sha256:hash(bytes),offset:0,state:'PREPARING'}
     recovery.commit([{kind:'set',path:['drafts',draftId,'composeSave'],value:json(fixed)}])
   }
   const abort=new AbortController();active.set(identity,{userId:recovery.userId,abort});clearTimeout(timers.get(identity))

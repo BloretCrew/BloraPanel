@@ -134,7 +134,7 @@ Both programs start with **no arguments**. Master reads `master.json` and Daemon
 
 Master defaults to **`http://127.0.0.1:37861`**. Set `listen` to `0.0.0.0:37861` to bind all IPv4 interfaces; HTTP/WS also supports remote clients. Nginx can terminate HTTPS/WSS without local certificates on Master or Daemon.
 
-**Version scope:** the [v0.1.0-beta.2 prebuilt release](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2) includes the configuration and startup defaults, but still rejects direct remote HTTP. Remote HTTP support requires a newer build containing this change. The older beta.1 archives retain their original startup behavior and are not overwritten.
+**Version scope:** [v0.1.0-beta.4](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.4) supports direct remote HTTP and includes a browser UUID fallback for login and other requests in non-secure HTTP contexts. beta.2 and beta.3 do not include both fixes.
 
 ### 1. Master
 
@@ -388,7 +388,7 @@ Each archive also contains a per-file `MANIFEST.json`. Fixed timestamps, orderin
 
 **Blora Panel is in active development.** Implementation and verification are tracked separately in the [acceptance matrix](docs/acceptance/ACCEPTANCE_MATRIX.md).
 
-The current prebuilt prerelease is **[v0.1.0-beta.2](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2)**, with zero-argument startup and prebuilt core updates. See its [package/publication report](docs/acceptance/reports/beta-0.1.0-beta.2-2026-10-09.md). The first public build, [v0.1.0-beta.1](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.1), remains unchanged with its [original acceptance report](docs/acceptance/reports/beta-0.1.0-2026-10-08.md). Automated and agent-run validation do not replace the owner's hands-on evaluation; stable-release readiness is not claimed.
+The current prebuilt prerelease is **[v0.1.0-beta.4](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.4)**. It includes zero-argument startup, prebuilt core updates, direct remote HTTP, and the browser UUID fallback required by non-secure HTTP contexts. Automated and agent-run validation do not replace the owner's hands-on evaluation; stable-release readiness is not claimed.
 
 [Non-release source closeout](docs/acceptance/reports/non-release-closeout-2026-10-08.md) covers backend race checks, builds, 123 frontend units, all 51 real functional scenarios across a complete run and independent follow-ups, recovery repairs and strict native rendering checks. Earlier failures and the limits of combined evidence remain visible. Beta package validation followed that source closeout; the stable release awaits hands-on evaluation.
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,ref} from 'vue'
 import {useNow} from '@vueuse/core'
 import {useQuery} from '@tanstack/vue-query'
@@ -43,7 +44,7 @@ interface CancelAttempt {requestId:string;error?:string}
 const cancelAttempts=computed<Record<string,CancelAttempt>>(()=>view.value.state.cancelAttempts as unknown as Record<string,CancelAttempt>||{})
 async function cancel(task:Task){
   error.value='';cancelling.value=task.taskId
-  const fixed=cancelAttempts.value[task.taskId]||{requestId:crypto.randomUUID()}
+  const fixed=cancelAttempts.value[task.taskId]||{requestId:randomUUID()}
   desktop.patchView(props.viewTabId,'cancelAttempts',{...cancelAttempts.value,[task.taskId]:{...fixed,error:undefined}})
   try{await api(`/tasks/${encodeURIComponent(task.taskId)}/cancel`,{method:'POST',headers:{'Idempotency-Key':fixed.requestId}});await tasks.refetch()}
   catch(e){const message=String(e);error.value=message;desktop.patchView(props.viewTabId,'cancelAttempts',{...cancelAttempts.value,[task.taskId]:{...fixed,error:message}})}
@@ -54,7 +55,7 @@ const retryAttempts=computed<Record<string,RetryAttempt>>(()=>view.value.state.r
 const retryable=(task:Task)=>['instance.start','instance.stop','instance.restart','instance.kill'].includes(task.action)&&['FAILED','INTERRUPTED'].includes(task.state)
 async function retry(task:Task){
   if(!retryable(task))return
-  const fixed=retryAttempts.value[task.taskId]||{requestId:crypto.randomUUID()}
+  const fixed=retryAttempts.value[task.taskId]||{requestId:randomUUID()}
   desktop.patchView(props.viewTabId,'retryAttempts',{...retryAttempts.value,[task.taskId]:{...fixed,error:undefined}})
   try{
     const result=await api<{task:Task}>('/tasks/'+encodeURIComponent(task.taskId)+'/retry',{method:'POST',headers:{'Idempotency-Key':fixed.requestId},body:'{}'})

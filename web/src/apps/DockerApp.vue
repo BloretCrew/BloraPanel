@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,ref,onMounted,onBeforeUnmount,watch} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {useDesktop} from '../desktop/store'
@@ -16,7 +17,7 @@ const name=computed({get:()=>String(view.value.state.newName||''),set:v=>patch('
 let timer:ReturnType<typeof setTimeout>|undefined,disposed=false,loadGeneration=0
 async function load(){if(!nodeId.value)return;const generation=++loadGeneration;error.value='';try{const result=await dockerQuery(nodeId.value,{kind:kind.value,limit:100});if(!disposed&&generation===loadGeneration)snapshot.value=result}catch(e){if(generation===loadGeneration){snapshot.value=undefined;error.value=String(e)}}}
 watch([nodeId,kind],()=>void load());watch(()=>nodes.data.value,items=>{if(!nodeId.value&&items?.items.length)nodeId.value=items.items[0]!.nodeId},{immediate:true})
-function ask(operation:DockerOperation){if(!nodeId.value)return;patch('dialog',{nodeId:nodeId.value,requestId:crypto.randomUUID(),operation:copy(operation)})}
+function ask(operation:DockerOperation){if(!nodeId.value)return;patch('dialog',{nodeId:nodeId.value,requestId:randomUUID(),operation:copy(operation)})}
 watch(project,(value,old)=>{if(value?.id!==old?.id)patch('composeDraftId',null)},{flush:'sync'})
 async function create(){try{if(kind.value==='projects'){if(!/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$/.test(name.value))throw new Error('项目标识需要 1～64 个字母、数字、点、下划线或横线');patch('project',{id:name.value,revision:0});return}if(kind.value==='containers'){const parsed=JSON.parse(config.value);if(!parsed||Array.isArray(parsed)||typeof parsed!=='object')throw new Error('容器配置需要 JSON 对象');ask({action:'container.create',name:name.value,config:{...parsed,Image:image.value}})}else if(kind.value==='images')ask({action:'image.pull',image:image.value});else ask({action:kind.value==='volumes'?'volume.create':'network.create',name:name.value})}catch(e){error.value=String(e)}}
 async function submit(fixed:Pending){if(busy.value)return;busy.value=true;patch('pending',{...fixed,state:'SUBMITTING'});patch('dialog',null);error.value='';try{const {task}=await api<{task:Task}>(`${dockerPath(fixed.nodeId)}/actions`,{method:'POST',headers:{'Idempotency-Key':fixed.requestId},body:JSON.stringify(fixed.operation)});patch('pending',{...fixed,taskId:task.taskId,state:task.state,phase:task.phase});await reconcile()}catch(e){error.value=String(e);patch('pending',{...fixed,state:'UNCONFIRMED',error:String(e)})}finally{busy.value=false}}

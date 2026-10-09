@@ -1,3 +1,4 @@
+import { randomUUID } from '../services/uuid'
 import type { Component } from 'vue'
 
 export type ResourceRef = { kind: string; id: string; nodeId?: string }
@@ -18,5 +19,5 @@ export interface Workspace { schemaVersion: number; revision: number; userId: st
 export interface OpenRequest { appId: string; entrypoint?: string; resourceRef?: ResourceRef; title?: string; state?: Record<string, Json>; disposition?: 'default' | 'new-window' | 'new-tab' | 'dedicated'; windowId?: string }
 export interface AppManifest { appId: string; packageVersion: string; hostApiVersion: 1; title: string; icon: string; color: string; entrypoints: string[]; resourceHandlers: string[]; permissions: string[]; capabilities?: string[]; dependencies: string[] | Record<string,string>; protected?: boolean; windowPolicy: 'multiple'; tabPolicy: { types: string[]; movable: boolean }; stateSchemaVersion: number }
 export interface AppDefinition { manifest: AppManifest; component: Component; captureState(state: Record<string, Json>): Record<string, Json>; restoreState(state: Record<string, Json>): Record<string, Json>; migrateState(state: Record<string, Json>, from: number): Record<string, Json>; reconcileResource(resource?: ResourceRef): Promise<ResourceRef|undefined> }
-export const id = (kind: string) => `${kind}_${crypto.randomUUID()}`
+export const id = (kind: string) => `${kind}_${randomUUID()}`
 export const resourceKey = (r?: ResourceRef) => r ? `${r.kind}:${r.nodeId ?? ''}:${r.id}` : ''

@@ -1,3 +1,4 @@
+import { randomUUID } from './uuid'
 import { reactive } from 'vue'
 import {readDocument} from './read-lifecycle'
 export interface User { userId: string; name: string; admin: boolean; disabled: boolean; revision: number }
@@ -16,7 +17,7 @@ export async function api<T>(path: string, options: APIOptions = {}): Promise<T>
   if (options.body) headers.set('Content-Type', 'application/json')
   if (options.method && !['GET','HEAD'].includes(options.method)) {
     headers.set('X-CSRF-Token', session.csrfToken)
-    if (!headers.has('Idempotency-Key')) headers.set('Idempotency-Key', crypto.randomUUID())
+    if (!headers.has('Idempotency-Key')) headers.set('Idempotency-Key', randomUUID())
   }
   async function request(signal:AbortSignal|null|undefined):Promise<T>{
     signal?.throwIfAborted()

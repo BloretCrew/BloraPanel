@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed, ref, watch} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {api, type Node} from '../services/api'
@@ -11,7 +12,7 @@ const nodes=useQuery({queryKey:['nodes'],queryFn:()=>api<{items:Node[]}>('/nodes
 const processRows=computed(()=> (processes.data.value?.items||[]).filter(p=>!search.value||p.command.toLowerCase().includes(search.value.toLowerCase())||String(p.pid).includes(search.value)).slice().sort((a,b)=>sortBy.value==='rss'?(b.rssBytes||0)-(a.rssBytes||0):a.pid-b.pid))
 const processUnavailable=computed(()=>!!processes.error.value || !!point.data.value?.stale)
 const selectedNode=computed({get:()=>nodeId.value,set:value=>{desktop.patchView(props.viewTabId,'processAfter',0);desktop.patchView(props.viewTabId,'nodeId',value)}})
-function askTerminate(p:Proc){confirm.value={...p,nodeId:nodeId.value,requestId:crypto.randomUUID()}}
+function askTerminate(p:Proc){confirm.value={...p,nodeId:nodeId.value,requestId:randomUUID()}}
 async function terminate(){const p=confirm.value;if(!p)return;try{await api(`/nodes/${encodeURIComponent(p.nodeId)}/processes/${p.pid}/terminate`,{method:'POST',headers:{'Idempotency-Key':p.requestId},body:JSON.stringify({startTicks:p.startTicks})});confirm.value=undefined;await processes.refetch()}catch(e){error.value=String(e)}}
 function networkText(point:Point,direction:'rx'|'tx'){const value=(direction==='rx'?point.networkRxBytes:point.networkTxBytes);return point.unavailable?.includes('network')||typeof value!=='number'||!Number.isSafeInteger(value)||value<0?'不可用':(value/1048576).toFixed(2)+' MiB（累计）'}
 watch(()=>props.visible,(visible,previous)=>{if(visible!==false&&previous===false){if(view.value.resourceRef?.kind==='instance')void instancePoint.refetch();else if(nodeId.value){void point.refetch();void history.refetch();void processes.refetch()}}})

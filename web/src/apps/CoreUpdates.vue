@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,onBeforeUnmount,ref,watch} from 'vue'
 import {api,session} from '../services/api'
 
@@ -52,7 +53,7 @@ async function apply(){
   const target=preview.value
   if(!enabled.value||busy.value||active.value||!target?.compatible||target.upToDate||sourceDirty.value)return
   if(!pending.value&&!confirm(`更新到 ${target.version}（${target.revision.slice(0,12)}）？运行中的实例继续运行。管理连接会短暂重连，终端会话可能关闭；不适配或无法保留实例时会拒绝更新。`))return
-  pending.value??={revision:target.revision,requestId:crypto.randomUUID()}
+  pending.value??={revision:target.revision,requestId:randomUUID()}
   const fixed=pending.value
   const current=generation
   busy.value=true;error.value='';notice.value=''

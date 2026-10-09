@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 import {useDesktop} from '../desktop/store'
@@ -148,7 +149,7 @@ async function save(){
   if(!draft.value.resourceRef){exportText();return}
   busy.value=true;error.value=''
   const currentId=draftId.value
-  const captured:PendingSave=savePending.value?draft.value.pendingSave!:{requestId:crypto.randomUUID(),text:documentBody(draft.value.text,draft.value.encoding),editorText:draft.value.text,version:draft.value.baseVersion||'missing',path:draft.value.path!,instanceId:resourceInstanceId.value,state:'SUBMITTING'}
+  const captured:PendingSave=savePending.value?draft.value.pendingSave!:{requestId:randomUUID(),text:documentBody(draft.value.text,draft.value.encoding),editorText:draft.value.text,version:draft.value.baseVersion||'missing',path:draft.value.path!,instanceId:resourceInstanceId.value,state:'SUBMITTING'}
   recovery.commit([{kind:'set',path:['drafts',currentId,'pendingSave'],value:json(captured)}])
   try{
     const {task}=await api<{task:Task}>(`/instances/${encodeURIComponent(captured.instanceId)}/files/content`,{method:'PUT',headers:{'Idempotency-Key':captured.requestId},body:JSON.stringify({path:captured.path,text:captured.text,version:captured.version})})
@@ -195,7 +196,7 @@ function applyReload(){
   editor!.pushUndoStop();editor!.executeEdits('blora.reload',[{range:model.getFullModelRange(),text}]);editor!.pushUndoStop()
   recovery.commit([{kind:'set',path:['drafts',draftId.value,'baseVersion'],value:fixed.version},{kind:'set',path:['drafts',draftId.value,'savedText'],value:text},{kind:'delete',path:['drafts',draftId.value,'pendingSave']}]);updateFormat(draftId.value,fixed);reloadForm.value=undefined;conflict.value=undefined;error.value=''
 }
-function prepareSaveAs(){saveAsForm.value={instanceId:resourceInstanceId.value,path:draft.value?.path?draft.value.path+'.copy':'未命名.txt',overwrite:false,requestId:crypto.randomUUID()}}
+function prepareSaveAs(){saveAsForm.value={instanceId:resourceInstanceId.value,path:draft.value?.path?draft.value.path+'.copy':'未命名.txt',overwrite:false,requestId:randomUUID()}}
 function saveAsField(key:'instanceId'|'path'|'overwrite',value:string|boolean){if(saveAsForm.value)saveAsForm.value={...saveAsForm.value,[key]:value}}
 async function saveAs(){
   if(!draft.value||!saveAsForm.value||busy.value)return;busy.value=true;error.value='';const fixed=copy(saveAsForm.value),source=copy(draft.value)

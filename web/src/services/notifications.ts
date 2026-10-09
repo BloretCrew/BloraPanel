@@ -1,3 +1,4 @@
+import { randomUUID } from './uuid'
 import type {useDesktop} from '../desktop/store'
 import type {Json,ResourceRef} from '../app-host/types'
 import {json} from '../recovery/state'
@@ -24,7 +25,7 @@ export function publishNotification(desktop:ReturnType<typeof useDesktop>,appId:
   const recent=(rate.get(appId)||[]).filter(time=>now-time<1000)
   if(!taskCheckpoint&&recent.length>=5)throw new Error('通知过于频繁，请稍后重试')
   rate.set(appId,[...recent,now])
-  const id=`${appId}:${input.key||crypto.randomUUID()}`
+  const id=`${appId}:${input.key||randomUUID()}`
   const item:WorkspaceNotification={id,appId,title:input.title,message:input.message,createdAt:now,...(view?{viewTabId:view.viewTabId,...(view.resourceRef?{resourceRef:view.resourceRef}:{})}:{}),...(taskCheckpoint?{resourceRef:{kind:'task',id:taskCheckpoint.taskId}}:{})}
   desktop.commit([{kind:'set',path:['preferences','notifications'],value:json([item,...rows.filter(n=>n.id!==id)].slice(0,100))},...(taskCheckpoint?[{kind:'set' as const,path:['preferences','taskEventCursor'],value:taskCheckpoint.sequence}]:[])])
   if(desktop.recovery&&!desktop.recovery.status.protected)throw new Error(desktop.recovery.status.message||'通知现场保护失败')

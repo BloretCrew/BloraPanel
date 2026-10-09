@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import UIIcon from '../app-host/UIIcon.vue'
 import { computed, ref } from 'vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
@@ -24,7 +25,7 @@ const items=computed(()=>instances.data.value?.items.filter(i=>[i.name,i.group,.
 const selected=computed(()=>view.value.state.selectedInstances as string[]||[])
 function selectInstance(id:string){desktop.patchView(props.viewTabId,'selectedInstances',selected.value.includes(id)?selected.value.filter(value=>value!==id):[...selected.value,id])}
 function selectAll(){const ids=items.value.map(instance=>instance.instanceId);desktop.patchView(props.viewTabId,'selectedInstances',ids.every(id=>selected.value.includes(id))?selected.value.filter(id=>!ids.includes(id)):[...new Set([...selected.value,...ids])])}
-function batch(action:string){desktop.patchView(props.viewTabId,'batchConfirmation',{action,targets:(instances.data.value?.items||[]).filter(instance=>selected.value.includes(instance.instanceId)).map(instance=>({...copy(instance),requestId:crypto.randomUUID()}))})}
+function batch(action:string){desktop.patchView(props.viewTabId,'batchConfirmation',{action,targets:(instances.data.value?.items||[]).filter(instance=>selected.value.includes(instance.instanceId)).map(instance=>({...copy(instance),requestId:randomUUID()}))})}
 const instance=computed(()=>instances.data.value?.items.find(i=>i.instanceId===view.value.resourceRef?.id))
 const page=computed(()=>String(view.value.state.page||'overview'))
 type Confirmation={instance:Pick<Instance,'instanceId'|'name'|'nodeId'>;action:string;requestId?:string}
@@ -34,7 +35,7 @@ function copy(i:Instance){return {instanceId:i.instanceId,name:i.name,nodeId:i.n
 function openInstance(i:Instance,newWindow=false){desktop.open({appId:'blora.instances',windowId:newWindow?undefined:props.windowId,resourceRef:{kind:'instance',id:i.instanceId,nodeId:i.nodeId},title:`${i.name} · ${targetNode(i.nodeId)?.name || i.nodeId}`,disposition:newWindow?'new-window':'new-tab'})}
 function shortcut(i:Instance){desktop.addShortcut('blora.instances',{kind:'instance',id:i.instanceId,nodeId:i.nodeId},i.name,page.value)}
 function requestDelete(i:Instance){confirmation.value={instance:copy(i),action:'delete'}}
-async function action(){const fixed=confirmation.value;if(!fixed)return;const requestId=fixed.requestId||crypto.randomUUID();confirmation.value={...fixed,requestId};pending.value=true;error.value='';try{if(fixed.action==='delete'){await api(`/instances/${encodeURIComponent(fixed.instance.instanceId)}`,{method:'DELETE',headers:{'Idempotency-Key':requestId}});await query.invalidateQueries({queryKey:['instances']});confirmation.value=undefined;return}const known=tasks.data.value?.items.find(t=>t.requestId===requestId);const task=known || (await api<{task:Task}>(`/instances/${encodeURIComponent(fixed.instance.instanceId)}/actions`,{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({action:fixed.action})})).task;desktop.patchView(props.viewTabId,'lastTaskId',task.taskId);await query.invalidateQueries({queryKey:['tasks']});confirmation.value=undefined}catch(e){error.value=e instanceof Error?e.message:String(e)}finally{pending.value=false}}
+async function action(){const fixed=confirmation.value;if(!fixed)return;const requestId=fixed.requestId||randomUUID();confirmation.value={...fixed,requestId};pending.value=true;error.value='';try{if(fixed.action==='delete'){await api(`/instances/${encodeURIComponent(fixed.instance.instanceId)}`,{method:'DELETE',headers:{'Idempotency-Key':requestId}});await query.invalidateQueries({queryKey:['instances']});confirmation.value=undefined;return}const known=tasks.data.value?.items.find(t=>t.requestId===requestId);const task=known || (await api<{task:Task}>(`/instances/${encodeURIComponent(fixed.instance.instanceId)}/actions`,{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({action:fixed.action})})).task;desktop.patchView(props.viewTabId,'lastTaskId',task.taskId);await query.invalidateQueries({queryKey:['tasks']});confirmation.value=undefined}catch(e){error.value=e instanceof Error?e.message:String(e)}finally{pending.value=false}}
 async function created(instance:Instance){createOpen.value=false;await query.invalidateQueries({queryKey:['instances']});openInstance(instance)}
 const resourceTasks=computed(()=>tasks.data.value?.items.filter(t=>t.resource?.id===instance.value?.instanceId)||[])
 </script>

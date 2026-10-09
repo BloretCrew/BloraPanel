@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {useDesktop} from '../desktop/store'
 import {api,session,type Instance,type Task} from '../services/api'
@@ -33,7 +34,7 @@ async function reconcileCommand(){
 }
 async function sendCommand(retry=false){
   if(sending.value||(!retry&&(!inputAvailable.value||!commandDraft.value||commandPending.value)))return
-  const fixed:CommandAttempt=retry?{...attempt.value!}:{instanceId:props.instance.instanceId,runId:runId.value,requestId:crypto.randomUUID(),data:commandDraft.value+(newline.value?'\n':''),draft:commandDraft.value,state:'SUBMITTING'}
+  const fixed:CommandAttempt=retry?{...attempt.value!}:{instanceId:props.instance.instanceId,runId:runId.value,requestId:randomUUID(),data:commandDraft.value+(newline.value?'\n':''),draft:commandDraft.value,state:'SUBMITTING'}
   const size=new TextEncoder().encode(fixed.data).length;if(size<1||size>8192){error.value='实例输入需要 1～8192 个 UTF-8 字节（包含所选换行）';return}
   patch('consoleAttempt',fixed);sending.value=true
   try{const {task}=await api<{task:Task}>(`/instances/${encodeURIComponent(fixed.instanceId)}/logs/${encodeURIComponent(fixed.runId)}/input`,{method:'POST',headers:{'Idempotency-Key':fixed.requestId},body:JSON.stringify({data:fixed.data})});commandResult(fixed,task)}catch(e){storeAttempt({...fixed,state:'UNKNOWN',error:String(e)})}finally{sending.value=false}

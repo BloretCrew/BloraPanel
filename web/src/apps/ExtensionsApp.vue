@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { randomUUID } from '../services/uuid'
 import {computed,ref} from 'vue'
 import AppIcon from '../app-host/AppIcon.vue'
 import {useQuery} from '@tanstack/vue-query'
@@ -9,7 +10,7 @@ interface Item{manifest:{appId:string;title:string;packageVersion:string;capabil
 interface CatalogItem{manifest:{appId:string;title:string;packageVersion:string;capabilities?:string[]};sha256:string;signaturePresent:boolean;size:number}
 const props=defineProps<{viewTabId:string}>(),error=ref(''),items=useQuery({queryKey:['extensions'],queryFn:()=>api<{items:Item[]}>('/extensions')}),catalog=useQuery({queryKey:['extension-catalog'],queryFn:()=>api<{items:CatalogItem[]}>('/extensions/catalog')}),file=ref<File>(),desktop=useDesktop(),recovery=desktop.recovery!
 const view=computed(()=>recovery.state.views[props.viewTabId]!),requestIds=computed<Record<string,string>>({get:()=>view.value.state.extensionRequestIds as unknown as Record<string,string>||{},set:value=>desktop.patchView(props.viewTabId,'extensionRequestIds',value)})
-function requestKey(scope:string){return requestIds.value[scope]||(requestIds.value={...requestIds.value,[scope]:crypto.randomUUID()},requestIds.value[scope]!)}
+function requestKey(scope:string){return requestIds.value[scope]||(requestIds.value={...requestIds.value,[scope]:randomUUID()},requestIds.value[scope]!)}
 function requestDone(scope:string){const next={...requestIds.value};delete next[scope];requestIds.value=next}
 async function install(){
   if(!file.value)return

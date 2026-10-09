@@ -3,7 +3,14 @@ import {api,APIError,session} from '../src/services/api'
 import {hideDocumentReads,pauseDocumentReadsUntilPaint,resumeDocumentReads} from '../src/services/read-lifecycle'
 
 describe('API transport failures',()=>{
-  afterEach(()=>vi.restoreAllMocks())
+  afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals()})
+  it('submits login when the browser exposes getRandomValues but not randomUUID',async()=>{
+    vi.stubGlobal('crypto',{getRandomValues:(bytes:Uint8Array)=>{bytes.fill(0);return bytes}})
+    const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({user:{userId:'admin'},csrfToken:'csrf'}))
+    await api('/login',{method:'POST',body:JSON.stringify({name:'admin',password:'example'})})
+    expect(fetch).toHaveBeenCalledOnce()
+    expect(new Headers(fetch.mock.calls[0]![1]?.headers).get('Idempotency-Key')).toBe('00000000-0000-4000-8000-000000000000')
+  })
   it.each(['Failed to fetch','Load failed','NetworkError when attempting to fetch resource.'])('keeps an accepted operation uncertain across browser error %s',async(message)=>{
     const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(new TypeError(message))
     const failure=await api('/tasks',{method:'POST',headers:{'Idempotency-Key':'original-request'},body:'{}'}).catch(error=>error)
