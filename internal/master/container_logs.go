@@ -15,7 +15,7 @@ import (
 
 func (s *Server) containerLogs(w http.ResponseWriter, r *http.Request, u model.User) {
 	ref := nodeRef(r.PathValue("id"))
-	if r.TLS == nil || r.Header.Get("Origin") != s.origin {
+	if r.TLS == nil || r.Header.Get("Origin") != s.requestOrigin(r) {
 		fail(w, 403, "ORIGIN_DENIED", "日志流需要可信TLS来源")
 		return
 	}

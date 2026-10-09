@@ -21,12 +21,14 @@ Linux原生实例需要管理员预先委派可写的cgroup；`allowPGIDFallback
 
 ## 启动与健康检查
 
-先按项目说明初始化Master，再启动Master与各Daemon。Master的`--origin`使用浏览器实际访问的HTTPS来源；节点`masterUrl`和`caFile`应能核验该管理入口证书。反向代理需要转发WebSocket升级及长连接，管理入口不代理实例的业务端口。
+先按项目说明初始化 Master，再启动 Master 与各 Daemon。当前源码默认监听 `127.0.0.1:8443`，`--origin` 可省略：直接访问时按本地回环请求的 HTTPS 主机/端口校验来源，不绑定外部域名。显式 `--origin` 仍可固定入口。节点 `masterUrl` 和 `caFile` 必须能核验实际管理入口证书。反向代理转发 WebSocket 及长连接，不代理实例业务端口。
 
 ```sh
-./dist/blora-master --state-dir /private/blora-master --listen 127.0.0.1:8443 --origin https://localhost:8443 --static-dir web/dist
+./dist/blora-master --state-dir /private/blora-master --listen 127.0.0.1:8443 --static-dir web/dist
 ./dist/blora-daemon --config /private/blora-node-a.json
 ```
+
+Nginx 同机反代时显式添加 `--trusted-proxies 127.0.0.1/32`；默认不信任代理头。可信代理覆盖 `X-Forwarded-Host/Proto/For` 和 `X-Real-IP`，Master 据此校验原始 HTTPS 来源（含端口）及全部浏览器 WSS，并将真实客户端 IP 用于登录限流。XFF 从右向左移除可信跳点，停止于首个不可信地址；无效/歧义头拒绝，未经信任的头忽略。TLS 不因代理头而免除。Nginx 后端可使用生成的 localhost 证书（`proxy_ssl_name localhost`），外部入口的 IP/域名证书仅在 Nginx 配置。完整例子见 [README](../../README.md#production-startup) 与 [Nginx 示例](examples/nginx.conf)。这些新参数/行为晚于 beta.1，须构建当前源码；不改变已发行附件。
 
 健康检查使用受信CA，不关闭证书校验：
 

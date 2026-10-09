@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 type Options struct {
 	Store               *storage.Store
 	Origin              string
+	TrustedProxies      []netip.Prefix
 	StaticDir           string
 	ExtensionRoot       string
 	ExtensionCatalogDir string
@@ -44,6 +46,7 @@ type peer struct {
 type Server struct {
 	store               *storage.Store
 	origin              string
+	trustedProxies      []netip.Prefix
 	static              string
 	mux                 *http.ServeMux
 	mu                  sync.Mutex
@@ -65,6 +68,7 @@ type loginAttempt struct {
 
 func New(opts Options) *Server {
 	s := &Server{store: opts.Store, origin: strings.TrimRight(opts.Origin, "/"), static: opts.StaticDir, mux: http.NewServeMux(), peers: map[string]*peer{}, links: map[string]*bridge.Link{}, userStreams: map[string]map[string]context.CancelFunc{}, attempts: map[string]loginAttempt{}}
+	s.trustedProxies = append([]netip.Prefix(nil), opts.TrustedProxies...)
 	if opts.ExtensionRoot != "" {
 		s.extensions, _ = extensions.New(opts.ExtensionRoot, []string{"window.open", "window.move", "window.close", "shortcut.create", "data.read", "data.write", "resource.read", "resource.write", "notification.publish", "task.create"})
 		if s.extensions != nil && len(opts.ExtensionTrustedKeys) > 0 {
@@ -132,6 +136,13 @@ func New(opts Options) *Server {
 	return s
 }
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	resolved, err := s.resolveSource(r)
+	if err != nil {
+		fail(w, 400, "INVALID_SOURCE", "请求来源或代理头无效")
+		return
+	}
+	r = resolved
+	expectedOrigin := s.requestOrigin(r)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "same-origin")
 	// External extension bootstrap code is loaded from a Blob URL inside an
@@ -141,12 +152,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/api/") {
 		w.Header().Set("Cache-Control", "no-store")
 	}
-	if origin := r.Header.Get("Origin"); origin != "" && origin != s.origin {
+	if origin := r.Header.Get("Origin"); origin != "" && origin != expectedOrigin {
 		fail(w, 403, "ORIGIN_DENIED", "来源不受信任")
 		return
 	}
-	if r.Header.Get("Origin") == s.origin && s.origin != "" {
-		w.Header().Set("Access-Control-Allow-Origin", s.origin)
+	if r.Header.Get("Origin") == expectedOrigin && expectedOrigin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", expectedOrigin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Add("Vary", "Origin")
 	}

@@ -294,7 +294,7 @@ func (s *Server) markNodeWaiting(ctx context.Context, nodeID string) {
 }
 
 func (s *Server) events(w http.ResponseWriter, r *http.Request, u model.User) {
-	if r.Header.Get("Origin") != s.origin {
+	if r.Header.Get("Origin") != s.requestOrigin(r) {
 		fail(w, 403, "ORIGIN_DENIED", "WSS需要可信Origin")
 		return
 	}

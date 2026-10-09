@@ -132,15 +132,15 @@ See the [operations guide](docs/operations/OPERATIONS.md) for state directories,
 
 ## Production startup
 
-Use the matching [beta release archives](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.1), verify `SHA256SUMS`, and extract each component into its own directory. These commands start the real services without fixture accounts or demo resources. The current release remains a beta pending the owner's hands-on evaluation.
+Master defaults to **`127.0.0.1:8443`**, with no required domain or fixed `--origin`. Its generated certificate covers `localhost`, `127.0.0.1` and `::1`. You can run everything locally; expose an HTTPS entry through Nginx only when needed.
 
-The examples use `panel.example.com` and Linux paths: extract Master to `/opt/blora/master`, Daemon to `/opt/blora/daemon` on each managed machine, and optionally the standalone Web archive to `/opt/blora/web`. Replace the domain and paths. Prepare dedicated `blora-master` / `blora-daemon` accounts and private state/config directories owned by the corresponding account (directories `0700`, secret files `0600`). Give Master read access to its TLS key and both services access to their required resources. Use a trusted certificate whose names include your management domain; the automatically generated localhost certificate is for local testing.
+**Version scope:** automatic local-origin detection and `--trusted-proxies` are newer than the published `v0.1.0-beta.1`. Build the current source (`make build && make web`) for these instructions, then install `dist/blora-master`, `dist/blora-daemon` and `web/dist` in the layout below. The older beta can run locally with an explicit `--origin https://localhost:8443`, but does not include trusted-proxy source/IP detection. The existing beta tag/archives are not overwritten.
 
-Point the management domain at the entry host and allow the chosen HTTPS port (`8443` for direct Master hosting, `443` for the Nginx example) from browsers and nodes. Managed applications' business ports are configured separately; these examples expose only the management entry.
+Use separate program directories: `/opt/blora/master` (binary and `web/dist`) and `/opt/blora/daemon` (node binary). Prepare runtime accounts `blora-master` / `blora-daemon` and their private state/config directories (directories `0700`, secrets `0600`, owned by the corresponding account). Windows uses equivalent paths and private ACLs. Do not use fixture credentials or state.
 
-### 1. Master — initialize once, then start
+### 1. Master — initialize once, then start locally
 
-Create `/etc/blora/initial-password` with a local editor (12–72 bytes, readable only by the Master account). Initialization exits after creating the administrator; **do not put `--init` in the ongoing service command**.
+Create `/etc/blora/initial-password` with a local editor: 12–72 bytes, readable only by the Master account. Initialize once, then start the ongoing process without `--init`:
 
 ```sh
 sudo -u blora-master /opt/blora/master/blora-master \
@@ -148,23 +148,24 @@ sudo -u blora-master /opt/blora/master/blora-master \
   --password-file /etc/blora/initial-password
 
 sudo -u blora-master /opt/blora/master/blora-master \
-  --state-dir /var/lib/blora/master \
-  --listen 0.0.0.0:8443 --origin https://panel.example.com:8443 \
+  --state-dir /var/lib/blora/master --listen 127.0.0.1:8443 \
   --static-dir /opt/blora/master/web/dist \
-  --tls-cert /etc/blora/tls/fullchain.pem --tls-key /etc/blora/tls/privkey.pem \
   --extensions-dir /var/lib/blora/master/extensions
 ```
 
-Open **`https://panel.example.com:8443`** and sign in as `admin` using your initial password. Master serves the bundled frontend, so a separate frontend server is optional. Remove the initial password file after successful initialization; preserve the state directory across restarts. `--extensions-dir` enables persistent extension installation; `blora-master --help` lists optional catalog-source and trusted-publisher-key flags.
+Open **`https://localhost:8443`** or **`https://127.0.0.1:8443`** locally. Trust the generated `/var/lib/blora/master/tls.crt` in your browser/OS after verifying it; do not disable certificate checks or distribute `tls.key`. Sign in as `admin` with your own password. Delete the initial password file after initialization and preserve the state directory across restarts. Master already serves the frontend. `--extensions-dir` enables persistent extension installation; optional catalog/signing-key settings are listed by `blora-master --help`.
 
-### 2. Daemon — one per managed machine
+The automatic direct-access mode accepts only loopback hostnames/IPs and checks browser Origin against the actual HTTPS host/port. A fixed `--origin` remains available if you deliberately want to restrict the entry to one specific origin.
 
-In the node application, generate a one-time enrollment ticket and save it privately on the target machine as `/etc/blora/node.enrollment`. Save the following as `/etc/blora/node.json`:
+### 2. Daemon — enroll and connect
+
+Generate a one-time enrollment ticket in the node application, save it privately as `/etc/blora/node.enrollment`, and copy **only Master's public `tls.crt`** to `/etc/blora/master-ca.pem`. For a Daemon on the same machine, create `/etc/blora/node.json`:
 
 ```json
 {
   "stateDir": "/var/lib/blora/node",
-  "masterUrl": "https://panel.example.com:8443",
+  "masterUrl": "https://127.0.0.1:8443",
+  "caFile": "/etc/blora/master-ca.pem",
   "enrollmentFile": "/etc/blora/node.enrollment",
   "allowPGIDFallback": false
 }
@@ -174,68 +175,68 @@ In the node application, generate a one-time enrollment ticket and save it priva
 sudo -u blora-daemon /opt/blora/daemon/blora-daemon --config /etc/blora/node.json
 ```
 
-Publicly trusted certificates use the system CA store. For a private CA, add `"caFile": "/etc/blora/master-ca.pem"` containing the trusted **CA certificate**, not a private key. After the node appears online, remove the ticket file and `enrollmentFile` configuration entry; later starts reuse the identity in `stateDir`. Each node needs its own state directory and ticket. Daemon makes outbound HTTPS/WSS connections; it needs no inbound management listening port. To manage the Master machine itself, run a Daemon there too.
+Each node uses a separate state directory/identity. After it appears online, remove the ticket file and `enrollmentFile` entry; later starts reuse the identity. A Daemon on another machine must use the reachable Nginx HTTPS entry as `masterUrl`, with that entry's CA if private (omit `caFile` for system-trusted certificates). `127.0.0.1` always refers to the Daemon's own machine. Daemon connects outbound and needs no inbound management port. To manage the Master host, run a Daemon there too.
 
-This minimal configuration brings the node online. Linux native instances additionally require an administrator-prepared writable `cgroupRoot`; Docker/Compose requires an accessible `dockerEndpoint` and its runtime dependencies. Choose the service account's permissions for the intended node capabilities. Leave `allowPGIDFallback` disabled for normal deployment; it is an explicit trusted-workload fallback, not container isolation. See [operations](docs/operations/OPERATIONS.md) for platform capability and state/backup requirements.
+Linux native instances require an administrator-prepared writable `cgroupRoot`; Docker/Compose needs an accessible `dockerEndpoint` and runtime dependencies. Select service-account permissions for those capabilities. `allowPGIDFallback` is an explicit trusted-workload fallback, not normal user isolation. See the [operations guide](docs/operations/OPERATIONS.md).
 
-### 3. Frontend — bundled or separately hosted
+### 3. Frontend / Nginx — optional external entry
 
-The frontend is a compiled static website executed in the browser. **With the Master command above, it is already available; there is no third application process to start.** Installing Node.js or running `npm run dev` / `vite preview` is not required on the production host.
+With the Master command above, the frontend is already running in your browser: **no independent Web download, Node.js process, dev server or preview server is needed**.
 
-For separate hosting, extract the matching standalone Web archive directly into `/opt/blora/web` (`index.html` is at that directory's root). Use the provided [Nginx configuration](docs/operations/examples/nginx.conf) inside Nginx's `http {}` context. It serves the website at **`https://panel.example.com`**, proxies `/api/` including node/browser WebSockets and `/healthz` to Master, and verifies backend TLS. Keep the frontend and API on the **same HTTPS origin**: the current frontend uses relative `/api/v1` URLs and same-origin cookies; it has no separate production API-base setting.
-
-For this alternative, replace the Master's ongoing command with:
+For an Nginx entry on the same machine, keep Master on loopback and explicitly trust only the proxy's backend connection address:
 
 ```sh
 sudo -u blora-master /opt/blora/master/blora-master \
-  --state-dir /var/lib/blora/master \
-  --listen 127.0.0.1:8443 --origin https://panel.example.com --static-dir= \
-  --tls-cert /etc/blora/tls/fullchain.pem --tls-key /etc/blora/tls/privkey.pem \
+  --state-dir /var/lib/blora/master --listen 127.0.0.1:8443 \
+  --trusted-proxies 127.0.0.1/32 \
+  --static-dir /opt/blora/master/web/dist \
   --extensions-dir /var/lib/blora/master/extensions
-
-# After installing and configuring Nginx, validate before starting it:
-sudo nginx -t
-sudo systemctl enable --now nginx
 ```
 
-In the Nginx example, replace the domain/certificate paths and prepare `/etc/blora/backend-ca.pem` as a CA bundle that trusts Master's backend certificate. That certificate must also cover `panel.example.com`; Master always serves HTTPS, even behind a proxy. Change each Daemon's `masterUrl` to `https://panel.example.com` and use the CA for the browser-facing certificate if private. If Nginx is already running, reload it after a successful configuration check. [Nginx's WebSocket guide](https://nginx.org/en/docs/http/websocket.html) and [proxy TLS documentation](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_verify) explain the forwarding and certificate settings.
+The [Nginx example](docs/operations/examples/nginx.conf) separately serves static files and forwards API/WSS and health checks to local Master. Its default static root is `/opt/blora/master/web/dist`; to use a matching independent Web archive, extract it to `/opt/blora/web` and change `root` accordingly. To let Master serve the website through Nginx instead, use the same proxy settings for `location /` rather than static locations.
+
+Copy Master's public certificate to `/etc/blora/backend-ca.pem` for verified backend TLS with `proxy_ssl_name localhost`. Configure the **Nginx-facing** certificate for the IP or hostname your clients use; Master need not bind or know that domain. The example can be installed inside Nginx's `http {}` context, then checked and started:
+
+```sh
+sudo nginx -t
+sudo systemctl enable --now nginx
+# If already running, reload after a successful configuration check.
+```
+
+Nginx overwrites `X-Forwarded-Host`, `X-Forwarded-Proto`, `X-Forwarded-For` and `X-Real-IP`. Master reads them only from explicitly trusted IPs/CIDRs; untrusted headers are ignored. Original host/HTTPS port drives API and all browser WebSocket Origin checks, and the resolved client IP drives login rate limits. IP chains are evaluated from the nearest proxy toward the client, stopping at the first untrusted hop. The single-proxy example overwrites XFF with `$remote_addr`, preventing client-supplied prefixes. Behind multiple proxies, configure every trusted hop and sanitize external host/protocol headers at the entry. Malformed/ambiguous trusted headers and non-HTTPS forwarded origins are rejected.
+
+Keep frontend and API on the same HTTPS origin: the frontend uses relative `/api/v1` URLs and same-origin cookies. Backend TLS remains required; proxy headers do not bypass it. Refer to [Nginx forwarding documentation](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_set_header) for header behavior. Opening only the Nginx management port does not expose managed applications' business ports.
 
 <details>
-<summary><strong>Keep services running on Linux / start on Windows</strong></summary>
+<summary><strong>Linux background services / Windows startup</strong></summary>
 
-For Linux, the example [Master unit](docs/operations/examples/blora-master.service) and [Daemon unit](docs/operations/examples/blora-daemon.service) use the paths/accounts above. Create those accounts and directories first, initialize Master manually, then copy each unit to `/etc/systemd/system/` on its respective host. For separate frontend hosting, adjust Master's `ExecStart` to the loopback address, external origin without `:8443`, and `--static-dir=` as above. Do not start a unit and a foreground copy against the same state directory.
+Use the [Master unit](docs/operations/examples/blora-master.service) and [Daemon unit](docs/operations/examples/blora-daemon.service), after creating the named accounts/directories and initializing Master. Install each unit under `/etc/systemd/system/` on its host. Add `--trusted-proxies 127.0.0.1/32` to Master's `ExecStart` only when using the local proxy. Do not run a foreground copy against the same state as a unit.
 
 ```sh
 sudo systemctl daemon-reload
-sudo systemctl enable --now blora-master.service  # On the Master host
-sudo systemctl enable --now blora-daemon.service  # On each node, when configured
-sudo systemctl status blora-master.service       # Or blora-daemon.service
+sudo systemctl enable --now blora-master.service  # Master host
+sudo systemctl enable --now blora-daemon.service  # Configured node
 sudo journalctl -u blora-master.service -f        # Or blora-daemon.service
 ```
 
-The Daemon unit deliberately stops only the Daemon process, preserving independently owned runs/log helpers. This is not a stop-all-resources operation: explicitly stop instances and PTYs and wait for task completion before a consistent backup or upgrade. The sample does not provision a delegated cgroup or install Docker.
+Daemon's `KillMode=process` preserves independently owned runs/log helpers. Stopping its service is not stopping all resources: explicitly stop instances/PTYs and wait for tasks before consistent backups/upgrades. The sample does not provision cgroups or Docker.
 
-On Windows, extract Master to `C:\Blora\master` and Daemon to `C:\Blora\daemon`, create private directories with ACLs restricted to their runtime accounts, and provide the domain certificate/key. Run Master in PowerShell:
+For Windows, prepare private state/password/config directories and install the current compiled binaries and frontend at `C:\Blora\master` / `C:\Blora\daemon`:
 
 ```powershell
-# Once only, after creating the private initial-password file:
+# Once only:
 & 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --init --password-file 'C:\Blora\private\initial-password'
-
-# Ongoing service process; built frontend is bundled with Master:
-& 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --listen '0.0.0.0:8443' --origin 'https://panel.example.com:8443' --static-dir 'C:\Blora\master\web\dist' --tls-cert 'C:\Blora\private\fullchain.pem' --tls-key 'C:\Blora\private\privkey.pem' --extensions-dir 'C:\Blora\state\master\extensions'
-```
-
-On the node, use the same Daemon JSON keys, replace `stateDir` / `enrollmentFile` / optional `caFile` with Windows paths such as `C:/Blora/state/node` and `C:/Blora/private/node.enrollment`, then start:
-
-```powershell
+# Ongoing local process:
+& 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --listen '127.0.0.1:8443' --static-dir 'C:\Blora\master\web\dist' --extensions-dir 'C:\Blora\state\master\extensions'
+# Node, with Windows paths in node.json:
 & 'C:\Blora\daemon\blora-daemon.exe' --config 'C:\Blora\private\node.json'
 ```
 
-Windows executables are console applications; they are not native SCM services and cannot be installed directly with `sc create`. For unattended startup, configure your chosen service wrapper/supervisor to launch these exact programs and preserve their state and independently owned helper processes. The new beta Windows packages have not been rerun on a device; earlier validation retains its recorded source identity.
+Use Windows JSON paths such as `C:/Blora/state/node`; copy the public Master CA and trust it as above. Windows binaries are console programs, not directly installable SCM services via `sc create`; an external supervisor must preserve private state and independent helpers. These source changes are cross-compiled, not newly device-certified.
 
 </details>
 
-Confirm `https://<management-origin>/healthz` succeeds with certificate verification, then check node-online status, permissions and intended resource operations in the desktop. `/healthz` checks the Master database, not all nodes/resources. These are deployment instructions; no production host or service has been changed by this documentation update.
+Check the local health endpoint with verified TLS, for example `curl --fail --cacert /etc/blora/master-ca.pem https://127.0.0.1:8443/healthz`, then confirm node status/permissions/resources in the UI. Health checks cover the Master database, not all nodes. No production host is changed by these instructions.
 
 ## Architecture
 

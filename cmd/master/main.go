@@ -32,7 +32,8 @@ func main() {
 func run() error {
 	state := flag.String("state-dir", ".local/master", "private state directory")
 	listen := flag.String("listen", "127.0.0.1:8443", "HTTPS address")
-	origin := flag.String("origin", "https://localhost:8443", "allowed browser origin")
+	origin := flag.String("origin", "", "optional fixed browser origin; otherwise loopback or trusted proxy HTTPS origin")
+	proxyList := flag.String("trusted-proxies", "", "comma-separated trusted proxy IPs/CIDRs; default trusts none")
 	static := flag.String("static-dir", "web/dist", "built frontend directory")
 	extensionsDir := flag.String("extensions-dir", "", "private extension registry directory (disabled when empty)")
 	extensionsCatalog := flag.String("extensions-catalog", "", "local extension catalog directory (disabled when empty)")
@@ -44,6 +45,10 @@ func run() error {
 	cert := flag.String("tls-cert", "", "TLS certificate path")
 	key := flag.String("tls-key", "", "TLS private key path")
 	flag.Parse()
+	proxies, err := master.ParseTrustedProxies(*proxyList)
+	if err != nil {
+		return err
+	}
 	s, err := storage.Open(filepath.Join(*state, "master.db"))
 	if err != nil {
 		return err
@@ -102,7 +107,7 @@ func run() error {
 		}
 		trusted = []ed25519.PublicKey{ed25519.PublicKey(b)}
 	}
-	app := master.New(master.Options{Store: s, Origin: *origin, StaticDir: *static, ExtensionRoot: *extensionsDir, ExtensionCatalogDir: *extensionsCatalog, ExtensionCatalogURL: *extensionsCatalogURL, ExtensionTrustedKeys: trusted})
+	app := master.New(master.Options{Store: s, Origin: *origin, TrustedProxies: proxies, StaticDir: *static, ExtensionRoot: *extensionsDir, ExtensionCatalogDir: *extensionsCatalog, ExtensionCatalogURL: *extensionsCatalogURL, ExtensionTrustedKeys: trusted})
 	defer app.Close()
 	server := &http.Server{Addr: *listen, Handler: app, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second, MaxHeaderBytes: 32768, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12}}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
