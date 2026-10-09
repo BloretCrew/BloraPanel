@@ -2,7 +2,15 @@
 
 更新：2026-10-09。全部此前逐轮记录保存在[完整历史归档](archive/PROGRESS-before-closeout-2026-10-08.md)。历史结果保留各自源码、环境和失败记录。
 
-## 最新实现任务：本地监听与可信反代来源
+## 最新实现任务：双程序零参数配置启动
+
+按最新要求，Master 默认 `http://127.0.0.1:37861`；两程序无参数启动，分别读实际可执行文件同目录 `master.json` / `daemon.json`，相对与默认路径以可执行文件目录为基准。Master 首次正常启动按私有密码文件初始化并常驻，后续保留账号。默认无需本机证书，Nginx 负责外部 HTTPS；`verifyProxyIPs:false` 默认信任转发头，开启时要求有效非空 `trustedProxies`。实际明文 peer 限回环，不能用头伪造传输安全。Cookie、浏览器/节点 WS、CSP 与 Daemon HTTP 地址一致适配，旧参数 TLS fixture 兼容。
+
+README、四份模板、两 unit、Nginx、Vite 和未来包 START 已同步。受影响后端完整竞态通过（Master 284.657s、Daemon 32.054s）；后续小改动由最终命令包竞态/构建复验覆盖。实际 Linux 双二进制从无关 cwd 无参数启动、默认路径、首次初始化、HTTP 登录、原始 HTTPS Cookie、代理开关、Daemon 登记及删除票据后身份复用通过；测试进程/临时目录清理。Linux/Windows 和前端构建通过，详见[报告](../acceptance/reports/zero-argument-startup-2026-10-09.md)。
+
+当前无待接管服务。六个本地开发包共 2458 个载荷、四份二进制、模板、零参数 START 与内外摘要核验通过。上一节的“HTTPS 后端、默认不信任代理”为历史证据，当前默认值以本节和 README 为准。本地实现/验证已收尾，随本次源码提交交付；下一动作是用户按 README 实际运行并反馈。不覆盖 beta.1 标签/附件，不部署生产或新增 Windows 真机 PASS。
+
+## 前一轮实现：本地监听与可信反代来源
 
 按用户要求，Master 默认仍仅监听 `127.0.0.1:8443`，取消必填固定域名来源；自动模式按本地回环请求的 HTTPS 主机/端口校验。新增显式 `--trusted-proxies`（默认不信任任何代理），从可信直连代理读取原始 HTTPS 主机/端口及客户端 IP，API、事件/终端/日志/容器日志 WSS 使用同一来源，登录限流采用解析后的客户端 IP。XFF 右到左校验，未经信任的头忽略，可信头歧义/错误拒绝；保留真正 TLS 与可选固定 origin 的保护。中英 README、Master unit、Nginx 示例已改为本地后端方式。
 

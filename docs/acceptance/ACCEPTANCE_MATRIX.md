@@ -1,5 +1,7 @@
 # Blora Panel 验收矩阵
 
+2026-10-09 最新启动合同：两程序无参数启动并读取可执行文件同目录配置，默认/相对路径以可执行文件目录为基准；Master 端口 `37861`，本机 HTTP，无需后端证书；Nginx 负责外部 HTTPS。默认信任转发头，`verifyProxyIPs` 开启时才要求可信 IP 列表，实际明文连接仍仅限回环。受影响后端完整竞态、实际双二进制零参数首次初始化/登记/恢复/代理开关及 Linux/Windows/前端构建通过，见[独立报告](reports/zero-argument-startup-2026-10-09.md)。替代下方前一轮 HTTPS/显式代理信任默认，不修改旧证据、beta 身份或增加 Nginx 部署/Windows 新真机 PASS。
+
 当前判定：2026-10-08。实现与验证分别记录；以下“本次范围已验证”仅指用户确认的交付范围，**不是所有原环境通过**。历史全部结果及失败保存在[完整归档](archive/ACCEPTANCE_MATRIX-before-closeout-2026-10-08.md)，原规划合同保留。
 
 2026-10-09 后续实现：支持本地自动 HTTPS 来源及显式可信反代原始地址/IP 识别；Master 全包竞态通过，最后端口规范化由最终定向竞态守卫复验，真实 HTTPS 代理登录/WSS/跨来源拒绝/客户端限流来源及 Linux/Windows 构建通过，见[独立报告](reports/local-origin-proxy-2026-10-09.md)。这是 beta.1 之后的源码改动，未重发旧版本，不增加 Nginx 实际部署或 Windows 新源码真机 PASS。

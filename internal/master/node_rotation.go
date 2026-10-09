@@ -36,7 +36,7 @@ func (s *Server) issueNodeRotation(w http.ResponseWriter, r *http.Request, u mod
 	reply(w, 201, map[string]any{"nodeId": r.PathValue("id"), "ticket": ticket, "expiresIn": 600})
 }
 func (s *Server) rotateNodeKey(w http.ResponseWriter, r *http.Request) {
-	if r.TLS == nil {
+	if !managementTransport(r) {
 		fail(w, 400, "TLS_REQUIRED", "节点换钥需要TLS")
 		return
 	}

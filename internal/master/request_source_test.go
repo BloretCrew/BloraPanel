@@ -107,6 +107,14 @@ func TestRequestSourceTrustBoundary(t *testing.T) {
 }
 
 func TestProxySourceRealTLSLoginAndWebSocket(t *testing.T) {
+	testProxySourceLoginAndWebSocket(t, false)
+}
+
+func TestProxySourceHTTPSWithHTTPBackend(t *testing.T) {
+	testProxySourceLoginAndWebSocket(t, true)
+}
+
+func testProxySourceLoginAndWebSocket(t *testing.T, plainBackend bool) {
 	db, err := storage.Open(filepath.Join(t.TempDir(), "master.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -120,9 +128,14 @@ func TestProxySourceRealTLSLoginAndWebSocket(t *testing.T) {
 		t.Fatal(err)
 	}
 	proxies, _ := ParseTrustedProxies("127.0.0.1")
-	app := New(Options{Store: db, TrustedProxies: proxies})
+	app := New(Options{Store: db, TrustedProxies: proxies, AllowLoopbackHTTP: plainBackend, TrustAllProxies: plainBackend})
 	defer app.Close()
-	backend := httptest.NewTLSServer(app)
+	backend := httptest.NewUnstartedServer(app)
+	if plainBackend {
+		backend.Start()
+	} else {
+		backend.StartTLS()
+	}
 	defer backend.Close()
 	u, _ := url.Parse(backend.URL)
 	p := httputil.NewSingleHostReverseProxy(u)
@@ -151,6 +164,9 @@ func TestProxySourceRealTLSLoginAndWebSocket(t *testing.T) {
 			t.Fatal(e)
 		}
 		defer resp.Body.Close()
+		if want == 200 && len(resp.Cookies()) > 0 && !resp.Cookies()[0].Secure {
+			t.Fatal("proxied HTTPS login cookie must be Secure even with an HTTP backend")
+		}
 		if resp.StatusCode != want {
 			b, _ := io.ReadAll(resp.Body)
 			t.Fatalf("login %d: %s", resp.StatusCode, b)

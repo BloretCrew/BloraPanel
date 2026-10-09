@@ -35,7 +35,7 @@ func (s *Server) enroll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) agent(w http.ResponseWriter, r *http.Request) {
-	if r.TLS == nil {
+	if !managementTransport(r) {
 		fail(w, 400, "TLS_REQUIRED", "节点连接必须使用TLS")
 		return
 	}

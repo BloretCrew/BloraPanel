@@ -12,6 +12,7 @@ import (
 )
 
 type sourceOriginKey struct{}
+type sourceTransportKey struct{}
 
 // ParseTrustedProxies accepts explicit IPs/CIDRs; an empty setting trusts nobody.
 func ParseTrustedProxies(value string) ([]netip.Prefix, error) {
@@ -39,6 +40,9 @@ func ParseTrustedProxies(value string) ([]netip.Prefix, error) {
 }
 
 func (s *Server) trustedProxy(ip netip.Addr) bool {
+	if s.trustAllProxies {
+		return true
+	}
 	for _, prefix := range s.trustedProxies {
 		if prefix.Contains(ip.Unmap()) {
 			return true
@@ -58,11 +62,11 @@ func oneSourceHeader(r *http.Request, name string) (string, error) {
 	return strings.TrimSpace(values[0]), nil
 }
 
-func sourceHost(value string) (string, bool, error) {
+func sourceHost(value, scheme string) (string, bool, error) {
 	if value == "" || strings.ContainsAny(value, ",/\\?#@ \t\r\n") {
 		return "", false, errors.New("invalid request host")
 	}
-	u, err := url.Parse("https://" + value)
+	u, err := url.Parse(scheme + "://" + value)
 	if err != nil || u.Host != value || u.User != nil || u.Hostname() == "" {
 		return "", false, errors.New("invalid request host")
 	}
@@ -92,7 +96,7 @@ func sourceHost(value string) (string, bool, error) {
 			return "", false, errors.New("invalid port")
 		}
 		// Browser URL.origin omits HTTPS's default port, even if Host includes it.
-		if n == 443 {
+		if scheme == "https" && n == 443 || scheme == "http" && n == 80 {
 			value = strings.TrimSuffix(value, ":"+port)
 		}
 	}
@@ -103,12 +107,20 @@ func sourceHost(value string) (string, bool, error) {
 	return strings.ToLower(value), local, nil
 }
 
-// Resolve before authorization and rate limiting. Never infer trust from headers.
-// The backend remains HTTPS; proxy headers do not manufacture a TLS connection.
+// Resolve before authorization and rate limiting. Cleartext management is
+// permitted only for a real loopback peer, never because a header claims TLS.
 func (s *Server) resolveSource(r *http.Request) (*http.Request, error) {
 	peer, _, _ := net.SplitHostPort(r.RemoteAddr)
 	ip, _ := netip.ParseAddr(peer)
+	transportOK := r.TLS != nil || s.allowLoopbackHTTP && ip.IsValid() && ip.Unmap().IsLoopback()
+	if !transportOK {
+		return nil, errors.New("management transport requires TLS or configured loopback HTTP")
+	}
 	trusted := ip.IsValid() && s.trustedProxy(ip)
+	scheme := "https"
+	if r.TLS == nil {
+		scheme = "http"
+	}
 	host := r.Host
 	forwardedHost := false
 	client := ip
@@ -122,10 +134,11 @@ func (s *Server) resolveSource(r *http.Request) (*http.Request, error) {
 			return nil, err
 		}
 		if xhost != "" || proto != "" {
-			if xhost == "" || proto != "https" {
-				return nil, errors.New("proxy source must be a single HTTPS origin")
+			if xhost == "" || proto != "https" && proto != "http" {
+				return nil, errors.New("proxy source must be a single HTTP/HTTPS origin")
 			}
 			host, forwardedHost = xhost, true
+			scheme = proto
 		}
 		xff, err := oneSourceHeader(r, "X-Forwarded-For")
 		if err != nil {
@@ -163,27 +176,36 @@ func (s *Server) resolveSource(r *http.Request) (*http.Request, error) {
 	}
 	origin := s.origin
 	if origin == "" || forwardedHost {
-		normalized, local, err := sourceHost(host)
+		normalized, local, err := sourceHost(host, scheme)
 		if err != nil {
 			return nil, err
 		}
 		host = normalized
+		if scheme == "http" && !local {
+			return nil, errors.New("external browser origins require HTTPS")
+		}
 		if origin == "" {
 			if !forwardedHost && !local {
 				return nil, errors.New("direct access requires a loopback host or explicit origin")
 			}
-			if r.TLS == nil {
-				return nil, errors.New("HTTPS required")
-			}
-			origin = "https://" + host
+			origin = scheme + "://" + host
 		}
 	}
-	next := r.Clone(context.WithValue(r.Context(), sourceOriginKey{}, origin))
+	ctx := context.WithValue(r.Context(), sourceOriginKey{}, origin)
+	next := r.Clone(context.WithValue(ctx, sourceTransportKey{}, transportOK))
 	next.Host = host
 	if client.IsValid() {
 		next.RemoteAddr = net.JoinHostPort(client.Unmap().String(), "0")
 	}
 	return next, nil
+}
+
+func managementTransport(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	allowed, _ := r.Context().Value(sourceTransportKey{}).(bool)
+	return allowed
 }
 
 func (s *Server) requestOrigin(r *http.Request) string {

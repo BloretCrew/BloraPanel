@@ -2,7 +2,7 @@
 
 本手册对应当前源码和命令行入口。初始化与双节点本机验收见[项目说明](../../README.md)；完整实现和验证边界见[验收矩阵](../acceptance/ACCEPTANCE_MATRIX.md)。本文没有执行公开部署、系统服务安装或生产节点变更。
 
-生产环境的三个组件分别启动方式见 [English README](../../README.md#production-startup) / [中文 README](../../README.zh-CN.md#生产环境启动)：包括真实 Master 初始化/常驻、Daemon 登记、Master 托管或独立前端、Linux systemd 与 Windows 命令。可编辑示例为 [Master unit](examples/blora-master.service)、[Daemon unit](examples/blora-daemon.service)和 [Nginx 配置](examples/nginx.conf)。示例需匹配目标账号、域名、证书、目录和节点能力；示例文档本身不代表已执行生产部署。
+生产环境的三个组件分别启动方式见 [English README](../../README.md#production-startup) / [中文 README](../../README.zh-CN.md#生产环境启动)：包括真实 Master 初始化/常驻、Daemon 登记、Master 托管或独立前端、Linux systemd 与 Windows 命令。可编辑示例为 [Master unit](examples/blora-master.service)、[Daemon unit](examples/blora-daemon.service)、[Master JSON](examples/master.json)、[Daemon JSON](examples/daemon.json)和 [Nginx 配置](examples/nginx.conf)。示例需匹配目标账号、证书、目录和节点能力；示例文档本身不代表已执行生产部署。
 
 Linux有限系统管理只接受明确的单元名称：服务操作使用完整`.service`名称（如`sshd.service`），计划任务启用/禁用使用`.timer`名称（如`backup.timer`）。不接受文件路径，不通过服务接口操作`.target`、`.mount`或`.socket`。Windows继续使用其服务名和任务路径合同。
 
@@ -11,7 +11,7 @@ Linux有限系统管理只接受明确的单元名称：服务操作使用完整
 将发行文件、私有状态和被管理资源分开保存：
 
 - 发行文件：`blora-master`、`blora-daemon`、配套的完整`web/dist`；Windows为对应`.exe`。同一版本的前后端一起更新，保留上一套完整发行文件。
-- Master状态：`--state-dir`下的数据库、证书和私钥；另保留命令行指定的扩展安装目录、注册源配置及可信公钥。
+- Master状态：配置文件 `stateDir` 下的数据库（可选直接 HTTPS 模式另有证书/私钥）；另保留 `master.json`、配置指定的扩展安装目录、注册源及可信公钥。
 - Daemon状态：配置中的`stateDir`，包含节点私钥身份、执行记录、归档、容器/Compose恢复记录及文件任务状态。每节点单独使用一个目录和身份。
 - 资源数据：实例授权目录、Docker卷/绑定目录、备份目标。资源数据不因备份Master数据库而自动得到保护。
 
@@ -21,24 +21,24 @@ Linux原生实例需要管理员预先委派可写的cgroup；`allowPGIDFallback
 
 ## 启动与健康检查
 
-先按项目说明初始化 Master，再启动 Master 与各 Daemon。当前源码默认监听 `127.0.0.1:8443`，`--origin` 可省略：直接访问时按本地回环请求的 HTTPS 主机/端口校验来源，不绑定外部域名。显式 `--origin` 仍可固定入口。节点 `masterUrl` 和 `caFile` 必须能核验实际管理入口证书。反向代理转发 WebSocket 及长连接，不代理实例业务端口。
+Master 默认读取可执行文件同目录的 `master.json`，Daemon 默认读取同目录的 `daemon.json`；相对路径和未填写的数据路径按可执行文件目录解析，不受当前工作目录影响。Master 数据默认 `state/master`，Daemon 默认 `state/daemon`，前端默认 `web/dist`。参考[生产 Master 配置](examples/master.json)、[生产 Daemon 配置](examples/daemon.json)或根目录[Master 便携模板](../../master.example.json) / [Daemon 便携模板](../../daemon.example.json)。修改配置后重启生效。
+
+在 Master 私有 `passwordFile` 中写入初始密码后，首次启动自动初始化并常驻；后续复用已有账号。Daemon 私有配置填入一次性票据路径，上线后复用自身身份。均无须启动参数：
 
 ```sh
-./dist/blora-master --state-dir /private/blora-master --listen 127.0.0.1:8443 --static-dir web/dist
-./dist/blora-daemon --config /private/blora-node-a.json
+./blora-master
+./blora-daemon
 ```
 
-Nginx 同机反代时显式添加 `--trusted-proxies 127.0.0.1/32`；默认不信任代理头。可信代理覆盖 `X-Forwarded-Host/Proto/For` 和 `X-Real-IP`，Master 据此校验原始 HTTPS 来源（含端口）及全部浏览器 WSS，并将真实客户端 IP 用于登录限流。XFF 从右向左移除可信跳点，停止于首个不可信地址；无效/歧义头拒绝，未经信任的头忽略。TLS 不因代理头而免除。Nginx 后端可使用生成的 localhost 证书（`proxy_ssl_name localhost`），外部入口的 IP/域名证书仅在 Nginx 配置。完整例子见 [README](../../README.md#production-startup) 与 [Nginx 示例](examples/nginx.conf)。这些新参数/行为晚于 beta.1，须构建当前源码；不改变已发行附件。
+默认后端 `http://127.0.0.1:37861`，不绑定外部域名，不生成或要求后端 SSL 证书。Nginx 终止 HTTPS、覆盖转发头，将 API/WebSocket 代理到本机 HTTP。真正回环连接可使用 HTTP/WS；外部浏览器和远程 Daemon 通过 Nginx HTTPS/WSS，远程 HTTP 管理连接会拒绝。
 
-健康检查使用受信CA，不关闭证书校验：
+默认 `verifyProxyIPs:false` 不要求代理 IP 白名单，读取转发原始主机/协议/IP；请求头无法证明 Nginx 身份，后端保持只监听本机，入口必须覆盖客户端传入的头。开启 `verifyProxyIPs:true` 后，必须在 `trustedProxies` 配置非空 IP/CIDR 列表，非可信来源的头被忽略。严格模式按 XFF 右到左停止于首个不可信跳点，默认全信任模式采用转发链最左端地址，因此单层 Nginx 示例直接覆盖 XFF 为 `$remote_addr`。错误/歧义头仍拒绝，原始来源用于浏览器 API/WS 校验及 Cookie 安全属性，真实 IP 用于登录限流。
 
 ```sh
-curl --fail --cacert /private/master-ca.crt https://localhost:8443/healthz
+curl --fail http://127.0.0.1:37861/healthz
 ```
 
-`/healthz`检查Master数据库可访问性；返回`ok`不代表节点在线或每个实例健康。登录后分别检查节点连接、资源状态、任务和监控采样时间。
-
-当前命令行程序可前台运行，收到中断/终止信号会进行关闭处理。若交由外部服务管理器托管，必须确认其关闭策略不会连带杀死全部实例和独立日志/Job辅助进程。Windows程序目前不是可直接交给`sc create`的ServiceMain实现；Windows Job/ConPTY适配和独立运行入口已构建，真实服务部署需对应环境验证。
+外部入口用自己的 Nginx HTTPS 地址检查；`/healthz` 只验证 Master 数据库，不等于节点可运行。关闭面板窗口不会停止后端资源。详细步骤见 [README](../../README.md#production-startup)。本次默认值晚于 beta.1，需构建当前源码，不改变旧版本附件。程序仍保留可选直接 HTTPS 配置及旧 fixture 参数兼容。
 
 ## 升级前的一致性备份
 
@@ -70,7 +70,7 @@ Daemon重新连接不自动重发浏览器输入。当前不承诺Daemon退出�
 
 | 现象 | 核对内容 |
 | --- | --- |
-| 节点失联、任务等待 | 管理TLS/CA/来源、节点身份和管理连接；实例业务进程可能仍在运行 |
+| 节点失联、任务等待 | Nginx HTTPS/来源、本机后端连接、节点身份和管理连接；实例业务进程可能仍在运行 |
 | 生命周期结果不明 | 原runId、退出证明和持久执行记录；未确认旧运行退出前不要重复启动 |
 | 工作现场未受保护 | 浏览器存储失败或配额；保留当前内容并使用导出入口，不能清空恢复记录后声称成功 |
 | 终端归档有缺口 | 本地检查点早于归档保留范围；保留屏幕并呈现实际边界，不能重发历史命令补现场 |

@@ -10,6 +10,10 @@ sdk/examples/reference-app/*.blora-extension.json
 !.env.*.example
 browser-credentials.json
 initial-password
+/master.json
+/daemon.json
+/state/
+/node.enrollment
 *.pem
 *.key
 *.p12

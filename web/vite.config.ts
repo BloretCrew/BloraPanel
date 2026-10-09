@@ -8,7 +8,7 @@ export default defineConfig({
   // package.module field. Resolve the pinned build without patching packages.
   resolve:{alias:{'@xterm/headless':'@xterm/headless/lib-headless/xterm-headless.mjs'}},
   optimizeDeps:{include:['@xterm/headless','@xterm/addon-serialize']},
-  server: { proxy: { '/api': { target: process.env.BLORA_API_TARGET || 'https://127.0.0.1:8443', secure: process.env.BLORA_DEV_SELF_SIGNED !== '1', ws: true } } },
+  server: { proxy: { '/api': { target: process.env.BLORA_API_TARGET || 'http://127.0.0.1:37861', secure: process.env.BLORA_DEV_SELF_SIGNED !== '1', ws: true } } },
   test: { include: ['tests/**/*.test.ts'] },
   build: { target: 'es2022' },
 })

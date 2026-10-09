@@ -112,7 +112,7 @@ def run():
     final = options.output / options.version
     staging = Path(tempfile.mkdtemp(prefix=".blora-package-", dir=options.output))
     try:
-        documentation = ["LICENSE", "README.md", "README.zh-CN.md", "sdk/README.md"] + tree("docs")
+        documentation = ["LICENSE", "README.md", "README.zh-CN.md", "master.example.json", "daemon.example.json", "sdk/README.md"] + tree("docs")
         common = [(name, name, 0o644) for name in documentation] + [("SOURCE-REVISION.txt", source_notice, 0o644)]
         web = [(name, name, 0o644) for name in tree("web/dist")]
         image = [(name, name, 0o644) for name in ["Dockerfile.isolated", "go.mod", "go.sum"] + tree("cmd/exec-helper") + tree("internal/containerterm/helper")]
@@ -123,13 +123,17 @@ def run():
                 binary = f"blora-{component}{extension}"
                 executable(f"dist/{binary}", platform)
                 invocation = f".\\{binary}" if extension else f"./{binary}"
-                command = f"{invocation} --config /private/node.json" if component == "daemon" else f"{invocation} --state-dir /private/master --static-dir web/dist"
+                command = invocation
+                setup = ("For Master, copy master.example.json to master.json beside the executable, edit paths and create its private passwordFile.\n"
+                         "The first normal start initializes the administrator automatically.\n") if component == "master" else (
+                         "For Daemon, copy daemon.example.json to daemon.json beside the executable; configure its one-time enrollmentFile.\n")
                 start = (f"Blora {component} / {platform} / {options.version}\n\n"
                          "This is a prerelease/development build, not a stable-release or full platform acceptance claim.\n"
                          "Blora Panel is licensed GPL-3.0-only; see LICENSE and the third-party notices.\n"
-                         "Use platform-appropriate private paths. Initialize Master once with --init and --password-file.\n"
-                         f"Run from the extracted directory: {command}\n"
-                         "See docs/operations/OPERATIONS.md for TLS, identities, backup and upgrade procedures.\n"
+                         "Use platform-appropriate private paths and restrictive state/config permissions.\n"
+                         + setup + f"Start without arguments: {command}\n"
+                         "Nginx owns public HTTPS; the default backend is loopback HTTP at 127.0.0.1:37861.\n"
+                         "See docs/operations/OPERATIONS.md for identities, proxy configuration, backups and upgrades.\n"
                          "Windows binaries are console programs, not native SCM service executables.\n"
                          "MANIFEST.json records every payload file; verify the external SHA256SUMS before use.\n").encode()
                 entries = common + [(binary, f"dist/{binary}", 0o755), ("START.txt", start, 0o644)] + (web if component == "master" else image)

@@ -1,0 +1,9 @@
+{
+  "stateDir": "state/master",
+  "listen": "127.0.0.1:37861",
+  "staticDir": "web/dist",
+  "extensionsDir": "state/master/extensions",
+  "adminName": "admin",
+  "passwordFile": "initial-password",
+  "verifyProxyIPs": false
+}

@@ -208,7 +208,7 @@ func (s *Server) terminalClose(w http.ResponseWriter, r *http.Request, u model.U
 }
 
 func (s *Server) terminalStream(w http.ResponseWriter, r *http.Request, u model.User) {
-	if r.TLS == nil || r.Header.Get("Origin") != s.requestOrigin(r) {
+	if !managementTransport(r) || r.Header.Get("Origin") != s.requestOrigin(r) {
 		fail(w, 403, "ORIGIN_DENIED", "终端WSS需要可信TLS来源")
 		return
 	}

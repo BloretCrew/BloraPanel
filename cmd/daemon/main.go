@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"log/slog"
@@ -30,20 +29,14 @@ func main() {
 		}
 		return
 	}
-	if err := run(); err != nil {
+	if err := run(); err != nil && err != flag.ErrHelp {
 		slog.Error("daemon stopped", "error", err)
 		os.Exit(1)
 	}
 }
 func run() error {
-	file := flag.String("config", ".local/daemon.json", "private JSON configuration")
-	flag.Parse()
-	b, err := os.ReadFile(*file)
+	config, err := parseConfig(os.Args[1:], os.Stderr)
 	if err != nil {
-		return err
-	}
-	var config daemon.Config
-	if err := json.Unmarshal(b, &config); err != nil {
 		return err
 	}
 	d, err := daemon.New(config)

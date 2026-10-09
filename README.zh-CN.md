@@ -90,111 +90,119 @@ make fixture
 
 ## 生产环境启动
 
-Master 默认只监听 **`127.0.0.1:8443`**，不要求绑定域名或填写固定 `--origin`。初始化生成的证书覆盖 `localhost`、`127.0.0.1` 和 `::1`。可完全本地运行，需要外部入口时再交给 Nginx 反代。
+Master 和 Daemon 均可**不带参数直接运行**。分别默认读取**可执行文件同目录**的 `master.json` 和 `daemon.json`，不依赖当前工作目录。配置中的相对文件/目录路径也按可执行文件所在目录解析；未填写时，数据目录默认为 `state/master` / `state/daemon`，Master 前端默认为 `web/dist`。需要另选配置文件时仍可用 `--config`。
 
-**版本范围：** 自动识别本地来源及 `--trusted-proxies` 是已发布 `v0.1.0-beta.1` 之后的修改。以下步骤使用当前源码（`make build && make web`），将 `dist/blora-master`、`dist/blora-daemon` 和 `web/dist` 放到对应目录。旧 beta 可显式加 `--origin https://localhost:8443` 本地启动，但没有新的可信反代来源/IP 识别功能；原 beta 标签和附件不会覆盖。
+Master 默认是 **`http://127.0.0.1:37861`**，外部 HTTPS 和证书交给 Nginx，常规启动无需准备 Master/Daemon 本机证书。明文管理连接只允许真正的回环连接；远程 Daemon 使用 Nginx HTTPS 入口。
 
-程序和状态分开：Master 放 `/opt/blora/master`（二进制及 `web/dist`），节点 Daemon 放 `/opt/blora/daemon`。先准备运行账号 `blora-master` / `blora-daemon`，私有状态/配置目录归对应账号所有（目录 `0700`，敏感文件 `0600`）。Windows 使用对应路径和私有 ACL。不要使用 fixture 测试身份或状态。
+**版本范围：** 这些配置、启动和传输默认值晚于已发行 `v0.1.0-beta.1`。按当前源码构建（`make build && make web`）；旧 beta 附件保持原启动方式，不会覆盖。
 
-### 1. Master：初始化一次，然后本地常驻
+### 1. Master
 
-用编辑器创建 `/etc/blora/initial-password`：12～72 字节，仅 Master 账号可读。先初始化一次，再运行不带 `--init` 的常驻进程：
+二进制与 `web/dist` 放在 `/opt/blora/master`。将[生产配置示例](docs/operations/examples/master.json)保存为 **`/opt/blora/master/master.json`**：
 
-```sh
-sudo -u blora-master /opt/blora/master/blora-master \
-  --state-dir /var/lib/blora/master --init \
-  --password-file /etc/blora/initial-password
-
-sudo -u blora-master /opt/blora/master/blora-master \
-  --state-dir /var/lib/blora/master --listen 127.0.0.1:8443 \
-  --static-dir /opt/blora/master/web/dist \
-  --extensions-dir /var/lib/blora/master/extensions
+```json
+{
+  "stateDir": "/var/lib/blora/master",
+  "listen": "127.0.0.1:37861",
+  "staticDir": "/opt/blora/master/web/dist",
+  "extensionsDir": "/var/lib/blora/master/extensions",
+  "adminName": "admin",
+  "passwordFile": "/etc/blora/initial-password",
+  "verifyProxyIPs": false
+}
 ```
 
-本机打开 **`https://localhost:8443`** 或 **`https://127.0.0.1:8443`**。核对生成的 `/var/lib/blora/master/tls.crt` 后，在浏览器/系统中信任它；不要关闭证书校验或分发 `tls.key`。使用 `admin` 和自己的初始密码登录，初始化成功后删除密码文件，重启保留状态目录。Master 已带前端。`--extensions-dir` 开启扩展安装持久目录，可选注册源、公钥参数见 `blora-master --help`。
+用本地编辑器创建配置指定的 `passwordFile`（12～72 字节，仅 Master 账号可读）。首次启动自动初始化管理员并提供面板，之后启动复用原数据库：
 
-直接访问时，自动模式只接受本地回环主机名/IP，并按请求的实际 HTTPS 主机和端口校验 Origin。若希望限制为固定入口，仍可显式填写 `--origin`。
+```sh
+sudo -u blora-master /opt/blora/master/blora-master
+```
 
-### 2. Daemon：登记后连接 Master
+也可在程序目录直接运行 `./blora-master`。本机打开 **`http://127.0.0.1:37861`**；登录后删除初始密码文件。配置/密码文件私有权限 `0600`，状态目录 `0700`，归运行账号所有。[便携模板](master.example.json)使用相对路径，需要允许该账号创建对应数据目录。
 
-在节点应用生成一次性登记票据，私有保存为 `/etc/blora/node.enrollment`，将 **Master 的公开 `tls.crt`** 复制为 `/etc/blora/master-ca.pem`。与 Master 同机的 Daemon 配置 `/etc/blora/node.json`：
+### 2. Daemon
+
+每台被管理机器部署 Daemon，程序放在 `/opt/blora/daemon`。在面板生成一次性登记票据并私有保存；将 [daemon.json](docs/operations/examples/daemon.json) 放到可执行文件同目录：
 
 ```json
 {
   "stateDir": "/var/lib/blora/node",
-  "masterUrl": "https://127.0.0.1:8443",
-  "caFile": "/etc/blora/master-ca.pem",
+  "masterUrl": "http://127.0.0.1:37861",
   "enrollmentFile": "/etc/blora/node.enrollment",
   "allowPGIDFallback": false
 }
 ```
 
 ```sh
-sudo -u blora-daemon /opt/blora/daemon/blora-daemon --config /etc/blora/node.json
+sudo -u blora-daemon /opt/blora/daemon/blora-daemon
 ```
 
-每个节点独立使用状态目录和身份。上线后删除票据文件及 `enrollmentFile` 字段，后续复用已登记身份。另一台机器的 Daemon 使用可访问的 Nginx HTTPS 入口作为 `masterUrl`，私有证书配置该入口 CA，系统受信证书可省略 `caFile`。`127.0.0.1` 始终指 Daemon 自己所在机器。Daemon 主动连接，不需要开放入站管理端口；管理 Master 所在机器，也要运行一个 Daemon。
+也可在程序目录直接运行 `./blora-daemon`。[便携模板](daemon.example.json)默认连接本机 Master，票据和状态使用相对路径。登记后复用节点自己的身份，可删除票据及 `enrollmentFile`；每个 Daemon 独立使用状态目录。
 
-Linux 原生实例需要管理员准备可写、已委派的 `cgroupRoot`；Docker/Compose 需要可访问的 `dockerEndpoint` 和运行依赖。账号权限按节点能力设置。`allowPGIDFallback` 是可信工作负载的显式后备方式，不是普通用户隔离。详见[运维手册](docs/operations/OPERATIONS.md)。
+另一台机器的 Daemon 将 `masterUrl` 改为可访问的 **Nginx HTTPS 地址**。Nginx 使用系统受信证书时不用填写 `caFile`；私有 CA 可按需配置。HTTP 只允许回环地址，不允许远程明文连接。Daemon 主动连接，不需开放入站管理端口；管理 Master 所在主机也需要在该机运行 Daemon。
 
-### 3. 前端 / Nginx：可选的外部入口
+Linux 原生实例需要管理员准备可写、已委派的 `cgroupRoot`；Docker/Compose 需要 `dockerEndpoint` 和运行依赖。`allowPGIDFallback` 仅用于显式信任的工作负载，不是普通用户隔离。
 
-上面的 Master 已向浏览器提供前端，**无需单独下载 Web 包，也无需 Node.js、开发服务器或预览服务器进程**。
+### 3. 前端 / Nginx
 
-Nginx 与 Master 同机时，Master 仍只监听回环地址，显式信任代理连接后端使用的 IP：
+Master 已提供 `web/dist`，**不需要额外 Node.js 或 Web 服务进程**。外部访问使用 [Nginx 示例](docs/operations/examples/nginx.conf)：证书和 HTTPS 由 Nginx 处理，API/WebSocket 转发至 **`http://127.0.0.1:37861`**，前端与 API 保持同源。若要独立提供 Web 包，修改 Nginx 静态 `root` 即可。
 
-```sh
-sudo -u blora-master /opt/blora/master/blora-master \
-  --state-dir /var/lib/blora/master --listen 127.0.0.1:8443 \
-  --trusted-proxies 127.0.0.1/32 \
-  --static-dir /opt/blora/master/web/dist \
-  --extensions-dir /var/lib/blora/master/extensions
+默认 `verifyProxyIPs` 为 **false**，读取转发头时不要求代理 IP 列表。请求头不能证明一定来自 Nginx，所以保持后端只监听本机，并像示例一样由 Nginx 覆盖 `X-Forwarded-Host/Proto/For` 和 `X-Real-IP`。原始主机/协议用于浏览器来源校验和 Cookie 安全属性，客户端 IP 用于登录限流；错误或歧义头会拒绝。
+
+需要限制可信代理 IP 时，在 `master.json` 修改这两个字段，再用相同命令重启：
+
+```json
+{
+  "verifyProxyIPs": true,
+  "trustedProxies": ["127.0.0.1/32", "::1/128"]
+}
 ```
 
-[Nginx 示例](docs/operations/examples/nginx.conf)独立提供静态文件，将 API/WSS 和健康检查转发到本地 Master。静态根目录默认 `/opt/blora/master/web/dist`；若使用同版本独立 Web 包，解压到 `/opt/blora/web` 并修改 `root`。若希望页面也由 Master 提供，使用相同代理设置配置 `location /`，替换静态 location 即可。
-
-将 Master 公开证书复制为 `/etc/blora/backend-ca.pem`，使用 `proxy_ssl_name localhost` 校验后端。**Nginx 外部入口**的证书按访问它的 IP 或主机名配置，Master 无需绑定或提前知道该域名。示例放入 Nginx 的 `http {}` 上下文，检查后启动：
-
-```sh
-sudo nginx -t
-sudo systemctl enable --now nginx
-# 已运行时，在配置检查通过后 reload。
-```
-
-Nginx 覆盖 `X-Forwarded-Host`、`X-Forwarded-Proto`、`X-Forwarded-For` 和 `X-Real-IP`。Master 仅在直连来源属于显式配置的可信 IP/CIDR 时读取这些头，其他来源的代理头忽略。原始 HTTPS 主机/端口用于 API 和全部浏览器 WebSocket 来源校验；真实客户端 IP 用于登录限流。IP 链从靠近 Master 的一侧向客户端检查，遇到首个不可信节点停止；单层示例直接用 `$remote_addr` 覆盖 XFF，避免客户端伪造前缀。多层反代需配置各可信节点，并在入口清洗原始主机/协议头。歧义、无效的可信代理头和非 HTTPS 转发来源会被拒绝。
-
-前端与 API 保持同一 HTTPS 来源：前端使用相对 `/api/v1` 和同源 Cookie。后端仍必须使用 TLS，代理头不能绕过 TLS 要求。头部转发依据 [Nginx 官方文档](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_set_header)。开放 Nginx 管理入口不等于开放被管理应用的业务端口。
+开关开启时必须填写非空 IP/CIDR 列表，其他连接来源的代理头被忽略。多层反代需要清洗转发链；单层示例直接覆盖 XFF 为真实客户端地址，不拼接未经信任的输入。
 
 <details>
-<summary><strong>Linux 后台服务 / Windows 启动方式</strong></summary>
+<summary><strong>可选 Master 配置</strong></summary>
 
-准备账号/目录并初始化 Master 后，使用 [Master unit](docs/operations/examples/blora-master.service)和 [Daemon unit](docs/operations/examples/blora-daemon.service)，分别放到所在机器的 `/etc/systemd/system/`。启用本机反代时，给 Master 的 `ExecStart` 加 `--trusted-proxies 127.0.0.1/32`。不要同时用同一状态目录运行前台副本和服务。
+| 配置项 | 用途 |
+| :--- | :--- |
+| `stateDir`、`listen`、`staticDir` | 持久数据、监听地址、构建好的前端。 |
+| `adminName`、`passwordFile` | 首次启动的管理员及私有密码文件路径。 |
+| `verifyProxyIPs`、`trustedProxies` | 可选的严格代理 IP 校验。 |
+| `origin` | 可选固定浏览器来源，通常自动识别。 |
+| `extensionsDir` | 持久扩展注册目录，省略时不开启安装。 |
+| `extensionsCatalog`、`extensionsCatalogUrl` | 可选本地 / HTTPS 扩展注册源。 |
+| `extensionsPublicKey` | 32 字节十六进制 Ed25519 公钥，启用包强制签名校验。 |
+| `https`、`tlsCert`、`tlsKey` | 可选直接 HTTPS 兼容模式，Nginx 终止 TLS 时通常不用填写。 |
 
-```sh
-sudo systemctl daemon-reload
-sudo systemctl enable --now blora-master.service  # Master 机器
-sudo systemctl enable --now blora-daemon.service  # 配置好的节点
-sudo journalctl -u blora-master.service -f        # 或 blora-daemon.service
-```
-
-Daemon 的 `KillMode=process` 保留独立归属的实例/日志辅助进程，停止服务不是停止所有资源；一致备份/升级前显式停止实例、PTY 并等待任务结束。示例不自动准备 cgroup 或 Docker。
-
-Windows 准备私有状态/密码/配置目录，当前编译程序及前端放在 `C:\Blora\master` / `C:\Blora\daemon`：
-
-```powershell
-# 仅初始化一次：
-& 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --init --password-file 'C:\Blora\private\initial-password'
-# 本地常驻：
-& 'C:\Blora\master\blora-master.exe' --state-dir 'C:\Blora\state\master' --listen '127.0.0.1:8443' --static-dir 'C:\Blora\master\web\dist' --extensions-dir 'C:\Blora\state\master\extensions'
-# 节点，node.json 使用 Windows 路径：
-& 'C:\Blora\daemon\blora-daemon.exe' --config 'C:\Blora\private\node.json'
-```
-
-JSON 路径例如 `C:/Blora/state/node`，同样复制并信任公开 Master CA。Windows 是控制台程序，不能用 `sc create` 直接安装为 SCM 服务；外部进程管理器需保留私有状态和独立辅助进程。本次源码修改只有交叉编译，不冒充新的真机认证。
+配置修改后重启生效；未知 JSON 字段或无效设置在打开数据库前拒绝。`--init` 仍可用于只初始化后退出，拒绝覆盖已有管理员；旧 fixture 的参数启动方式继续兼容。
 
 </details>
 
-本机可用 `curl --fail --cacert /etc/blora/master-ca.pem https://127.0.0.1:8443/healthz` 校验健康，再确认节点状态、权限和实际操作。`/healthz` 只检查 Master 数据库。文档不自动变更生产机器。
+<details>
+<summary><strong>Linux 服务 / Windows 启动</strong></summary>
+
+使用 [Master unit](docs/operations/examples/blora-master.service)和 [Daemon unit](docs/operations/examples/blora-daemon.service)。准备对应账号、同目录 JSON 和私有状态目录后安装：
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now blora-master.service
+sudo systemctl enable --now blora-daemon.service
+```
+
+Daemon 的 `KillMode=process` 保留独立归属的实例/日志辅助进程；备份、升级前显式停止资源并等待任务结束。
+
+Windows 将 `master.json` 放在 `blora-master.exe` 同目录，`daemon.json` 放在 `blora-daemon.exe` 同目录。绝对路径改为 `C:/Blora/state/master` 等 Windows 路径，或使用便携模板的相对路径：
+
+```powershell
+& 'C:\Blora\master\blora-master.exe'
+& 'C:\Blora\daemon\blora-daemon.exe'
+```
+
+程序为控制台程序，不能直接当作 SCM 原生服务安装；外部守护需保留私有状态及独立辅助进程。当前 Windows 构建为交叉编译，未新增这次修改的真机认证。
+
+</details>
+
+本机健康检查用 `curl --fail http://127.0.0.1:37861/healthz`，外部 HTTPS 通过 Nginx 入口检查。健康接口仅检查 Master 数据库，不覆盖全部节点能力。文档没有自动修改生产机器。
 
 ## 技术架构
 
@@ -204,7 +212,7 @@ JSON 路径例如 `C:/Blora/state/node`，同样复制并信任公开 Master CA�
 | **Master** · Go | 中央管理服务，负责账号/会话、服务端授权、节点登记、资源索引、持久任务协调及 API/WSS 网关；通常一套部署运行一个，也可直接托管前端。 |
 | **Daemon** · Go | 每台被管理机器上的执行服务，负责本机进程生命周期、PTY、文件、Docker/Compose、备份、监控及任务执行和回报；管理哪台机器，就需要在那台机器运行。 |
 
-节点主动向 Master 建立管理连接。HTTPS 与 WSS 只承载管理数据，被管理服务的业务网络独立配置。资源授权由服务端落实，第三方扩展默认不获得宿主机命令执行权限。
+节点主动向 Master 建立管理连接。外部 HTTPS/WSS 与本机回环 HTTP/WS 只承载管理数据，被管理服务的业务网络独立配置。资源授权由服务端落实，第三方扩展默认不获得宿主机命令执行权限。
 
 日常管理链路是 **浏览器前端 → Master → 目标机器的 Daemon**。SDK 是扩展开发工具，不是第四个常驻服务。关闭浏览器不会停止服务端实例、计划和任务；节点失联按离线/结果待确认呈现，不冒充实例已停止。
 
@@ -252,32 +260,30 @@ fixture创建新的 `.local/fixture-*`，启动独立Master与两个Daemon，默
 
 ## 独立初始化和运行
 
-先用本地编辑器创建权限0600的初始密码文件，内容为12～72字节密码，不把密码写入命令行或仓库。然后初始化一次：
+将 [master.example.json](master.example.json) 复制为编译程序同目录的 `dist/master.json`。源码构建布局将 `staticDir` 设为 `../web/dist`，解包后的 Master 已有同目录 `web/dist`。再用本地编辑器创建配置指定的 `dist/initial-password` 文件（权限 0600，12～72 字节密码），不把密码写入命令行或仓库。准备完后直接启动：
 
 ```sh
-./dist/blora-master --state-dir .local/master --init --password-file /absolute/private/initial-password
-./dist/blora-master --state-dir .local/master --listen 127.0.0.1:8443 --origin https://localhost:8443 --static-dir web/dist
+./dist/blora-master
 ```
 
-重复初始化会拒绝覆盖已有账号。初始化生成本机TLS证书；部署可用 `--tls-cert`、`--tls-key` 指定管理域名证书，`--origin` 必须与浏览器来源一致。本任务未公开部署。
+首次启动按私有密码文件初始化管理员，后续启动复用数据库。Master 默认提供本机 HTTP，外部 HTTPS 和证书交给 Nginx。本任务未公开部署。
 
-登录后在节点应用生成一次性登记票据，保存为 Daemon 所在机器的私有文本文件。准备独立配置，例如：
+登录后在节点应用生成一次性登记票据，保存为 Daemon 所在机器的私有文本文件。将独立配置保存为可执行文件同目录的 `daemon.json`，例如：
 
 ```json
 {
   "stateDir": "/absolute/private/blora-node-a",
-  "masterUrl": "https://localhost:8443",
-  "caFile": "/absolute/private/master-ca.crt",
+  "masterUrl": "http://127.0.0.1:37861",
   "enrollmentFile": "/absolute/private/node-a.enrollment",
   "allowPGIDFallback": false
 }
 ```
 
 ```sh
-./dist/blora-daemon --config /absolute/private/node-a.json
+./dist/blora-daemon
 ```
 
-每个Daemon使用独立stateDir、票据和身份。caFile是受信管理CA证书，本机测试可用Master生成的tls.crt。节点主动连接Master并校验证书，已有身份不重新消费登记票据。
+每个 Daemon 使用独立状态目录、票据和身份。本机 HTTP 不需要 CA 文件；远程使用 Nginx HTTPS，私有 CA 才需要配置 caFile。已有身份不重新消费登记票据。
 
 Linux原生实例需要已委派且可写的 `cgroupRoot`。信任执行内容的管理员可显式选择 `allowPGIDFallback:true`；进程组模式不提供普通用户宿主机隔离。普通用户使用隔离容器，需要管理员配置 `dockerEndpoint`、准备镜像并授予资源权限。
 
@@ -309,7 +315,7 @@ Linux Daemon启动时会先核对并清理自身遗留的Compose CLI。若提示
 }
 ```
 
-钩子不会经过 shell，资源身份和 hook ID 通过 `BLORA_BACKUP_*` 环境变量传入；未配置的策略会明确返回能力不可用。扩展目录既可用 `--extensions-catalog /absolute/private/catalog` 读取本地目录，也可用 `--extensions-catalog-url https://registry.example.invalid/blora/` 拉取 `index.json` 与版本包；两者不能同时配置，远程源必须是 HTTPS 且拒绝重定向。
+钩子不会经过 shell，资源身份和 hook ID 通过 `BLORA_BACKUP_*` 环境变量传入；未配置的策略会明确返回能力不可用。扩展目录在 Master JSON 中可用 `extensionsCatalog` 指定本地目录，或用 `extensionsCatalogUrl` 指定 HTTPS 注册源 拉取 `index.json` 与版本包；两者不能同时配置，远程源必须是 HTTPS 且拒绝重定向。
 
 HTTP 管理接口的请求、授权、幂等、任务、WebSocket 和结构化错误合同见 [OpenAPI 描述](docs/api/openapi.yaml)。文档中的 `sessionCookie`、`X-CSRF-Token` 与 `Idempotency-Key` 对应真实 Master 校验；OpenAPI 的通用 JSON 响应只表示模块返回的具体资源由相应应用定义。
 

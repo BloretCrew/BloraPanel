@@ -38,7 +38,7 @@ func (d *Daemon) dataLoop(ctx context.Context, channel protocol.Channel, generat
 	}
 }
 func (d *Daemon) connectData(ctx context.Context, channel protocol.Channel, generation uint64) error {
-	endpoint := strings.Replace(strings.TrimRight(d.config.MasterURL, "/"), "https://", "wss://", 1) + "/api/v1/agent/data/" + channel.String() + "?nodeId=" + url.QueryEscape(d.identity.NodeID)
+	endpoint := managementWebSocketURL(d.config.MasterURL) + "/api/v1/agent/data/" + channel.String() + "?nodeId=" + url.QueryEscape(d.identity.NodeID)
 	ws, _, err := websocket.Dial(ctx, endpoint, &websocket.DialOptions{HTTPClient: d.client})
 	if err != nil {
 		return err

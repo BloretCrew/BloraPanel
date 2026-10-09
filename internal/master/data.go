@@ -16,7 +16,7 @@ import (
 )
 
 func (s *Server) dataAgent(w http.ResponseWriter, r *http.Request) {
-	if r.TLS == nil {
+	if !managementTransport(r) {
 		fail(w, 400, "TLS_REQUIRED", "节点数据连接必须使用TLS")
 		return
 	}

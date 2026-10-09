@@ -29,6 +29,8 @@ type Options struct {
 	Store               *storage.Store
 	Origin              string
 	TrustedProxies      []netip.Prefix
+	TrustAllProxies     bool
+	AllowLoopbackHTTP   bool
 	StaticDir           string
 	ExtensionRoot       string
 	ExtensionCatalogDir string
@@ -47,6 +49,8 @@ type Server struct {
 	store               *storage.Store
 	origin              string
 	trustedProxies      []netip.Prefix
+	trustAllProxies     bool
+	allowLoopbackHTTP   bool
 	static              string
 	mux                 *http.ServeMux
 	mu                  sync.Mutex
@@ -69,6 +73,7 @@ type loginAttempt struct {
 func New(opts Options) *Server {
 	s := &Server{store: opts.Store, origin: strings.TrimRight(opts.Origin, "/"), static: opts.StaticDir, mux: http.NewServeMux(), peers: map[string]*peer{}, links: map[string]*bridge.Link{}, userStreams: map[string]map[string]context.CancelFunc{}, attempts: map[string]loginAttempt{}}
 	s.trustedProxies = append([]netip.Prefix(nil), opts.TrustedProxies...)
+	s.trustAllProxies, s.allowLoopbackHTTP = opts.TrustAllProxies, opts.AllowLoopbackHTTP
 	if opts.ExtensionRoot != "" {
 		s.extensions, _ = extensions.New(opts.ExtensionRoot, []string{"window.open", "window.move", "window.close", "shortcut.create", "data.read", "data.write", "resource.read", "resource.write", "notification.publish", "task.create"})
 		if s.extensions != nil && len(opts.ExtensionTrustedKeys) > 0 {
@@ -148,7 +153,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// External extension bootstrap code is loaded from a Blob URL inside an
 	// opaque sandbox iframe. Inline scripts remain forbidden; allowing blob:
 	// here is required for the sandbox bootstrap and existing worker URLs.
-	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; img-src 'self' data: blob:; connect-src 'self' wss:; frame-src 'self'; frame-ancestors 'none'; object-src 'none'")
+	connect := "wss:"
+	if strings.HasPrefix(expectedOrigin, "http://") {
+		connect += " ws:"
+	}
+	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; img-src 'self' data: blob:; connect-src 'self' "+connect+"; frame-src 'self'; frame-ancestors 'none'; object-src 'none'")
 	if strings.HasPrefix(r.URL.Path, "/api/") {
 		w.Header().Set("Cache-Control", "no-store")
 	}
@@ -272,7 +281,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "STORAGE_ERROR", "无法建立会话")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "blora_session", Value: token, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: 43200})
+	http.SetCookie(w, &http.Cookie{Name: "blora_session", Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.requestOrigin(r), "https://"), SameSite: http.SameSiteStrictMode, MaxAge: 43200})
 	reply(w, 200, map[string]any{"user": u, "csrfToken": csrf})
 }
 func (s *Server) session(w http.ResponseWriter, r *http.Request, u model.User) {
@@ -291,7 +300,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request, u model.User) {
 		return
 	}
 	s.revokeStreams(u.ID)
-	http.SetCookie(w, &http.Cookie{Name: "blora_session", Value: "", Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "blora_session", Value: "", Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.requestOrigin(r), "https://"), SameSite: http.SameSiteStrictMode, MaxAge: -1})
 	reply(w, 200, map[string]bool{"loggedOut": true})
 }
 func (s *Server) users(w http.ResponseWriter, r *http.Request, u model.User) {

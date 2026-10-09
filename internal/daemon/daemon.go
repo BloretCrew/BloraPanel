@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -99,8 +100,14 @@ func New(c Config) (*Daemon, error) {
 		return nil, errors.New("stateDir is required")
 	}
 	u, err := url.Parse(c.MasterURL)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
-		return nil, errors.New("masterUrl must use https")
+	if err != nil || u.Host == "" || u.Scheme != "https" && u.Scheme != "http" {
+		return nil, errors.New("masterUrl must use HTTPS, or HTTP for loopback only")
+	}
+	if u.Scheme == "http" {
+		ip := net.ParseIP(u.Hostname())
+		if u.Hostname() != "localhost" && (ip == nil || !ip.IsLoopback()) {
+			return nil, errors.New("HTTP masterUrl is allowed only on loopback")
+		}
 	}
 	if err := os.MkdirAll(c.StateDir, 0700); err != nil {
 		return nil, err
@@ -118,7 +125,19 @@ func New(c Config) (*Daemon, error) {
 			return nil, errors.New("invalid CA certificate")
 		}
 	}
-	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}}, Timeout: 20 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	dialer := &net.Dialer{Timeout: 20 * time.Second, KeepAlive: 30 * time.Second}
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12},
+		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := dialer.DialContext(ctx, network, address)
+			if err == nil && u.Scheme == "http" {
+				host, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+				if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
+					_ = conn.Close()
+					return nil, errors.New("HTTP management connection resolved outside loopback")
+				}
+			}
+			return conn, err
+		}}, Timeout: 20 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		return errors.New("management redirects are not allowed")
 	}}
 	s, err := storage.Open(filepath.Join(c.StateDir, "daemon.db"))
@@ -377,7 +396,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 }
 func (d *Daemon) connect(ctx context.Context) error {
-	endpoint := strings.Replace(strings.TrimRight(d.config.MasterURL, "/"), "https://", "wss://", 1) + "/api/v1/agent/control?nodeId=" + url.QueryEscape(d.identity.NodeID)
+	endpoint := managementWebSocketURL(d.config.MasterURL) + "/api/v1/agent/control?nodeId=" + url.QueryEscape(d.identity.NodeID)
 	ws, _, err := websocket.Dial(ctx, endpoint, &websocket.DialOptions{HTTPClient: d.client})
 	if err != nil {
 		return err

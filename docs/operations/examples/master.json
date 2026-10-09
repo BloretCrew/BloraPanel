@@ -1,0 +1,9 @@
+{
+  "stateDir": "/var/lib/blora/master",
+  "listen": "127.0.0.1:37861",
+  "staticDir": "/opt/blora/master/web/dist",
+  "extensionsDir": "/var/lib/blora/master/extensions",
+  "adminName": "admin",
+  "passwordFile": "/etc/blora/initial-password",
+  "verifyProxyIPs": false
+}
