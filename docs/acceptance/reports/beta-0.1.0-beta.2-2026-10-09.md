@@ -1,5 +1,27 @@
 # Second beta preparation and package acceptance — 2026-10-09
 
+## Post-freeze publication verification
+
+Published [v0.1.0-beta.2](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2)
+at `2026-10-09T11:58:51Z`, release ID `407867988`, `draft=false`,
+`prerelease=true`, publication used `--latest=false`. Fixed annotated tag/source:
+`96bd198bb90e105d91a623fdbdb679ca8d2da532`. All ten uploaded attachments have
+exact sizes and GitHub SHA-256 digests matching the local frozen artifacts.
+
+After source freeze, `release-verify.py` passed 1,640 component manifest records,
+three identical 171-file frontend copies, all 1,377 tracked source files,
+GPL/notices, binary/CORE compatibility and exclusion of untracked documentation.
+The final no-argument packaged smoke passed with this exact version/revision;
+the final extracted two-node/SDK smoke, real beta.1 seeded-state upgrade,
+stopped snapshot restore and compatible beta.1 snapshot rollback all passed.
+Second packaging reproduced the six component archives, CORE metadata and
+initial checksum list byte-for-byte. The final nine-entry SHA256SUMS additionally
+covers source and provenance; all entries passed checksum verification.
+
+This section was added in a documentation-only follow-up; it does not rewrite
+the frozen tag or archives. Final build/provenance details are attached to the
+release. Owned test services are stopped. No production deployment occurred.
+
 Version: `v0.1.0-beta.2`, prerelease, GPL-3.0-only. The user authorized publishing
 the current version after moving the development checkout to
 `/data/projects/blora-panel`. Production installation at
