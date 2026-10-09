@@ -149,7 +149,7 @@ func runManagedConfig(config masterConfig, initialize bool, child *bootstrap.Ser
 		}
 	}
 	app = master.New(master.Options{Store: s, Origin: config.Origin, TrustedProxies: proxies,
-		TrustAllProxies: !config.VerifyProxyIPs && !config.legacy, AllowLoopbackHTTP: !config.HTTPS,
+		TrustAllProxies: !config.VerifyProxyIPs && !config.legacy, AllowHTTP: !config.HTTPS,
 		StaticDir: config.StaticDir, ExtensionRoot: config.ExtensionsDir, ExtensionCatalogDir: config.ExtensionsCatalog,
 		ExtensionCatalogURL: config.ExtensionsCatalogURL, ExtensionTrustedKeys: trusted, CoreUpdater: updater})
 	defer app.Close()

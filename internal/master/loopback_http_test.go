@@ -13,23 +13,24 @@ import (
 	"blora.dev/panel/internal/storage"
 )
 
-func TestLoopbackHTTPSourceAndProxyModes(t *testing.T) {
+func TestHTTPSourceAndProxyModes(t *testing.T) {
 	proxies, _ := ParseTrustedProxies("127.0.0.1")
 	for _, tc := range []struct {
 		name, peer, host, forwarded, proto, want string
-		all, strict, reject                      bool
+		all, strict, allowHTTP, reject           bool
 	}{
-		{name: "direct", peer: "127.0.0.1:9", host: "localhost:37861", want: "http://localhost:37861"},
-		{name: "HTTP default port", peer: "[::1]:9", host: "[::1]:80", want: "http://[::1]"},
-		{name: "default all proxies", peer: "127.0.0.1:9", host: "localhost:37861", forwarded: "panel.example:443", proto: "https", all: true, want: "https://panel.example"},
-		{name: "strict trusted", peer: "127.0.0.1:9", host: "localhost:37861", forwarded: "panel.example", proto: "https", strict: true, want: "https://panel.example"},
-		{name: "strict untrusted", peer: "127.0.0.2:9", host: "localhost:37861", forwarded: "panel.example", proto: "https", strict: true, want: "http://localhost:37861"},
+		{name: "direct", peer: "127.0.0.1:9", host: "localhost:37861", want: "http://localhost:37861", allowHTTP: true},
+		{name: "HTTP default port", peer: "[::1]:9", host: "[::1]:80", want: "http://[::1]", allowHTTP: true},
+		{name: "default all proxies", peer: "127.0.0.1:9", host: "localhost:37861", forwarded: "panel.example:443", proto: "https", all: true, want: "https://panel.example", allowHTTP: true},
+		{name: "strict trusted", peer: "127.0.0.1:9", host: "localhost:37861", forwarded: "panel.example", proto: "https", strict: true, want: "https://panel.example", allowHTTP: true},
+		{name: "strict untrusted", peer: "127.0.0.2:9", host: "localhost:37861", forwarded: "panel.example", proto: "https", strict: true, want: "http://localhost:37861", allowHTTP: true},
 		{name: "non-loopback cannot forge TLS", peer: "192.0.2.9:7", host: "localhost", forwarded: "panel.example", proto: "https", all: true, reject: true},
-		{name: "external HTTP forbidden", peer: "127.0.0.1:9", host: "localhost", forwarded: "panel.example", proto: "http", all: true, reject: true},
+		{name: "external HTTP proxy", peer: "127.0.0.1:9", host: "localhost", forwarded: "panel.example", proto: "http", all: true, want: "http://panel.example", allowHTTP: true},
+		{name: "direct remote HTTP", peer: "100.64.0.2:4567", host: "bloret-core:37861", want: "http://bloret-core:37861", allowHTTP: true},
 		{name: "missing proto", peer: "127.0.0.1:9", host: "localhost", forwarded: "panel.example", all: true, reject: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			s := &Server{allowLoopbackHTTP: true, trustAllProxies: tc.all}
+			s := &Server{allowHTTP: tc.allowHTTP, trustAllProxies: tc.all}
 			if tc.strict {
 				s.trustedProxies = proxies
 			}
@@ -58,13 +59,40 @@ func TestLoopbackHTTPSourceAndProxyModes(t *testing.T) {
 	}
 }
 
+func TestDirectRemoteHTTPHealthAndOrigin(t *testing.T) {
+	db, err := storage.Open(filepath.Join(t.TempDir(), "master.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	app := New(Options{Store: db, AllowHTTP: true})
+	defer app.Close()
+
+	request := httptest.NewRequest("GET", "http://bloret-core:37861/healthz", nil)
+	request.RemoteAddr = "100.88.0.12:54321"
+	request.Header.Set("Origin", "http://bloret-core:37861")
+	response := httptest.NewRecorder()
+	app.ServeHTTP(response, request)
+	if response.Code != 200 {
+		t.Fatalf("remote HTTP request rejected: status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestRemoteHTTPRequiresHTTPMode(t *testing.T) {
+	request := httptest.NewRequest("GET", "http://bloret-core:37861/", nil)
+	request.RemoteAddr = "100.88.0.12:54321"
+	if _, err := (&Server{}).resolveSource(request); err == nil {
+		t.Fatal("remote cleartext request accepted when HTTP mode is disabled")
+	}
+}
+
 func TestLoopbackHTTPDaemonControlAndData(t *testing.T) {
 	base := t.TempDir()
 	store, err := storage.Open(filepath.Join(base, "master.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := New(Options{Store: store, AllowLoopbackHTTP: true, TrustAllProxies: true})
+	app := New(Options{Store: store, AllowHTTP: true, TrustAllProxies: true})
 	server := httptest.NewServer(app)
 	ctx, cancel := context.WithCancel(context.Background())
 	token, err := store.Enrollment(ctx, "loopback-node")

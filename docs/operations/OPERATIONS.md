@@ -30,7 +30,7 @@ Master 默认读取可执行文件同目录的 `master.json`，Daemon 默认读�
 ./blora-daemon
 ```
 
-默认后端 `http://127.0.0.1:37861`，不绑定外部域名，不生成或要求后端 SSL 证书。Nginx 终止 HTTPS、覆盖转发头，将 API/WebSocket 代理到本机 HTTP。真正回环连接可使用 HTTP/WS；外部浏览器和远程 Daemon 通过 Nginx HTTPS/WSS，远程 HTTP 管理连接会拒绝。
+默认后端 `http://127.0.0.1:37861`，不绑定外部域名，不生成或要求后端 SSL 证书。可将 `listen` 改为 `0.0.0.0:37861` 监听所有 IPv4 网卡；HTTP/WS 可承载远程管理连接，或由 Nginx 终止 HTTPS 并代理到 Master。远程 Daemon 可连接可达的 Master HTTP/HTTPS 地址。
 
 默认 `verifyProxyIPs:false` 不要求代理 IP 白名单，读取转发原始主机/协议/IP；请求头无法证明 Nginx 身份，后端保持只监听本机，入口必须覆盖客户端传入的头。开启 `verifyProxyIPs:true` 后，必须在 `trustedProxies` 配置非空 IP/CIDR 列表，非可信来源的头被忽略。严格模式按 XFF 右到左停止于首个不可信跳点，默认全信任模式采用转发链最左端地址，因此单层 Nginx 示例直接覆盖 XFF 为 `$remote_addr`。错误/歧义头仍拒绝，原始来源用于浏览器 API/WS 校验及 Cookie 安全属性，真实 IP 用于登录限流。
 

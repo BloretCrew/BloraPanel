@@ -36,6 +36,10 @@ README、四份模板、两 unit、Nginx、Vite 和未来包 START 已同步。�
 
 当前无待接管服务。六个本地开发包共 2458 个载荷、四份二进制、模板、零参数 START 与内外摘要核验通过。上一节的“HTTPS 后端、默认不信任代理”为历史证据，当前默认值以本节和 README 为准。本地实现/验证已收尾，随本次源码提交交付；下一动作是用户按 README 实际运行并反馈。不覆盖 beta.1 标签/附件，不部署生产或新增 Windows 真机 PASS。
 
+## 后续要求：允许 Master 直接远程 HTTP
+
+用户希望保留 `listen: 0.0.0.0:37861` 并直接通过 HTTP 访问。当前源码已去除“非回环 HTTP 必须拒绝”及“HTTP 仅允许 localhost host”的硬限制；HTTPS 模式仍需真实 TLS。v0.1.0-beta.2 二进制不可通过配置启用此行为，需后续新构建。来源解析/Origin、关闭 HTTP 时拒绝、代理 HTTP 来源定向 race 测试通过；配置测试、`go vet`、Linux 与 Windows Master 构建通过。完整 `internal/master`/`cmd/master` 测试尝试因受限执行环境禁止 `httptest` 监听本地临时端口而失败，不能标为全包通过。尚未把隔离副本的变更集成回 `/data/projects/blora-panel`，也未提交、推送或发行。
+
 ## 前一轮实现：本地监听与可信反代来源
 
 按用户要求，Master 默认仍仅监听 `127.0.0.1:8443`，取消必填固定域名来源；自动模式按本地回环请求的 HTTPS 主机/端口校验。新增显式 `--trusted-proxies`（默认不信任任何代理），从可信直连代理读取原始 HTTPS 主机/端口及客户端 IP，API、事件/终端/日志/容器日志 WSS 使用同一来源，登录限流采用解析后的客户端 IP。XFF 右到左校验，未经信任的头忽略，可信头歧义/错误拒绝；保留真正 TLS 与可选固定 origin 的保护。中英 README、Master unit、Nginx 示例已改为本地后端方式。

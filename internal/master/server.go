@@ -32,7 +32,7 @@ type Options struct {
 	Origin              string
 	TrustedProxies      []netip.Prefix
 	TrustAllProxies     bool
-	AllowLoopbackHTTP   bool
+	AllowHTTP           bool
 	StaticDir           string
 	ExtensionRoot       string
 	ExtensionCatalogDir string
@@ -53,7 +53,7 @@ type Server struct {
 	origin              string
 	trustedProxies      []netip.Prefix
 	trustAllProxies     bool
-	allowLoopbackHTTP   bool
+	allowHTTP           bool
 	static              string
 	mux                 *http.ServeMux
 	mu                  sync.Mutex
@@ -77,7 +77,7 @@ func New(opts Options) *Server {
 	s := &Server{store: opts.Store, origin: strings.TrimRight(opts.Origin, "/"), static: opts.StaticDir, mux: http.NewServeMux(), peers: map[string]*peer{}, links: map[string]*bridge.Link{}, userStreams: map[string]map[string]context.CancelFunc{}, attempts: map[string]loginAttempt{}}
 	s.trustedProxies = append([]netip.Prefix(nil), opts.TrustedProxies...)
 	s.coreUpdater = opts.CoreUpdater
-	s.trustAllProxies, s.allowLoopbackHTTP = opts.TrustAllProxies, opts.AllowLoopbackHTTP
+	s.trustAllProxies, s.allowHTTP = opts.TrustAllProxies, opts.AllowHTTP
 	if opts.ExtensionRoot != "" {
 		s.extensions, _ = extensions.New(opts.ExtensionRoot, []string{"window.open", "window.move", "window.close", "shortcut.create", "data.read", "data.write", "resource.read", "resource.write", "notification.publish", "task.create"})
 		if s.extensions != nil && len(opts.ExtensionTrustedKeys) > 0 {

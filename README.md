@@ -132,9 +132,9 @@ See the [operations guide](docs/operations/OPERATIONS.md) for state directories,
 
 Both programs start with **no arguments**. Master reads `master.json` and Daemon reads `daemon.json` **beside their executable**, regardless of the working directory. Relative configuration/data paths also use that executable directory. Omitted paths default to `state/master`, `state/daemon`, and Master's `web/dist`; a custom configuration can still be selected with `--config`.
 
-Master defaults to **`http://127.0.0.1:37861`**. Nginx handles public HTTPS and certificates; the normal Master/Daemon setup needs no local certificates. Cleartext management is restricted to actual loopback connections. Remote Daemons use the Nginx HTTPS entry.
+Master defaults to **`http://127.0.0.1:37861`**. Set `listen` to `0.0.0.0:37861` to bind all IPv4 interfaces; HTTP/WS also supports remote clients. Nginx can terminate HTTPS/WSS without local certificates on Master or Daemon.
 
-**Version scope:** use the [v0.1.0-beta.2 prebuilt release](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2) for these configuration/startup/transport defaults; no production compilation is needed. The older beta.1 archives retain their original startup behavior and are not overwritten. Source builds remain available for development.
+**Version scope:** the [v0.1.0-beta.2 prebuilt release](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2) includes the configuration and startup defaults, but still rejects direct remote HTTP. Remote HTTP support requires a newer build containing this change. The older beta.1 archives retain their original startup behavior and are not overwritten.
 
 ### 1. Master
 
@@ -179,7 +179,7 @@ sudo -u blora-daemon /opt/blora/daemon/blora-daemon
 
 Or, from the program directory: `./blora-daemon`. The [portable template](daemon.example.json) defaults to local Master and relative enrollment/state paths. An enrolled Daemon reuses its own identity; remove the ticket and `enrollmentFile` after enrollment. Each Daemon needs a separate state directory.
 
-For another machine, set `masterUrl` to the reachable **Nginx HTTPS URL**. System-trusted Nginx certificates need no `caFile`; a private CA may be supplied there. Plain HTTP is accepted only for loopback, never for a remote address. Daemon connects outbound, with no inbound management port. Run a Daemon on the Master machine too if you want to manage that host.
+For another machine, set `masterUrl` to the reachable Master URL. Prefer the **Nginx HTTPS URL** when available; plain HTTP is also supported. System-trusted Nginx certificates need no `caFile`; a private CA may be supplied there. Daemon connects outbound, with no inbound management port. Run a Daemon on the Master machine too if you want to manage that host.
 
 Linux native instances require an administrator-prepared writable `cgroupRoot`; Docker/Compose requires `dockerEndpoint` and runtime dependencies. `allowPGIDFallback` is for explicitly trusted workloads, not ordinary user isolation.
 
@@ -242,7 +242,7 @@ These are console programs, not native SCM executables. A supervisor must preser
 
 </details>
 
-Check local health with `curl --fail http://127.0.0.1:37861/healthz`; check external HTTPS through your Nginx entry. Health checks cover Master's database, not all node capabilities. No production host is changed by these instructions.
+Check local health with `curl --fail http://127.0.0.1:37861/healthz`; check the configured external Master URL as well. Health checks cover Master's database, not all node capabilities. No production host is changed by these instructions.
 
 ### Online updates
 
@@ -275,7 +275,7 @@ Use a separate production installation, such as `/data/instances/blora-panel-run
 | **Master** · Go | Central management service: accounts/sessions, server-side authorization, node enrollment, resource indexes, persistent task coordination and the API/WSS gateway. Usually one per deployment; it can also serve the frontend. |
 | **Daemon** · Go | Execution service on each managed machine: local process lifecycle, PTYs, files, Docker/Compose, backups, monitoring and task execution/reporting. Only resources on a machine with a Daemon can be managed there. |
 
-Nodes establish outbound management connections to the Master. External HTTPS/WSS and local loopback HTTP/WS carry management data; managed services keep their own business networking. Resource authorization is enforced on the server, and extensions do not receive host command execution by default.
+Nodes establish outbound management connections to the Master. The Master can serve management traffic over HTTPS/WSS or HTTP/WS; choose the listener address and transport that fit the deployment. Managed services keep their own business networking. Resource authorization is enforced on the server, and extensions do not receive host command execution by default.
 
 The normal management path is **browser frontend → Master → target Daemon**. The SDK is an extension-development toolkit, not a fourth running service. Closing the browser does not stop server-side instances, schedules or tasks; an offline node remains offline/unknown in the UI rather than being reported as stopped.
 

@@ -128,7 +128,7 @@ func testProxySourceLoginAndWebSocket(t *testing.T, plainBackend bool) {
 		t.Fatal(err)
 	}
 	proxies, _ := ParseTrustedProxies("127.0.0.1")
-	app := New(Options{Store: db, TrustedProxies: proxies, AllowLoopbackHTTP: plainBackend, TrustAllProxies: plainBackend})
+	app := New(Options{Store: db, TrustedProxies: proxies, AllowHTTP: plainBackend, TrustAllProxies: plainBackend})
 	defer app.Close()
 	backend := httptest.NewUnstartedServer(app)
 	if plainBackend {

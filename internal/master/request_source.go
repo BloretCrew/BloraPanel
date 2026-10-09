@@ -107,14 +107,14 @@ func sourceHost(value, scheme string) (string, bool, error) {
 	return strings.ToLower(value), local, nil
 }
 
-// Resolve before authorization and rate limiting. Cleartext management is
-// permitted only for a real loopback peer, never because a header claims TLS.
+// Resolve before authorization and rate limiting. HTTP remains HTTP even when
+// proxy headers claim TLS; the deployment owner chooses whether to expose it.
 func (s *Server) resolveSource(r *http.Request) (*http.Request, error) {
 	peer, _, _ := net.SplitHostPort(r.RemoteAddr)
 	ip, _ := netip.ParseAddr(peer)
-	transportOK := r.TLS != nil || s.allowLoopbackHTTP && ip.IsValid() && ip.Unmap().IsLoopback()
+	transportOK := r.TLS != nil || s.allowHTTP
 	if !transportOK {
-		return nil, errors.New("management transport requires TLS or configured loopback HTTP")
+		return nil, errors.New("management transport requires TLS or HTTP enabled by the deployment")
 	}
 	trusted := ip.IsValid() && s.trustedProxy(ip)
 	scheme := "https"
@@ -176,18 +176,12 @@ func (s *Server) resolveSource(r *http.Request) (*http.Request, error) {
 	}
 	origin := s.origin
 	if origin == "" || forwardedHost {
-		normalized, local, err := sourceHost(host, scheme)
+		normalized, _, err := sourceHost(host, scheme)
 		if err != nil {
 			return nil, err
 		}
 		host = normalized
-		if scheme == "http" && !local {
-			return nil, errors.New("external browser origins require HTTPS")
-		}
 		if origin == "" {
-			if !forwardedHost && !local {
-				return nil, errors.New("direct access requires a loopback host or explicit origin")
-			}
 			origin = scheme + "://" + host
 		}
 	}

@@ -92,9 +92,9 @@ make fixture
 
 Master 和 Daemon 均可**不带参数直接运行**。分别默认读取**可执行文件同目录**的 `master.json` 和 `daemon.json`，不依赖当前工作目录。配置中的相对文件/目录路径也按可执行文件所在目录解析；未填写时，数据目录默认为 `state/master` / `state/daemon`，Master 前端默认为 `web/dist`。需要另选配置文件时仍可用 `--config`。
 
-Master 默认是 **`http://127.0.0.1:37861`**，外部 HTTPS 和证书交给 Nginx，常规启动无需准备 Master/Daemon 本机证书。明文管理连接只允许真正的回环连接；远程 Daemon 使用 Nginx HTTPS 入口。
+Master 默认是 **`http://127.0.0.1:37861`**。可在 `master.json` 中把 `listen` 改为 `0.0.0.0:37861` 监听所有 IPv4 网卡；HTTP/WS 也可用于远程访问，HTTPS/WSS 则可由 Nginx 终止 TLS，常规启动无需准备 Master/Daemon 本机证书。
 
-**版本范围：** 使用 [v0.1.0-beta.2 预构建 Release](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2) 即可采用这些配置、启动和传输默认值，生产机器无需编译。旧 beta.1 附件保持原启动方式，不会覆盖；源码构建方式仍用于开发。
+**版本范围：** [v0.1.0-beta.2 预构建 Release](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.2) 包含这些配置与启动默认值，但仍会拒绝直接远程 HTTP。远程 HTTP 需要使用包含此改动的新构建。旧 beta.1 附件保持原启动方式，不会覆盖。
 
 ### 1. Master
 
@@ -139,7 +139,7 @@ sudo -u blora-daemon /opt/blora/daemon/blora-daemon
 
 也可在程序目录直接运行 `./blora-daemon`。[便携模板](daemon.example.json)默认连接本机 Master，票据和状态使用相对路径。登记后复用节点自己的身份，可删除票据及 `enrollmentFile`；每个 Daemon 独立使用状态目录。
 
-另一台机器的 Daemon 将 `masterUrl` 改为可访问的 **Nginx HTTPS 地址**。Nginx 使用系统受信证书时不用填写 `caFile`；私有 CA 可按需配置。HTTP 只允许回环地址，不允许远程明文连接。Daemon 主动连接，不需开放入站管理端口；管理 Master 所在主机也需要在该机运行 Daemon。
+另一台机器的 Daemon 将 `masterUrl` 改为可访问的 Master 地址。优先使用 **Nginx HTTPS 地址**；也可使用 HTTP。Nginx 使用系统受信证书时不用填写 `caFile`；私有 CA 可按需配置。Daemon 主动连接，不需开放入站管理端口；管理 Master 所在主机也需要在该机运行 Daemon。
 
 Linux 原生实例需要管理员准备可写、已委派的 `cgroupRoot`；Docker/Compose 需要 `dockerEndpoint` 和运行依赖。`allowPGIDFallback` 仅用于显式信任的工作负载，不是普通用户隔离。
 
@@ -202,7 +202,7 @@ Windows 将 `master.json` 放在 `blora-master.exe` 同目录，`daemon.json` �
 
 </details>
 
-本机健康检查用 `curl --fail http://127.0.0.1:37861/healthz`，外部 HTTPS 通过 Nginx 入口检查。健康接口仅检查 Master 数据库，不覆盖全部节点能力。文档没有自动修改生产机器。
+本机健康检查用 `curl --fail http://127.0.0.1:37861/healthz`，并通过配置的外部 Master 地址检查。健康接口仅检查 Master 数据库，不覆盖全部节点能力。文档没有自动修改生产机器。
 
 ### 在线更新
 
@@ -235,7 +235,7 @@ Windows 将 `master.json` 放在 `blora-master.exe` 同目录，`daemon.json` �
 | **Master** · Go | 中央管理服务，负责账号/会话、服务端授权、节点登记、资源索引、持久任务协调及 API/WSS 网关；通常一套部署运行一个，也可直接托管前端。 |
 | **Daemon** · Go | 每台被管理机器上的执行服务，负责本机进程生命周期、PTY、文件、Docker/Compose、备份、监控及任务执行和回报；管理哪台机器，就需要在那台机器运行。 |
 
-节点主动向 Master 建立管理连接。外部 HTTPS/WSS 与本机回环 HTTP/WS 只承载管理数据，被管理服务的业务网络独立配置。资源授权由服务端落实，第三方扩展默认不获得宿主机命令执行权限。
+节点主动向 Master 建立管理连接。Master 支持 HTTPS/WSS 和 HTTP/WS 管理访问；被管理服务的业务网络独立配置。资源授权由服务端落实，第三方扩展默认不获得宿主机命令执行权限。
 
 日常管理链路是 **浏览器前端 → Master → 目标机器的 Daemon**。SDK 是扩展开发工具，不是第四个常驻服务。关闭浏览器不会停止服务端实例、计划和任务；节点失联按离线/结果待确认呈现，不冒充实例已停止。
 
