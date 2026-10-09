@@ -48,6 +48,7 @@ def main():
     args = parser.parse_args()
     assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip() == args.revision
     assert not subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip(), 'Source tree is modified'
+    tracked_inputs = set(subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().strip('\0').split('\0'))
     expected = {}
     for platform in ('linux-amd64', 'windows-amd64'):
         for component in ('master', 'daemon'):
@@ -77,6 +78,7 @@ def main():
         sha = digest(archive.read_bytes())
         assert sha == sums[name], 'External checksum mismatch: ' + name
         values, modes = payload(archive)
+        assert all(p in tracked_inputs for p in values if p.startswith('docs/')), 'Untracked/private documentation in release archive'
         manifest = json.loads(values.pop('MANIFEST.json'))
         assert (manifest['version'], manifest['component'], manifest['platform']) == (args.version, component, platform)
         entries = manifest['files']

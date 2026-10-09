@@ -19,17 +19,24 @@ ROOT = Path(__file__).resolve().parents[1]
 IGNORED = {"node_modules", ".git", ".local", ".codex", ".agents", "__pycache__"}
 
 
-def tree(relative):
+def tree(relative, tracked_only=False):
     base = ROOT / relative
     if not base.is_dir() or base.is_symlink():
         raise ValueError(f"Missing regular input directory: {relative}")
     result = []
+    tracked = None
+    if tracked_only:
+        tracked = set(subprocess.check_output(
+            ["git", "ls-files", "-z", "--", relative], cwd=ROOT).decode().strip("\0").split("\0"))
     for directory, directories, files in os.walk(base, followlinks=False):
         directories[:] = sorted(name for name in directories if name not in IGNORED)
         for name in directories:
             if (Path(directory) / name).is_symlink():
                 raise ValueError("Symlink input directories are not packaged")
-        result.extend(Path(directory, name).relative_to(ROOT).as_posix() for name in sorted(files))
+        for name in sorted(files):
+            path = Path(directory, name).relative_to(ROOT).as_posix()
+            if tracked is None or path in tracked:
+                result.append(path)
     return result
 
 
@@ -131,7 +138,9 @@ def run():
                 raise ValueError("Master and Daemon compatibility metadata disagree")
         core_bytes = (json.dumps(core_metadata, sort_keys=True, indent=2) + "\n").encode()
         (staging / "CORE-UPDATE.json").write_bytes(core_bytes)
-        documentation = ["LICENSE", "README.md", "README.zh-CN.md", "master.example.json", "daemon.example.json", "sdk/README.md"] + tree("docs")
+        # Local/ignored review screenshots and reports are not release inputs.
+        # Generated frontend/SDK payloads below remain explicit build inputs.
+        documentation = ["LICENSE", "README.md", "README.zh-CN.md", "master.example.json", "daemon.example.json", "sdk/README.md"] + tree("docs", tracked_only=True)
         common = [(name, name, 0o644) for name in documentation] + [("SOURCE-REVISION.txt", source_notice, 0o644), ("CORE-UPDATE.json", core_bytes, 0o644)]
         web = [(name, name, 0o644) for name in tree("web/dist")]
         image = [(name, name, 0o644) for name in ["Dockerfile.isolated", "go.mod", "go.sum"] + tree("cmd/exec-helper") + tree("internal/containerterm/helper")]
