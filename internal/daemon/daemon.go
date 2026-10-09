@@ -26,6 +26,7 @@ import (
 	"blora.dev/panel/internal/bridge"
 	"blora.dev/panel/internal/containers"
 	"blora.dev/panel/internal/containerterm"
+	"blora.dev/panel/internal/coreupdate"
 	"blora.dev/panel/internal/model"
 	"blora.dev/panel/internal/monitor"
 	"blora.dev/panel/internal/protocol"
@@ -38,18 +39,21 @@ import (
 )
 
 type Config struct {
-	StateDir           string   `json:"stateDir"`
-	MasterURL          string   `json:"masterUrl"`
-	CAFile             string   `json:"caFile"`
-	EnrollmentFile     string   `json:"enrollmentFile,omitempty"`
-	RotationFile       string   `json:"rotationFile,omitempty"`
-	CgroupRoot         string   `json:"cgroupRoot,omitempty"`
-	AllowPGIDFallback  bool     `json:"allowPGIDFallback"`
-	DockerEndpoint     string   `json:"dockerEndpoint,omitempty"`
-	LogHelperCommand   []string `json:"logHelperCommand,omitempty"`
-	ComposeCommand     []string `json:"composeCommand,omitempty"`
-	ComposeTLSCertPath string   `json:"composeTlsCertPath,omitempty"`
-	BackupRoot         string   `json:"backupRoot,omitempty"`
+	Updates            coreupdate.Config   `json:"updates"`
+	CoreUpdater        *coreupdate.Manager `json:"-"`
+	OnReady            func()              `json:"-"`
+	StateDir           string              `json:"stateDir"`
+	MasterURL          string              `json:"masterUrl"`
+	CAFile             string              `json:"caFile"`
+	EnrollmentFile     string              `json:"enrollmentFile,omitempty"`
+	RotationFile       string              `json:"rotationFile,omitempty"`
+	CgroupRoot         string              `json:"cgroupRoot,omitempty"`
+	AllowPGIDFallback  bool                `json:"allowPGIDFallback"`
+	DockerEndpoint     string              `json:"dockerEndpoint,omitempty"`
+	LogHelperCommand   []string            `json:"logHelperCommand,omitempty"`
+	ComposeCommand     []string            `json:"composeCommand,omitempty"`
+	ComposeTLSCertPath string              `json:"composeTlsCertPath,omitempty"`
+	BackupRoot         string              `json:"backupRoot,omitempty"`
 	// BackupHookCommands is an administrator-owned map from a consistency hook
 	// reference to a fixed argv. Commands are executed without a shell and only
 	// when a backup explicitly selects the matching reference.
@@ -83,6 +87,7 @@ type Daemon struct {
 	metrics           *monitor.Collector
 	wg                sync.WaitGroup
 	closing, running  bool
+	coreUpdating      bool
 	runCancel         context.CancelFunc
 	closedDone        chan struct{}
 	closeErr          error
@@ -372,6 +377,12 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.capabilities = d.runtime.Capabilities(ctx)
 	d.capabilities["file"] = "available"
 	d.capabilities["terminal.native"] = "requires host.manage"
+	d.capabilities["core.protocol"] = "1"
+	d.capabilities["core.version"] = coreupdate.Version
+	d.capabilities["core.revision"] = coreupdate.BuildRevision()
+	if d.config.CoreUpdater != nil {
+		d.capabilities["core.update"] = "release"
+	}
 	d.background(func() { d.observe(ctx) })
 	d.background(func() { d.maintainFiles(ctx) })
 	backoff := time.Second
@@ -452,6 +463,9 @@ func (d *Daemon) connect(ctx context.Context) error {
 	if err := d.startupSnapshot(connectionCtx, c); err != nil {
 		return err
 	}
+	if d.config.OnReady != nil {
+		d.config.OnReady()
+	}
 	d.background(func() {
 		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
@@ -503,7 +517,7 @@ func (d *Daemon) connect(ctx context.Context) error {
 				} else {
 					d.report(ctx, existing)
 					if existing.State == model.Queued {
-						d.schedule(connectionCtx, existing)
+						d.schedule(ctx, existing)
 					}
 				}
 				continue
@@ -511,7 +525,13 @@ func (d *Daemon) connect(ctx context.Context) error {
 			if command.Kind != "task" {
 				return errors.New("unknown command")
 			}
+			d.mu.Lock()
+			if d.coreUpdating || d.closing {
+				d.mu.Unlock()
+				continue // No receipt: Master retains and reconciles the task.
+			}
 			accepted, fresh, err := d.store.Accept(ctx, command.Task)
+			d.mu.Unlock()
 			if err != nil {
 				return err
 			}
@@ -526,7 +546,7 @@ func (d *Daemon) connect(ctx context.Context) error {
 }
 func (d *Daemon) schedule(ctx context.Context, t model.Task) {
 	d.mu.Lock()
-	if d.closing {
+	if d.closing || d.coreUpdating {
 		d.mu.Unlock()
 		return
 	}

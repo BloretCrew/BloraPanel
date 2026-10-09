@@ -18,6 +18,24 @@ real-device results and their fixed revisions are recorded in the acceptance
 reports. Opt-in tests requiring extra environments may skip in the Go suite;
 such skips do not count as passed environment checks.
 
+## Online core-update drill
+
+On Linux, with Go, Python 3 and OpenSSL available:
+
+```sh
+python3 scripts/core-update-smoke.py --report .local/core-update-smoke.json
+go test -race ./internal/coreupdate ./internal/bootstrap ./internal/daemon ./internal/master ./cmd/master ./cmd/daemon -count=1
+```
+
+The drill builds two private test versions, supplies a local HTTPS Release API,
+and runs real Master/Daemon binaries. It updates both while an owned native
+instance runs, verifies PID birth/run identity and continued business output,
+checks receipt replay and refuses a tampered download. It cleans only its own
+processes and private temporary directories. The report contains no credentials
+or raw process output. This verifies the mechanism, not a public Release or new
+Windows device behavior. Bootstrap tests separately verify candidate-startup
+failure rollback; native recovery tests verify the original input/log helper.
+
 ## Ordinary browser checks
 
 Install the matching Playwright browsers, then run from `web`:

@@ -2,5 +2,9 @@
   "stateDir": "/var/lib/blora/node",
   "masterUrl": "http://127.0.0.1:37861",
   "enrollmentFile": "/etc/blora/node.enrollment",
-  "allowPGIDFallback": false
+  "allowPGIDFallback": false,
+  "updates": {
+    "repository": "https://github.com/BloretCrew/BloraPanel",
+    "channel": "beta"
+  }
 }

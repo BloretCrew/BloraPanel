@@ -5,5 +5,9 @@
   "extensionsDir": "state/master/extensions",
   "adminName": "admin",
   "passwordFile": "initial-password",
-  "verifyProxyIPs": false
+  "verifyProxyIPs": false,
+  "updates": {
+    "repository": "https://github.com/BloretCrew/BloraPanel",
+    "channel": "beta"
+  }
 }

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"blora.dev/panel/internal/bridge"
+	"blora.dev/panel/internal/coreupdate"
 	"blora.dev/panel/internal/extensions"
 	"blora.dev/panel/internal/model"
 	"blora.dev/panel/internal/protocol"
@@ -26,6 +27,7 @@ import (
 )
 
 type Options struct {
+	CoreUpdater         *coreupdate.Manager
 	Store               *storage.Store
 	Origin              string
 	TrustedProxies      []netip.Prefix
@@ -46,6 +48,7 @@ type peer struct {
 	generation uint64
 }
 type Server struct {
+	coreUpdater         *coreupdate.Manager
 	store               *storage.Store
 	origin              string
 	trustedProxies      []netip.Prefix
@@ -73,6 +76,7 @@ type loginAttempt struct {
 func New(opts Options) *Server {
 	s := &Server{store: opts.Store, origin: strings.TrimRight(opts.Origin, "/"), static: opts.StaticDir, mux: http.NewServeMux(), peers: map[string]*peer{}, links: map[string]*bridge.Link{}, userStreams: map[string]map[string]context.CancelFunc{}, attempts: map[string]loginAttempt{}}
 	s.trustedProxies = append([]netip.Prefix(nil), opts.TrustedProxies...)
+	s.coreUpdater = opts.CoreUpdater
 	s.trustAllProxies, s.allowLoopbackHTTP = opts.TrustAllProxies, opts.AllowLoopbackHTTP
 	if opts.ExtensionRoot != "" {
 		s.extensions, _ = extensions.New(opts.ExtensionRoot, []string{"window.open", "window.move", "window.close", "shortcut.create", "data.read", "data.write", "resource.read", "resource.write", "notification.publish", "task.create"})
@@ -135,6 +139,7 @@ func New(opts Options) *Server {
 	s.registerSystem()
 	s.registerExtensions()
 	s.registerWorkspaces()
+	s.registerCoreUpdates()
 	if opts.StaticDir != "" {
 		s.mux.Handle("/", http.FileServer(http.Dir(filepath.Clean(opts.StaticDir))))
 	}
@@ -860,6 +865,9 @@ func (s *Server) retryTask(w http.ResponseWriter, r *http.Request, u model.User)
 	reply(w, status, map[string]any{"task": task})
 }
 func (s *Server) Close() error {
+	if s.coreUpdater != nil {
+		s.coreUpdater.Close()
+	}
 	s.closeSchedules()
 	s.closeTransfers()
 	s.mu.Lock()

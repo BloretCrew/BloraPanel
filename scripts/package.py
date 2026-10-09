@@ -112,8 +112,27 @@ def run():
     final = options.output / options.version
     staging = Path(tempfile.mkdtemp(prefix=".blora-package-", dir=options.output))
     try:
+        # Compatibility is embedded by the exact binaries being distributed,
+        # rather than inferred from source files or the release label.
+        compatibility = json.loads(content("core-update.json"))
+        for component in ("master", "daemon"):
+            info = json.loads(subprocess.check_output(
+                [str(ROOT / f"dist/blora-{component}"), "--core-update-info"], text=True))
+            if (info.get("version") != options.version or info.get("revision") != revision
+                    or info.get("component") != component or not info.get("managedRestart")
+                    or not info.get("preserveInstances")):
+                raise ValueError("Build version/revision mismatch; rebuild using BLORA_VERSION before packaging")
+            fields = {key: info[key] for key in ("formatVersion", "version", "revision",
+                      "protocolVersion", "schemaVersion", "schemaFingerprint", "preserveInstances")}
+            fields.update({key: compatibility[key] for key in ("peerProtocolMin", "peerProtocolMax")})
+            if component == "master":
+                core_metadata = fields
+            elif fields != core_metadata:
+                raise ValueError("Master and Daemon compatibility metadata disagree")
+        core_bytes = (json.dumps(core_metadata, sort_keys=True, indent=2) + "\n").encode()
+        (staging / "CORE-UPDATE.json").write_bytes(core_bytes)
         documentation = ["LICENSE", "README.md", "README.zh-CN.md", "master.example.json", "daemon.example.json", "sdk/README.md"] + tree("docs")
-        common = [(name, name, 0o644) for name in documentation] + [("SOURCE-REVISION.txt", source_notice, 0o644)]
+        common = [(name, name, 0o644) for name in documentation] + [("SOURCE-REVISION.txt", source_notice, 0o644), ("CORE-UPDATE.json", core_bytes, 0o644)]
         web = [(name, name, 0o644) for name in tree("web/dist")]
         image = [(name, name, 0o644) for name in ["Dockerfile.isolated", "go.mod", "go.sum"] + tree("cmd/exec-helper") + tree("internal/containerterm/helper")]
         for platform in ("linux-amd64", "windows-amd64"):

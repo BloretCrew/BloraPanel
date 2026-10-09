@@ -189,7 +189,7 @@ sudo systemctl enable --now blora-master.service
 sudo systemctl enable --now blora-daemon.service
 ```
 
-Daemon 的 `KillMode=process` 保留独立归属的实例/日志辅助进程；备份、升级前显式停止资源并等待任务结束。
+Daemon 的 `KillMode=process` 保留独立归属的实例/日志辅助进程；在线更新只切换管理子进程。一致性状态备份或不兼容维护升级仍按停机流程排空。
 
 Windows 将 `master.json` 放在 `blora-master.exe` 同目录，`daemon.json` 放在 `blora-daemon.exe` 同目录。绝对路径改为 `C:/Blora/state/master` 等 Windows 路径，或使用便携模板的相对路径：
 
@@ -203,6 +203,29 @@ Windows 将 `master.json` 放在 `blora-master.exe` 同目录，`daemon.json` �
 </details>
 
 本机健康检查用 `curl --fail http://127.0.0.1:37861/healthz`，外部 HTTPS 通过 Nginx 入口检查。健康接口仅检查 Master 数据库，不覆盖全部节点能力。文档没有自动修改生产机器。
+
+### 在线更新
+
+管理员在**设置**更新 Master，在**节点管理**更新对应 Daemon。下载已构建好的 Release，运行机器不需要 Git、Go、Node.js 或现场编译。先检查版本和兼容性，再应用固定目标。运行中的托管实例保留原进程身份；管理连接会重连，交互终端可能断开，浏览器上传可能需要续传。
+
+两份配置文件均可填写相同的可选来源：
+
+```json
+{
+  "updates": {
+    "repository": "https://github.com/BloretCrew/BloraPanel",
+    "channel": "beta"
+  }
+}
+```
+
+不填写时默认本项目、`beta` 通道；`stable` 排除预发布。可选 `updates.apiUrl` 指向 HTTPS **GitHub 兼容 API 镜像**，需同时提供 Release、附件下载、标签和提交接口，普通文件目录不适用。来源供应可执行程序，需要选择可信项目/镜像。在面板保存的来源持久化于私有更新状态目录，优先于 JSON 中的初始默认值。
+
+校验 `SHA256SUMS`、`CORE-UPDATE.json`、归档路径和逐文件 `MANIFEST.json` 后，再读取二进制内嵌兼容信息。稳定启动器先准备独立版本目录，原管理子进程退出后才切换；配置、身份、数据库和实例目录保留原位置。候选启动失败保留旧版本。默认捆绑的前端随 Master 更新；自定义独立前端目录由管理员维护。
+
+版本号相近不代表兼容：数据库迁移指纹不同、对端协议不适配或无法确认实例归属时拒绝在线更新。不兼容架构/存储变更需要维护流程，不自动降级数据库或执行补丁链。缺少新元数据的旧包（包括已发行 `v0.1.0-beta.1`）不能作为在线更新目标；首次使用要人工安装具备新启动器的版本。本次代码不会自动发行新 Release，新增 Windows 在线更新行为尚需真机验证。
+
+生产建议独立安装到 `/data/instances/blora-panel-runtime` 等目录，不把真实运行状态混入当前开发工作树。详见[更新与生产目录合同](docs/plan/Blora-03-在线更新与生产部署.md)。
 
 ## 技术架构
 

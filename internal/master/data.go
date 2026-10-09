@@ -223,6 +223,9 @@ func (s *Server) nodeAuthority(ctx context.Context, node string, r bridge.Reques
 		}
 		return map[string]bool{"allowed": allowed}, nil
 	}
+	if args.Action == "core.update" {
+		return map[string]bool{"allowed": u.Admin && !u.Disabled && r.Resource == nodeRef(node)}, nil
+	}
 	if !actions[args.Action] {
 		return map[string]bool{"allowed": false}, nil
 	}

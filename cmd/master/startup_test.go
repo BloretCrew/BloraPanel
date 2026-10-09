@@ -17,7 +17,20 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"blora.dev/panel/internal/bootstrap"
 )
+
+// The launcher re-executes this test binary as a management child. Dispatch
+// its private prefix before testing parses flags, just as the real executable
+// dispatches it before configuration parsing.
+func TestMain(m *testing.M) {
+	if os.Getenv("BLORA_CONFIG_TEST_CHILD") == "1" && len(os.Args) > 1 && os.Args[1] == bootstrap.ManagedFlag {
+		main()
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
 
 func TestMasterConfigProcess(t *testing.T) {
 	if os.Getenv("BLORA_CONFIG_TEST_CHILD") != "1" {

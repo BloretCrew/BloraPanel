@@ -195,6 +195,9 @@ func (d *Daemon) handleRPC(ctx context.Context, channel protocol.Channel, r brid
 	if r.Resource.NodeID != d.identity.NodeID || r.ActorID == "" {
 		return nil, &model.APIError{Code: "FORBIDDEN", Message: "请求不属于本节点"}
 	}
+	if strings.HasPrefix(r.Method, "core.update.") {
+		return d.coreUpdateRPC(ctx, channel, r)
+	}
 	if r.Method == "container.query" && channel == protocol.ChannelBulk {
 		value, err := d.containerQuery(ctx, r)
 		return value, nodeError(err)

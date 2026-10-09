@@ -14,27 +14,29 @@ import (
 	"strings"
 
 	"blora.dev/panel/internal/bootstrap"
+	"blora.dev/panel/internal/coreupdate"
 	"blora.dev/panel/internal/master"
 )
 
 const defaultListen = "127.0.0.1:37861"
 
 type masterConfig struct {
-	StateDir             string   `json:"stateDir"`
-	Listen               string   `json:"listen"`
-	Origin               string   `json:"origin"`
-	TrustedProxies       []string `json:"trustedProxies"`
-	StaticDir            string   `json:"staticDir"`
-	ExtensionsDir        string   `json:"extensionsDir"`
-	ExtensionsCatalog    string   `json:"extensionsCatalog"`
-	ExtensionsCatalogURL string   `json:"extensionsCatalogUrl"`
-	ExtensionsPublicKey  string   `json:"extensionsPublicKey"`
-	AdminName            string   `json:"adminName"`
-	PasswordFile         string   `json:"passwordFile"`
-	TLSCert              string   `json:"tlsCert"`
-	TLSKey               string   `json:"tlsKey"`
-	HTTPS                bool     `json:"https"`
-	VerifyProxyIPs       bool     `json:"verifyProxyIPs"`
+	StateDir             string            `json:"stateDir"`
+	Listen               string            `json:"listen"`
+	Origin               string            `json:"origin"`
+	TrustedProxies       []string          `json:"trustedProxies"`
+	StaticDir            string            `json:"staticDir"`
+	ExtensionsDir        string            `json:"extensionsDir"`
+	ExtensionsCatalog    string            `json:"extensionsCatalog"`
+	ExtensionsCatalogURL string            `json:"extensionsCatalogUrl"`
+	ExtensionsPublicKey  string            `json:"extensionsPublicKey"`
+	AdminName            string            `json:"adminName"`
+	PasswordFile         string            `json:"passwordFile"`
+	TLSCert              string            `json:"tlsCert"`
+	TLSKey               string            `json:"tlsKey"`
+	HTTPS                bool              `json:"https"`
+	VerifyProxyIPs       bool              `json:"verifyProxyIPs"`
+	Updates              coreupdate.Config `json:"updates"`
 	legacy               bool
 }
 

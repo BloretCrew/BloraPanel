@@ -4,10 +4,14 @@ export GOPATH ?= /tmp/blora-go
 export GOFLAGS ?= -buildvcs=false
 export npm_config_cache ?= /tmp/blora-npm-cache
 
+BLORA_BUILD_VERSION ?= $(if $(BLORA_VERSION),$(BLORA_VERSION),development)
+BLORA_BUILD_REVISION := $(shell git rev-parse HEAD)
+BLORA_BUILD_FLAGS := -X blora.dev/panel/internal/coreupdate.Version=$(BLORA_BUILD_VERSION) -X blora.dev/panel/internal/coreupdate.Revision=$(BLORA_BUILD_REVISION)
+
 .PHONY: build test check web sdk windows fixture package
 build:
-	go build -trimpath -o dist/blora-master ./cmd/master
-	go build -trimpath -o dist/blora-daemon ./cmd/daemon
+	go build -trimpath -ldflags '$(BLORA_BUILD_FLAGS)' -o dist/blora-master ./cmd/master
+	go build -trimpath -ldflags '$(BLORA_BUILD_FLAGS)' -o dist/blora-daemon ./cmd/daemon
 test:
 	go test -race ./...
 check:
@@ -18,8 +22,8 @@ sdk:
 	cd sdk && npm ci && npm run check && npm run build
 	cd sdk/examples/reference-app && npm ci && npm run build && npm run package && npm run package:fixtures
 windows:
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o dist/blora-master.exe ./cmd/master
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o dist/blora-daemon.exe ./cmd/daemon
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags '$(BLORA_BUILD_FLAGS)' -o dist/blora-master.exe ./cmd/master
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags '$(BLORA_BUILD_FLAGS)' -o dist/blora-daemon.exe ./cmd/daemon
 fixture: build
 	go build -trimpath -o dist/blora-devfixture ./cmd/devfixture
 	exec ./dist/blora-devfixture

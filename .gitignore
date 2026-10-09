@@ -1,4 +1,5 @@
 .local/
+/HANDOFF.md
 dist/
 node_modules/
 sdk/examples/reference-app/*.blora-extension.json

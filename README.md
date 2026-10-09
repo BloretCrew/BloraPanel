@@ -229,7 +229,7 @@ sudo systemctl enable --now blora-master.service
 sudo systemctl enable --now blora-daemon.service
 ```
 
-Daemon's `KillMode=process` preserves independently owned runs/log helpers. Explicitly stop resources and wait for tasks before backups/upgrades.
+Daemon's `KillMode=process` preserves independently owned runs/log helpers. Online updates replace only the management child. Follow the quiescence procedure for consistent state backups or incompatible maintenance upgrades.
 
 On Windows, put `master.json` beside `blora-master.exe`, `daemon.json` beside `blora-daemon.exe`, and edit absolute paths to Windows paths such as `C:/Blora/state/master` (or use the portable templates' relative paths):
 
@@ -243,6 +243,29 @@ These are console programs, not native SCM executables. A supervisor must preser
 </details>
 
 Check local health with `curl --fail http://127.0.0.1:37861/healthz`; check external HTTPS through your Nginx entry. Health checks cover Master's database, not all node capabilities. No production host is changed by these instructions.
+
+### Online updates
+
+Administrators can update **Master in Settings** and **Daemon in Node Management**. The updater downloads prebuilt Release archives; the installed machine needs no Git, Go, Node.js or local compilation. Check first, review the pinned version and compatibility, then apply. Running managed instances keep their process identity; the management connection reconnects, while interactive terminal sessions may disconnect and browser uploads may need resuming.
+
+Both configuration files accept the same optional source settings:
+
+```json
+{
+  "updates": {
+    "repository": "https://github.com/BloretCrew/BloraPanel",
+    "channel": "beta"
+  }
+}
+```
+
+Omitting these settings uses this repository and the `beta` channel. `stable` excludes prereleases. An optional `updates.apiUrl` selects an HTTPS **GitHub-compatible API mirror**, including release assets and tag/commit endpoints; an ordinary file directory is insufficient. The selected repository/mirror supplies executable code and must be trusted. Settings saved in the panel are persisted privately under the update state directory and override the initial JSON source defaults.
+
+The updater verifies `SHA256SUMS`, `CORE-UPDATE.json`, archive paths and per-file `MANIFEST.json`, then checks the binary's embedded compatibility information. A stable launcher prepares an immutable version directory and switches only after the previous management child exits. Configuration, identities, databases and instance directories remain in their original locations. Failed candidate startup returns to the previous version. The bundled frontend follows Master; a separately configured frontend remains administrator-managed.
+
+Compatibility is required, rather than assumed from the version number: mismatched database migration fingerprints, unsupported peer protocols or uncertain live-instance ownership block an online update. Incompatible architecture/schema changes need a maintenance procedure; the updater does not run database downgrades or a patch chain. Missing update metadata also blocks old archives, including published `v0.1.0-beta.1`. Install an update-capable build once before using this feature; no new Release is published by adding this code. New Windows update runtime behavior still requires device validation.
+
+Use a separate production installation, such as `/data/instances/blora-panel-runtime`, instead of placing live state in this development checkout. See the [update and production directory contract](docs/plan/Blora-03-在线更新与生产部署.md).
 
 ## Architecture
 

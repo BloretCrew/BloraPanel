@@ -1,5 +1,9 @@
 {
   "masterUrl": "http://127.0.0.1:37861",
   "enrollmentFile": "node.enrollment",
-  "allowPGIDFallback": false
+  "allowPGIDFallback": false,
+  "updates": {
+    "repository": "https://github.com/BloretCrew/BloraPanel",
+    "channel": "beta"
+  }
 }

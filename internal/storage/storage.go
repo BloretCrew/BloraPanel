@@ -23,6 +23,35 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
+// SchemaFingerprint identifies the precise migration code compiled into this
+// executable. Online code rollback is allowed only when that code is unchanged.
+func SchemaFingerprint() string {
+	h := sha256.New()
+	entries, err := migrations.ReadDir("migrations")
+	if err != nil {
+		return ""
+	}
+	for _, entry := range entries {
+		b, err := migrations.ReadFile("migrations/" + entry.Name())
+		if err != nil {
+			return ""
+		}
+		h.Write([]byte("internal/storage/migrations/" + entry.Name()))
+		h.Write([]byte{0})
+		h.Write(b)
+		h.Write([]byte{0})
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func SchemaVersion() int {
+	entries, err := migrations.ReadDir("migrations")
+	if err != nil {
+		return 0
+	}
+	return len(entries)
+}
+
 var (
 	ErrConflict        = errors.New("revision conflict")
 	ErrRequestMismatch = errors.New("request ID already accepted with different content")

@@ -61,6 +61,16 @@ def main():
         assert name not in sums, 'Duplicate external checksum'
         sums[name] = sha
     assert set(expected) <= set(sums), 'Missing component checksum'
+    core_metadata = None
+    if (args.release / 'CORE-UPDATE.json').exists():
+        core_payload = (args.release / 'CORE-UPDATE.json').read_bytes()
+        assert digest(core_payload) == sums.get('CORE-UPDATE.json'), 'Core update metadata checksum mismatch'
+        core_metadata = json.loads(core_payload)
+        assert core_metadata['version'] == args.version and core_metadata['revision'] == args.revision
+        probe = json.loads(subprocess.check_output([str(ROOT / 'dist/blora-master'), '--core-update-info']))
+        for key in ('formatVersion', 'version', 'revision', 'protocolVersion', 'schemaVersion', 'schemaFingerprint', 'preserveInstances'):
+            assert core_metadata[key] == probe[key], 'Core update metadata differs from binary: ' + key
+        assert probe['managedRestart'] and core_metadata['peerProtocolMin'] <= probe['protocolVersion'] <= core_metadata['peerProtocolMax']
     web_copies, records, count = [], [], 0
     for name, (component, platform) in expected.items():
         archive = args.release / name
@@ -85,6 +95,9 @@ def main():
                 source = ROOT / 'dist' / Path(path).name
             elif path == 'THIRD-PARTY-NOTICES.txt':
                 source = ROOT / 'docs/licenses' / path
+            elif path == 'CORE-UPDATE.json':
+                assert core_metadata is not None and value == core_payload, 'Missing or differing external core metadata'
+                source = args.release / path
             if path not in {'START.txt', 'SOURCE-REVISION.txt'}:
                 assert source.is_file() and source.read_bytes() == value, 'Current input mismatch: ' + path
         assert values['LICENSE'] == (ROOT / 'LICENSE').read_bytes()
@@ -92,6 +105,8 @@ def main():
         assert b'Modified working tree: false\n' in values['SOURCE-REVISION.txt']
         if component in {'master', 'daemon'}:
             assert 'README.zh-CN.md' in values and 'docs/licenses/THIRD-PARTY-NOTICES.txt' in values
+            if core_metadata is not None:
+                assert values.get('CORE-UPDATE.json') == core_payload, 'Core package metadata mismatch'
         else:
             assert 'THIRD-PARTY-NOTICES.txt' in values
         if component == 'master':
