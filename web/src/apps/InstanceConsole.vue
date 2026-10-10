@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StyledSelect from '../app-host/StyledSelect.vue'
 import { randomUUID } from '../services/uuid'
 import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {useDesktop} from '../desktop/store'
@@ -84,7 +85,7 @@ onBeforeUnmount(()=>{disposed=true;reads.abort();stop();clearInterval(refresh);o
 </script>
 <template>
   <section class="instance-console">
-    <div class="console-toolbar"><select :value="runId" aria-label="选择日志运行代次" @change="attach(($event.target as HTMLSelectElement).value)"><option v-if="!runs.length" value="">暂无运行记录</option><option v-for="run in runs" :key="run.runId" :value="run.runId">{{new Date(run.startedAt).toLocaleString()}} · {{run.runId}}</option></select><button :disabled="!runId" @click="attach(runId)">重新连接日志</button><button @click="refreshRuns">刷新运行记录</button><button @click="toggleFollow">{{paused?'恢复跟随输出':'暂停跟随输出'}}</button><button @click="copyLog">复制保留日志</button></div>
+    <div class="console-toolbar"><StyledSelect :value="runId" aria-label="选择日志运行代次" @change="attach(($event.target as HTMLSelectElement).value)"><option v-if="!runs.length" value="">暂无运行记录</option><option v-for="run in runs" :key="run.runId" :value="run.runId">{{new Date(run.startedAt).toLocaleString()}} · {{run.runId}}</option></StyledSelect><button :disabled="!runId" @click="attach(runId)">重新连接日志</button><button @click="refreshRuns">刷新运行记录</button><button @click="toggleFollow">{{paused?'恢复跟随输出':'暂停跟随输出'}}</button><button @click="copyLog">复制保留日志</button></div>
     <div class="filterbar"><input v-model="search" aria-label="搜索保留日志" placeholder="搜索当前保留区"><small>{{status}}{{connected?' · 已连接':''}}</small></div>
     <p v-if="error" class="error" role="alert">{{error}}</p><p v-if="checkpoint.truncated" class="warning">浏览器仅保留最近 48000 字符 / 3000 行；更早内容仍受节点归档保留策略约束。</p>
     <div ref="viewport" class="console-log-viewport" role="log" aria-label="实例运行日志" aria-live="off" tabindex="0" @scroll="onScroll"><div class="console-log-spacer" :style="{height:Math.max(20,lines.length*20)+'px'}"><div v-for="(line,index) in visibleLines" :key="line.number" class="console-log-line" :style="{top:(first+index)*20+'px'}"><span>{{line.number}}</span><code>{{line.text||' '}}</code></div></div></div>

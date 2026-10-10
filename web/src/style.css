@@ -7,22 +7,19 @@
 
 *{box-sizing:border-box}
 body{margin:0;overflow:hidden}
-button,input,select,textarea{font:inherit}
+button,input,.styled-select-trigger,textarea{font:inherit}
 button{cursor:pointer;color:var(--primary);background:transparent;border:1px solid transparent;border-radius:var(--shape-full);padding:5px 10px;line-height:1.4;transition:background var(--motion-fast) var(--motion-easing),color var(--motion-fast) var(--motion-easing),border-radius var(--motion-standard) var(--motion-easing)}
 button:hover:not(:disabled){background:var(--state-hover)}
 button:active:not(:disabled){background:var(--state-pressed)}
 button:disabled{opacity:.42;cursor:default}
 button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
-input,select,textarea{border:1px solid transparent;border-radius:var(--shape-md);background:var(--surface-container);color:var(--on-surface);padding:6px 9px;min-width:0;outline:none;box-shadow:none}
-/* Native select chrome can bevel CSS corners and clip compact text in WebKit.
-   Keep its menu/keyboard semantics, but paint the filled field ourselves. */
-select:where(:not([multiple]):not([size])){appearance:none;line-height:1.5;min-height:calc(1.5em + 14px);padding-inline-end:28px;background-image:linear-gradient(45deg,transparent 50%,var(--on-surface-variant) 50%),linear-gradient(135deg,var(--on-surface-variant) 50%,transparent 50%);background-position:right 14px center,right 10px center;background-size:4px 4px;background-repeat:no-repeat}
-input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:none}
-input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-1px}
+input,textarea{border:1px solid transparent;border-radius:var(--shape-md);background:var(--surface-container);color:var(--on-surface);padding:6px 9px;min-width:0;outline:none;box-shadow:none}
+input:focus,textarea:focus{border-color:var(--primary);box-shadow:none}
+input:focus-visible,textarea:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-1px}
 summary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
 /* Filled fields remain distinct on elevated menu and dialog surfaces. */
-:is(.in-window-dialog,.workspace-menu,.shortcut-rename-dialog) :is(input:not([type=checkbox]):not([type=radio]),select,textarea){background-color:var(--surface-lowest)}
-input:disabled,select:disabled,textarea:disabled{opacity:.38;cursor:default}
+:is(.in-window-dialog,.workspace-menu,.shortcut-rename-dialog) :is(input:not([type=checkbox]):not([type=radio]),.styled-select-trigger,textarea){background-color:var(--surface-lowest)}
+input:disabled,textarea:disabled{opacity:.38;cursor:default}
 input::file-selector-button{font:inherit;color:var(--on-secondary-container);background:var(--secondary-container);border:0;border-radius:var(--shape-sm);padding:5px 10px;margin-right:10px;cursor:pointer}
 progress{accent-color:var(--primary);border:0;border-radius:var(--shape-full);overflow:hidden;background:var(--surface-highest)}
 progress::-webkit-progress-bar{border-radius:var(--shape-full);background:var(--surface-highest)}
@@ -39,7 +36,7 @@ input[type=checkbox]:hover:not(:disabled){box-shadow:0 0 0 6px var(--state-hover
 input[type=checkbox]:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px}
 input[type=checkbox]:disabled{opacity:.38;cursor:default}
 @media(forced-colors:active){input[type=checkbox]{appearance:auto;background:revert;border:revert;color:revert;box-shadow:none}input[type=checkbox]::after{display:none}}
-@media(forced-colors:active){select:not([multiple]):not([size]){appearance:auto;background-image:none}}
+
 h1,h2,h3,p{margin:0}
 h2{font-size:21px;line-height:1.3;font-weight:650;letter-spacing:-.5px}
 h3{font-size:14px;font-weight:600}
@@ -282,3 +279,42 @@ svg{display:block}
 .workspace-menu{top:72px;max-width:calc(100vw - 24px)}
 .login-card{max-width:calc(100vw - 32px)}
 }
+
+
+/* Fully custom comboboxes: no browser-owned option popup or native beveling. */
+.styled-select{position:relative;display:inline-flex;min-width:0;max-width:100%;vertical-align:middle}
+.styled-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-width:0;min-height:calc(1.5em + 14px);padding:6px 10px;border:1px solid var(--outline-variant);border-radius:var(--shape-md);background:var(--surface-container);color:var(--on-surface);text-align:left;line-height:1.5;outline:none;transition:background-color .16s,border-color .16s,box-shadow .16s,color .16s}
+.styled-select-trigger:hover:not(:disabled){background:var(--surface-high);border-color:var(--outline)}
+.styled-select-trigger:focus-visible{border-color:var(--primary);outline:2px solid var(--focus-ring);outline-offset:1px}
+.styled-select-trigger:disabled{opacity:.38;cursor:default}
+.styled-select-value{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.styled-select-chevron{width:7px;height:7px;flex:0 0 auto;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .16s ease}
+.styled-select-trigger[aria-expanded="true"] .styled-select-chevron{transform:translateY(2px) rotate(225deg)}
+.styled-select-validation{position:absolute!important;width:1px!important;height:1px!important;min-height:1px!important;padding:0!important;opacity:0!important;pointer-events:none!important;border:0!important;clip-path:inset(50%)!important}
+.styled-select-popover{position:fixed;z-index:5000;overflow:auto;padding:5px;border:1px solid var(--outline-variant);border-radius:var(--shape-lg);background:var(--surface-container-high);color:var(--on-surface);box-shadow:var(--menu-shadow,0 10px 32px rgb(0 0 0 / .2));overscroll-behavior:contain;transform-origin:top center}
+.styled-select-option{display:flex;align-items:center;gap:9px;width:100%;min-height:36px;padding:6px 10px;border:0;border-radius:var(--shape-sm);background:transparent;color:inherit;text-align:left;white-space:nowrap;transition:background-color .12s,color .12s}
+.styled-select-option:hover:not(:disabled),.styled-select-option[aria-selected="true"]{background:var(--primary-container);color:var(--on-primary-container)}
+.styled-select-option:disabled{opacity:.4}
+.styled-select-check{width:15px;flex:0 0 15px;font-size:13px;font-weight:700}
+.select-pop-enter-active,.select-pop-leave-active{transition:opacity .13s ease,transform .13s ease}
+.select-pop-enter-from,.select-pop-leave-to{opacity:0;transform:translateY(-5px) scale(.985)}
+@media(forced-colors:active){.styled-select-trigger,.styled-select-popover,.styled-select-option{border:1px solid ButtonText}.styled-select-trigger:focus-visible{outline:2px solid Highlight}}
+@keyframes content-arrive{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes surface-arrive{from{opacity:0}to{opacity:1}}
+@keyframes surface-depart{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-4px)}}
+@keyframes shadow-arrive{from{opacity:.35}to{opacity:1}}
+@keyframes shadow-depart{from{opacity:1}to{opacity:0}}
+.window-enter-active .window-shadow-plane{animation:shadow-arrive .18s ease-out both}
+.window-enter-active .window-titlebar,.window-enter-active .view-tabs{animation:content-arrive .16s ease-out both}
+.window-enter-active .view-tabs{animation-delay:.025s}
+.window-leave-active .window-shadow-plane{animation:shadow-depart .14s ease-in both}
+.window-leave-active .window-titlebar,.window-leave-active .view-tabs{animation:surface-depart .14s ease-in both}
+.launcher,.in-window-dialog,.workspace-menu,.shortcut-rename-dialog,.tab-menu,.context-menu,.window-picker{animation:surface-arrive .16s ease-out both}
+.view-enter-active,.view-leave-active{transition:opacity .15s ease,transform .15s ease}.view-enter-from,.view-leave-to{opacity:0;transform:translateY(5px)}
+.application button:not(:disabled),.application .styled-select-trigger{transition:background-color .16s,color .16s,border-color .16s,box-shadow .16s,transform .16s}
+.application button:active:not(:disabled){transform:scale(.985)}
+.view-tab-list{display:contents}.tab-enter-active,.tab-leave-active{transition:opacity .15s ease,transform .15s ease}.tab-enter-from,.tab-leave-to{opacity:0;transform:translateY(-4px) scale(.98)}.tab-move{transition:transform .18s ease}
+
+@media(prefers-reduced-motion:reduce){.window-enter-active,.window-leave-active,.view-enter-active,.view-leave-active,.tab-enter-active,.tab-leave-active,.tab-move{transition:none!important}.tab-enter-from,.tab-leave-to,.view-enter-from,.view-leave-to{transform:none}:is(.window-enter-active .window-shadow-plane,.window-enter-active .window-titlebar,.window-enter-active .view-tabs,.window-leave-active .window-shadow-plane,.window-leave-active .window-titlebar,.window-leave-active .view-tabs,.launcher,.in-window-dialog,.workspace-menu,.shortcut-rename-dialog,.tab-menu,.context-menu,.window-picker){animation:none!important}}
+:root[data-reduce-motion=true] .window-enter-active,:root[data-reduce-motion=true] .window-leave-active,:root[data-reduce-motion=true] .view-enter-active,:root[data-reduce-motion=true] .view-leave-active,:root[data-reduce-motion=true] .tab-enter-active,:root[data-reduce-motion=true] .tab-leave-active,:root[data-reduce-motion=true] .tab-move{transition:none!important}
+:root[data-reduce-motion=true] :is(.window-enter-active .window-shadow-plane,.window-enter-active .window-titlebar,.window-enter-active .view-tabs,.window-leave-active .window-shadow-plane,.window-leave-active .window-titlebar,.window-leave-active .view-tabs,.launcher,.in-window-dialog,.workspace-menu,.shortcut-rename-dialog,.tab-menu,.context-menu,.window-picker){animation:none!important}

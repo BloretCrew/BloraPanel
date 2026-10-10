@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {nativeDeviceScale} from '../../playwright-browser'
 import {installLinearShadows} from '../helpers/shadow-linear'
 
@@ -22,6 +23,6 @@ for(const scale of [1,1.25])test.describe(`linear native shadow at DPR ${scale}`
    await page.evaluate(()=>(window as any).__linearShadows.dispose())
   }
   await compare('stack-light');const frame=page.locator('.app-window.focused'),title=(await frame.locator('.window-titlebar').boundingBox())!;await page.mouse.move(title.x+180,title.y+15);await page.mouse.down();await page.mouse.move(title.x+380,title.y+35);await compare('held');await page.mouse.up()
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark');await page.getByRole('switch',{name:'通透模式'}).uncheck();await compare('solid');expect(errors).toEqual([])
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark');await page.getByRole('switch',{name:'通透模式'}).uncheck();await compare('solid');expect(errors).toEqual([])
  })
 })

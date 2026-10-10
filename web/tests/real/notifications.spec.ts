@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs'
 import {randomUUID} from 'node:crypto'
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {realLogin} from './login'
 const fixture=JSON.parse(readFileSync(process.env.BLORA_E2E_CREDENTIALS!,'utf8'))
 test('task history page survives refresh and returns to latest tasks',async({page})=>{
@@ -33,7 +34,7 @@ test('task history page survives refresh and returns to latest tasks',async({pag
   await expect.poll(async()=>(await(await page.request.get('/api/v1/tasks/'+latest)).json()).task.state,{timeout:60000}).toBe('SUCCEEDED')
   await expect.poll(async()=>Promise.all(taskIds.map(async id=>(await(await page.request.get('/api/v1/tasks/'+id)).json()).task.state)),{timeout:60000}).toEqual(taskIds.map(()=>'SUCCEEDED'))
   const filtered=page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname==='/api/v1/tasks'&&url.searchParams.get('state')==='SUCCEEDED'})
-  await page.getByLabel('任务状态筛选').selectOption('SUCCEEDED')
+  await selectStyledOption(page,page.getByLabel('任务状态筛选'),'SUCCEEDED')
   expect((await filtered).status()).toBe(200)
   await expect(page.locator('.task-card .status-chip').first()).toHaveText('成功')
   await page.reload()

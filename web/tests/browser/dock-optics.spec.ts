@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 
 test.beforeEach(async({page})=>{
  await page.route('**/api/v1/**',route=>{const path=new URL(route.request().url()).pathname;return route.fulfill({json:path.endsWith('/session')?{user:{userId:'browser-test',name:'测试用户',admin:true},csrfToken:'test-only'}:{items:[]}})})
@@ -70,10 +71,10 @@ for(const scale of [1,1.25])test.describe(`native Dock optics at DPR ${scale}`,(
   await page.locator('[data-app="blora.instances"]').click();await compare('live-app')
   await page.locator('.launcher-button').click();await page.locator('.launcher').getByRole('button',{name:'设置',exact:true}).click()
   const theme=page.getByRole('combobox',{name:'主题',exact:true}),palette=page.getByRole('combobox',{name:'主题配色'}),toggle=page.getByRole('switch',{name:'通透模式'})
-  await theme.selectOption('dark');await palette.selectOption('sand');await compare('dark-sand')
+  await selectStyledOption(page,theme,'dark');await selectStyledOption(page,palette,'sand');await compare('dark-sand')
   await toggle.uncheck();await compare('solid')
-  await theme.selectOption('light');await palette.selectOption('ice');await toggle.check();await compare('restored')
-  await theme.selectOption('dark');await palette.selectOption('rose');await theme.selectOption('light');await palette.selectOption('ice');await compare('rapid-change')
+  await selectStyledOption(page,theme,'light');await selectStyledOption(page,palette,'ice');await toggle.check();await compare('restored')
+  await selectStyledOption(page,theme,'dark');await selectStyledOption(page,palette,'rose');await selectStyledOption(page,theme,'light');await selectStyledOption(page,palette,'ice');await compare('rapid-change')
   await expect(page.locator('.taskbar').getByRole('button',{name:/实例中心/})).toBeVisible()
   expect(errors).toEqual([])
  })

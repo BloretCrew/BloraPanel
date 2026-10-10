@@ -2,6 +2,7 @@ import {readFileSync,readdirSync} from 'node:fs'
 import {dirname,join,resolve} from 'node:path'
 import {randomUUID} from 'node:crypto'
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {realLogin} from './login'
 
 const fixture=JSON.parse(readFileSync(process.env.BLORA_E2E_CREDENTIALS!,'utf8'))
@@ -37,7 +38,7 @@ test('real node loss preserves metric timestamps and marks cached readings until
     await page.locator('.launcher-button').click()
     await page.locator('.launcher').getByRole('button',{name:'监控与进程',exact:true}).click()
     const nodeWindow=page.locator('.app-window.focused')
-    await nodeWindow.getByRole('combobox',{name:'监控节点'}).selectOption(node.nodeId)
+    await selectStyledOption(page,nodeWindow.getByRole('combobox',{name:'监控节点'}),node.nodeId)
     await expect(nodeWindow.locator('.monitor-summary')).toContainText('采集于')
     // Ensure the process page has a successful live result to cache before
     // disconnecting the node; otherwise the correct offline state is simply

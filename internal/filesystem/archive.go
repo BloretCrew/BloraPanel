@@ -360,9 +360,6 @@ func (s *Service) Extract(ctx context.Context, archive, target, archiveVersion s
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].name < items[j].name })
 	stage := path.Join(path.Dir(target), ".blora-extract-"+randomID())
-	if target == "." {
-		stage = privateDir + "/work/" + randomID()
-	}
 	if err = s.root.Mkdir(stage, 0700); err != nil {
 		return
 	}

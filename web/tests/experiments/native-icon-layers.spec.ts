@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 
 for(const scale of [1,1.25])test.describe(`native SVG artwork retention at DPR ${scale}`,()=>{
  test.use({deviceScaleFactor:scale})
@@ -18,6 +19,6 @@ for(const scale of [1,1.25])test.describe(`native SVG artwork retention at DPR $
    expect(difference).toEqual({max:0,changed:0});await style.evaluate(element=>(element as HTMLElement).remove())
   }
   await compare('light')
-  await page.locator('.launcher-button').click();await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.locator('.launcher-button').click();await compare('dark')
+  await page.locator('.launcher-button').click();await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.locator('.launcher-button').click();await compare('dark')
  })
 })

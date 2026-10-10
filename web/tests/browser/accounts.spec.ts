@@ -1,4 +1,5 @@
 import {type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {test,expect} from '../helpers/management-fixture'
 async function openApp(page:Page,name:string){await page.goto('/');await page.locator('.launcher-button').click();await page.locator('.launcher').getByRole('button',{name,exact:true}).click()}
 async function recoveryRecords(page:Page){return page.evaluate(async()=>{
@@ -38,7 +39,7 @@ test('account and permission confirmations restore while passwords never enter w
   await expect(page.getByLabel('初始密码',{exact:true})).toHaveValue(secret);await expect(page.getByLabel('确认初始密码',{exact:true})).toHaveValue(secret)
   const confirmCreate=page.getByRole('button',{name:'确认创建账号',exact:true})
   await confirmCreate.scrollIntoViewIfNeeded();await confirmCreate.click();await expect(page.locator('.user-grants h3')).toContainText('可恢复成员草稿')
-  await page.getByRole('combobox',{name:'授权目标资源'}).selectOption('authorized-instance');await page.getByRole('button',{name:'预览模板授权',exact:true}).click();await page.reload();await expect(page.getByRole('dialog',{name:'确认资源授权'})).toContainText('授权实例');expect(writes).toHaveLength(1);await page.getByRole('button',{name:'确认授权',exact:true}).click();await expect(page.locator('.grant-row')).toHaveCount(2);expect(writes.filter(write=>write.path.endsWith('/apply'))).toHaveLength(1)
+  await selectStyledOption(page,page.getByRole('combobox',{name:'授权目标资源'}),'authorized-instance');await page.getByRole('button',{name:'预览模板授权',exact:true}).click();await page.reload();await expect(page.getByRole('dialog',{name:'确认资源授权'})).toContainText('授权实例');expect(writes).toHaveLength(1);await page.getByRole('button',{name:'确认授权',exact:true}).click();await expect(page.locator('.grant-row')).toHaveCount(2);expect(writes.filter(write=>write.path.endsWith('/apply'))).toHaveLength(1)
   await page.getByRole('button',{name:'创建自定义模板',exact:true}).click();await page.getByRole('textbox',{name:'模板名称'}).fill('文件维护模板草稿');await page.getByRole('checkbox',{name:'修改文件',exact:true}).check();await page.reload();await expect(page.getByRole('textbox',{name:'模板名称'})).toHaveValue('文件维护模板草稿');await expect(page.getByRole('checkbox',{name:'修改文件',exact:true})).toBeChecked();expect(writes).toHaveLength(2)
   await page.getByRole('button',{name:'保存模板',exact:true}).click();await expect(page.locator('.role-card').filter({hasText:'文件维护模板草稿'})).toHaveCount(1);expect(writes.at(-1)!.body).toMatchObject({revision:0,actions:['instance.read','file.write']});expect(await recoveryRecords(page)).not.toContain(secret);expect(errors).toEqual([])
 })

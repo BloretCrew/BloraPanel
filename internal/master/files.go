@@ -59,20 +59,22 @@ func (s *Server) registerFiles() {
 			handler(w, r.WithContext(ctx), u)
 		}))
 	}
-	register("GET /api/v1/instances/{id}/files", s.fileList)
-	register("GET /api/v1/instances/{id}/files/access", s.fileAccess)
-	register("GET /api/v1/instances/{id}/files/stat", s.fileStat)
-	register("GET /api/v1/instances/{id}/files/trash", s.fileTrash)
-	register("GET /api/v1/instances/{id}/files/preview", s.filePreview)
-	register("GET /api/v1/instances/{id}/files/content", s.fileContent)
-	register("PUT /api/v1/instances/{id}/files/content", s.fileSave)
-	register("GET /api/v1/instances/{id}/files/download", s.fileDownload)
-	register("POST /api/v1/instances/{id}/files/actions", s.fileAction)
-	register("POST /api/v1/instances/{id}/files/uploads", s.fileUploadBegin)
-	register("GET /api/v1/instances/{id}/files/uploads/{taskId}", s.fileUploadStatus)
-	register("PUT /api/v1/instances/{id}/files/uploads/{taskId}/chunks", s.fileUploadChunk)
-	register("POST /api/v1/instances/{id}/files/uploads/{taskId}/complete", s.fileUploadComplete)
-	register("DELETE /api/v1/instances/{id}/files/uploads/{taskId}", s.fileUploadCancel)
+	for _, prefix := range []string{"/api/v1/instances/{id}/files", "/api/v1/nodes/{id}/files"} {
+		register("GET "+prefix, s.fileList)
+		register("GET "+prefix+"/access", s.fileAccess)
+		register("GET "+prefix+"/stat", s.fileStat)
+		register("GET "+prefix+"/trash", s.fileTrash)
+		register("GET "+prefix+"/preview", s.filePreview)
+		register("GET "+prefix+"/content", s.fileContent)
+		register("PUT "+prefix+"/content", s.fileSave)
+		register("GET "+prefix+"/download", s.fileDownload)
+		register("POST "+prefix+"/actions", s.fileAction)
+		register("POST "+prefix+"/uploads", s.fileUploadBegin)
+		register("GET "+prefix+"/uploads/{taskId}", s.fileUploadStatus)
+		register("PUT "+prefix+"/uploads/{taskId}/chunks", s.fileUploadChunk)
+		register("POST "+prefix+"/uploads/{taskId}/complete", s.fileUploadComplete)
+		register("DELETE "+prefix+"/uploads/{taskId}", s.fileUploadCancel)
+	}
 }
 
 func fileHash(b []byte) string {
@@ -87,13 +89,35 @@ func validFileHash(value string) bool {
 	return err == nil
 }
 func fileVersionValid(v string) bool { return v == filesystem.MissingVersion || validFileHash(v) }
-func (s *Server) fileInstance(w http.ResponseWriter, r *http.Request, u model.User, action string) (model.Instance, bool) {
-	i, e := s.store.Instance(r.Context(), r.PathValue("id"))
-	if e != nil {
-		fail(w, 404, "NOT_FOUND", "实例不存在")
-		return i, false
+
+const nodeFilesystemPrefix = "nodefs:"
+
+func fileRef(i model.Instance) model.ResourceRef {
+	if strings.HasPrefix(i.ID, nodeFilesystemPrefix) {
+		return model.ResourceRef{Kind: "node", ID: strings.TrimPrefix(i.ID, nodeFilesystemPrefix), NodeID: i.NodeID}
 	}
-	if !s.allowed(w, r, u, instanceRef(i), action) {
+	return instanceRef(i)
+}
+
+func (s *Server) fileInstance(w http.ResponseWriter, r *http.Request, u model.User, action string) (model.Instance, bool) {
+	id := r.PathValue("id")
+	var i model.Instance
+	if strings.HasPrefix(r.URL.Path, "/api/v1/nodes/") {
+		node, _, err := s.store.Node(r.Context(), id)
+		if err != nil {
+			fail(w, 404, "NOT_FOUND", "节点不存在")
+			return i, false
+		}
+		i = model.Instance{ID: nodeFilesystemPrefix + id, NodeID: id, NodeName: node.Name, NodeState: node.State, Name: node.Name + " · 整台节点磁盘"}
+	} else {
+		var err error
+		i, err = s.store.Instance(r.Context(), id)
+		if err != nil {
+			fail(w, 404, "NOT_FOUND", "实例不存在")
+			return i, false
+		}
+	}
+	if !s.allowed(w, r, u, fileRef(i), action) {
 		return i, false
 	}
 	return i, true
@@ -104,14 +128,18 @@ func (s *Server) callFile(ctx context.Context, u model.User, i model.Instance, m
 		action = "file.write"
 	}
 	current, e := s.store.User(ctx, u.ID)
-	if e != nil || !s.store.Allowed(ctx, current, instanceRef(i), action) {
+	if e != nil || !s.store.Allowed(ctx, current, fileRef(i), action) {
 		return &model.APIError{Code: "FORBIDDEN", Message: "文件权限已撤销"}
 	}
 	b, e := json.Marshal(args)
 	if e != nil {
 		return e
 	}
-	return s.nodeCall(ctx, i.NodeID, protocol.ChannelBulk, bridge.Request{Method: method, ActorID: u.ID, Resource: instanceRef(i), Config: &i.Config, Args: b}, out)
+	var config *model.InstanceConfig
+	if fileRef(i).Kind == "instance" {
+		config = &i.Config
+	}
+	return s.nodeCall(ctx, i.NodeID, protocol.ChannelBulk, bridge.Request{Method: method, ActorID: u.ID, Resource: fileRef(i), Config: config, Args: b}, out)
 }
 func filePath(w http.ResponseWriter, p string, allowRoot bool) bool {
 	if filesystem.ValidatePath(p) != nil || (!allowRoot && p == ".") {
@@ -191,7 +219,7 @@ func (s *Server) fileAccess(w http.ResponseWriter, r *http.Request, u model.User
 		return
 	}
 	s.nodePresentation(r.Context(), &i)
-	reply(w, 200, map[string]any{"instanceId": i.ID, "nodeId": i.NodeID, "nodeName": i.NodeName, "nodeState": i.NodeState, "canRead": true, "canWrite": s.store.Allowed(r.Context(), u, instanceRef(i), "file.write")})
+	reply(w, 200, map[string]any{"instanceId": strings.TrimPrefix(i.ID, nodeFilesystemPrefix), "nodeId": i.NodeID, "nodeName": i.NodeName, "nodeState": i.NodeState, "canRead": true, "canWrite": s.store.Allowed(r.Context(), u, fileRef(i), "file.write")})
 }
 
 func (s *Server) fileTrash(w http.ResponseWriter, r *http.Request, u model.User) {
@@ -481,7 +509,7 @@ func (s *Server) acceptFile(w http.ResponseWriter, r *http.Request, u model.User
 		fail(w, 400, "INVALID_REQUEST", e.Error())
 		return model.Task{}, false
 	}
-	t, _, e := s.store.Accept(r.Context(), model.Task{ActorID: u.ID, RequestID: key, Resource: instanceRef(i), Action: action, Payload: b, State: state})
+	t, _, e := s.store.Accept(r.Context(), model.Task{ActorID: u.ID, RequestID: key, Resource: fileRef(i), Action: action, Payload: b, State: state})
 	if errors.Is(e, storage.ErrRequestMismatch) {
 		fail(w, 409, "IDEMPOTENCY_CONFLICT", "同一请求ID绑定了不同文件操作或内容")
 		return t, false
@@ -645,7 +673,7 @@ func (s *Server) queueUpload(ctx context.Context, u model.User, i model.Instance
 		return t, &model.APIError{Code: "FILE_TRANSFER_MISMATCH", Message: "上传尚未准备完成"}
 	}
 	current, e := s.store.User(ctx, u.ID)
-	if e != nil || !s.store.Allowed(ctx, current, instanceRef(i), "file.write") {
+	if e != nil || !s.store.Allowed(ctx, current, fileRef(i), "file.write") {
 		return t, &model.APIError{Code: "FORBIDDEN", Message: "提交时写入权限已撤销"}
 	}
 	for range 4 {
@@ -699,7 +727,7 @@ func (s *Server) fileAction(w http.ResponseWriter, r *http.Request, u model.User
 		return
 	}
 	if in.Action == "copy" || in.Action == "move" || in.Action == "compress" || in.Action == "extract" {
-		if !s.allowed(w, r, u, instanceRef(i), "file.read") {
+		if !s.allowed(w, r, u, fileRef(i), "file.read") {
 			return
 		}
 	}
@@ -740,7 +768,7 @@ func (s *Server) fileAction(w http.ResponseWriter, r *http.Request, u model.User
 	}
 	raw, _ := json.Marshal(body)
 	key := r.Header.Get("Idempotency-Key")
-	task, _, e := s.store.Accept(r.Context(), model.Task{ActorID: u.ID, RequestID: key, Resource: instanceRef(i), Action: "file." + in.Action, Payload: raw})
+	task, _, e := s.store.Accept(r.Context(), model.Task{ActorID: u.ID, RequestID: key, Resource: fileRef(i), Action: "file." + in.Action, Payload: raw})
 	if errors.Is(e, storage.ErrRequestMismatch) {
 		fail(w, 409, "IDEMPOTENCY_CONFLICT", e.Error())
 		return
@@ -815,7 +843,7 @@ func (s *Server) uploadTask(w http.ResponseWriter, r *http.Request, u model.User
 	}
 	t, e := s.store.Task(r.Context(), r.PathValue("taskId"))
 	var p filePayload
-	if e != nil || t.ActorID != u.ID || t.Resource.Key() != instanceRef(i).Key() || (t.Action != "file.upload" && t.Action != "file.save") || json.Unmarshal(t.Payload, &p) != nil || p.UploadSpec == nil || p.UploadID != p.UploadSpec.ID || p.UploadSpec.OwnerID != u.ID {
+	if e != nil || t.ActorID != u.ID || t.Resource.Key() != fileRef(i).Key() || (t.Action != "file.upload" && t.Action != "file.save") || json.Unmarshal(t.Payload, &p) != nil || p.UploadSpec == nil || p.UploadID != p.UploadSpec.ID || p.UploadSpec.OwnerID != u.ID {
 		fail(w, 404, "NOT_FOUND", "上传任务不存在或不属于当前账号和实例")
 		return i, t, p, false
 	}
@@ -919,15 +947,27 @@ func (s *Server) fileUploadCancel(w http.ResponseWriter, r *http.Request, u mode
 // cancelUploadTask also serves the generic task cancel route. No source or
 // committed destination is removed, and cleanup is acknowledged by the node.
 func (s *Server) cancelUploadTask(w http.ResponseWriter, r *http.Request, u model.User, t model.Task) {
+	var e error
 	var p filePayload
 	if json.Unmarshal(t.Payload, &p) != nil || p.UploadSpec == nil || (t.ActorID != u.ID && !u.Admin) {
 		fail(w, 403, "FORBIDDEN", "上传任务不属于当前账号")
 		return
 	}
-	i, e := s.store.Instance(r.Context(), t.Resource.ID)
-	if e != nil {
-		fail(w, 404, "NOT_FOUND", "上传任务的实例不存在")
-		return
+	var i model.Instance
+	if t.Resource.Kind == "node" {
+		node, _, err := s.store.Node(r.Context(), t.Resource.ID)
+		if err != nil {
+			fail(w, 404, "NOT_FOUND", "上传任务的节点不存在")
+			return
+		}
+		i = model.Instance{ID: nodeFilesystemPrefix + node.ID, NodeID: node.ID}
+	} else {
+		var err error
+		i, err = s.store.Instance(r.Context(), t.Resource.ID)
+		if err != nil {
+			fail(w, 404, "NOT_FOUND", "上传任务的实例不存在")
+			return
+		}
 	}
 	if !s.allowed(w, r, u, t.Resource, "file.write") {
 		return
@@ -948,7 +988,11 @@ func (s *Server) cancelUploadTask(w http.ResponseWriter, r *http.Request, u mode
 	// after that actor lost write permission. The actor is taken only from the
 	// persisted task, and the node still checks upload ownership.
 	args, _ := json.Marshal(map[string]string{"id": p.UploadID})
-	e = s.nodeCall(r.Context(), i.NodeID, protocol.ChannelBulk, bridge.Request{Method: "file.upload.cancel", ActorID: t.ActorID, Resource: instanceRef(i), Config: &i.Config, Args: args}, &upload)
+	var config *model.InstanceConfig
+	if fileRef(i).Kind == "instance" {
+		config = &i.Config
+	}
+	e = s.nodeCall(r.Context(), i.NodeID, protocol.ChannelBulk, bridge.Request{Method: "file.upload.cancel", ActorID: t.ActorID, Resource: fileRef(i), Config: config, Args: args}, &upload)
 	if e != nil {
 		var api *model.APIError
 		if errors.As(e, &api) && api.Code == "NOT_FOUND" {

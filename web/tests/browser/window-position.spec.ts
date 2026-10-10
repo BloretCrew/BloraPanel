@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {nativeDeviceScale} from '../../playwright-browser'
 
 async function stable(page:Page){
@@ -54,7 +55,7 @@ for(const scale of [1,1.25])test.describe(`production window positioning DPR ${s
   }
   await compare('stack-light');const frame=page.locator('.app-window.focused'),title=(await frame.locator('.window-titlebar').boundingBox())!;await page.mouse.move(title.x+180,title.y+15);await page.mouse.down();await page.mouse.move(title.x+380,title.y+35);await compare('held');await page.mouse.move(title.x+90,title.y+20);await compare('reverse-held');await page.mouse.up()
   await page.evaluate(async()=>{const {useDesktop}=await import('/src/desktop/store.ts' as string),d=useDesktop();d.geometry(d.state.activeWindowId,{x:400,y:210,width:661,height:611})});await compare('odd-resize')
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark');await page.getByRole('switch',{name:'通透模式'}).uncheck();await compare('solid')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark');await page.getByRole('switch',{name:'通透模式'}).uncheck();await compare('solid')
   await page.setViewportSize({width:700,height:700});await expect(frame).toHaveCSS('transform','matrix(1, 0, 0, 1, 8, 74)');const narrow=await frame.boundingBox();expect(narrow?.x).toBe(8);expect(narrow?.y).toBe(74)
   expect(errors).toEqual([])
  })

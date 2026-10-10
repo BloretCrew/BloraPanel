@@ -1,4 +1,5 @@
 import {test, expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 
 test('monitoring searches, sorts and submits process identity', async ({page}) => {
   const requests:{path:string;body:string}[] = []
@@ -14,13 +15,13 @@ test('monitoring searches, sorts and submits process identity', async ({page}) =
   await page.goto('/')
   await page.locator('.launcher-button').click()
   await page.locator('.launcher').getByRole('button',{name:'监控与进程'}).click()
-  await page.locator('select[aria-label="监控节点"]').selectOption('node-1')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'监控节点'}),'node-1')
   await expect(page.getByText('worker')).toBeVisible()
-  await page.getByRole('combobox',{name:'进程排序'}).selectOption('rss')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'进程排序'}),'rss')
   await page.getByRole('textbox',{name:'搜索进程'}).fill('worker')
   await page.getByRole('button',{name:'请求终止'}).click()
   await expect(page.getByRole('dialog',{name:'确认终止进程'})).toContainText('202')
-  await page.getByRole('combobox',{name:'监控节点'}).selectOption('node-2')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'监控节点'}),'node-2')
   await expect(page.getByRole('dialog',{name:'确认终止进程'})).toContainText('node-1')
   await page.getByRole('button',{name:'确认终止'}).click()
   await expect.poll(()=>requests.map(x=>x.path)).toContain('/api/v1/nodes/node-1/processes/22/terminate')
@@ -28,9 +29,9 @@ test('monitoring searches, sorts and submits process identity', async ({page}) =
   expect(JSON.parse(body).startTicks).toBe(202)
   expect(requests.some(x=>x.path==='/api/v1/nodes/node-2/processes/22/terminate')).toBe(false)
   await page.reload()
-  await expect(page.getByRole('combobox',{name:'监控节点'})).toHaveValue('node-2')
+  await expect(page.getByRole('combobox',{name:'监控节点'})).toHaveAttribute('data-value','node-2')
   await expect(page.getByRole('textbox',{name:'搜索进程'})).toHaveValue('worker')
-  await expect(page.getByRole('combobox',{name:'进程排序'})).toHaveValue('rss')
+  await expect(page.getByRole('combobox',{name:'进程排序'})).toHaveAttribute('data-value','rss')
   await page.getByRole('button',{name:'下一批进程'}).click()
   await expect(page.getByText('worker-later',{exact:false})).toBeVisible()
   await expect(page.getByRole('button',{name:'下一批进程'})).toBeDisabled()

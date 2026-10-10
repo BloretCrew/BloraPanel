@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 test('save-as copies undo history and explicit server reload remains reversible after refresh',async({page})=>{
   const writes:{path:string;text:string;version:string}[]=[],errors:string[]=[];let text='服务器原文',version='v1'
   page.on('pageerror',error=>errors.push(error.message))
@@ -13,7 +14,7 @@ test('save-as copies undo history and explicit server reload remains reversible 
     return route.fulfill({json})
   })
   await page.goto('/');await page.locator('[data-app="blora.editor"]').click();await page.getByRole('textbox',{name:'文件正文编辑器'}).focus();await page.keyboard.insertText('原始草稿');await page.keyboard.insertText('第二步')
-  await page.getByRole('button',{name:'另存为…',exact:true}).click();await page.getByRole('combobox',{name:'另存目标实例'}).selectOption('copy-instance');await page.getByRole('textbox',{name:'另存目标路径'}).fill('copied.txt');await page.reload();await expect(page.getByRole('textbox',{name:'另存目标路径'})).toHaveValue('copied.txt');expect(writes).toEqual([])
+  await page.getByRole('button',{name:'另存为…',exact:true}).click();await selectStyledOption(page,page.getByRole('combobox',{name:'另存目标实例'}),'copy-instance');await page.getByRole('textbox',{name:'另存目标路径'}).fill('copied.txt');await page.reload();await expect(page.getByRole('textbox',{name:'另存目标路径'})).toHaveValue('copied.txt');expect(writes).toEqual([])
   await page.getByRole('button',{name:'确认另存正文',exact:true}).click();await expect(page.locator('.app-window')).toHaveCount(2);const copyWindow=page.locator('.app-window.focused');await expect(copyWindow.getByRole('button',{name:'保存到服务器',exact:true})).toBeEnabled();expect(writes).toEqual([{path:'copied.txt',text:'原始草稿第二步',version:'missing'}])
   await copyWindow.getByRole('button',{name:'↶ 撤销',exact:true}).click();await expect(copyWindow.locator('.view-lines')).toContainText('原始草稿');await expect(copyWindow.locator('.view-lines')).not.toContainText('第二步');await expect(page.locator('.app-window:not(.focused) .view-lines')).toContainText('原始草稿第二步')
   text='服务器后续版本';version='v3';await copyWindow.getByRole('button',{name:'重新读取…',exact:true}).click()

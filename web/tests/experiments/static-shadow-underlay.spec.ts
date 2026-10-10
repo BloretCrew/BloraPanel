@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {installStaticShadowUnderlay} from '../helpers/static-shadow-underlay'
 import {installStaticShadowScene} from '../helpers/static-shadow-scene'
 import {nativeDeviceScale} from '../../playwright-browser'
@@ -35,7 +36,7 @@ for(const scale of [1,1.25])test.describe(`opaque static shadow underlay at DPR 
   const frame=page.locator('.app-window.focused'),title=(await frame.locator('.window-titlebar').boundingBox())!
   await page.mouse.move(title.x+180,title.y+15);await page.mouse.down();await page.mouse.move(title.x+280,title.y+35);await compare('held');await page.mouse.up()
   await page.evaluate(async()=>{const {useDesktop}=await import('/src/desktop/store.ts' as string),d=useDesktop();d.geometry(d.state.activeWindowId,{x:400,y:210,width:660,height:610})});await compare('resize')
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
   await page.evaluate(async()=>{const {useDesktop}=await import('/src/desktop/store.ts' as string),d=useDesktop();for(let i=0;i<6;i++)d.open({appId:'blora.instances',disposition:'new-window'});d.state.order.forEach((id:string,i:number)=>d.geometry(id,{x:132+(i%7)*26,y:100+(i%7)*26,width:960,height:620}))});await expect(page.locator('.app-window')).toHaveCount(8);await compare('stack')
   const stacked=(await page.locator('.app-window.focused .window-titlebar').boundingBox())!;await page.mouse.move(stacked.x+180,stacked.y+15);await page.mouse.down();await page.mouse.move(stacked.x+225,stacked.y+35);await compare('stack-held');await page.mouse.up()
   await page.evaluate(async()=>{const {useDesktop}=await import('/src/desktop/store.ts' as string);useDesktop().open({appId:'blora.files',disposition:'new-window'})})

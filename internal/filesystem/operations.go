@@ -515,7 +515,9 @@ func (s *Service) delete(ctx context.Context, p, version string, objectIDs ...st
 		return t, e
 	}
 	if e = s.root.Rename(p, dest); e != nil {
-		if !crossDevice(e) {
+		// If the daemon cannot create/use the root-level private trash directory,
+		// retain the recycle object beside its source on the same filesystem.
+		if !crossDevice(e) && !errors.Is(e, fs.ErrNotExist) && !errors.Is(e, fs.ErrPermission) {
 			return t, e
 		}
 		t.StoragePath = path.Join(path.Dir(p), ".blora-trash-"+t.ID)
@@ -729,7 +731,7 @@ func (s *Service) PurgeExpired(ctx context.Context, now time.Time) (Result, erro
 		}
 	}
 	r.Stage = "committed"
-	return r, syncDir(s.root, privateDir+"/trash")
+	return r, syncDir(s.state, "trash")
 }
 func (s *Service) removeTree(ctx context.Context, p string) error {
 	if e := ctx.Err(); e != nil {

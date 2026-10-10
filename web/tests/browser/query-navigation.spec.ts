@@ -1,4 +1,5 @@
 import type {Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {test,expect} from '../helpers/management-fixture'
 
 async function openDesktopWithSummary(page:Page,phase:(name:string)=>void){
@@ -101,11 +102,11 @@ test('pending task summary reads cancel before refresh while the latest task fil
     validationPhase('pending summary established; editing latest task filter')
     // No settling delay after the last protected edit. The real refresh
     // must cancel the pending read without replaying a remote operation.
-    await page.getByRole('combobox',{name:'任务状态筛选'}).selectOption('RUNNING')
+    await selectStyledOption(page,page.getByRole('combobox',{name:'任务状态筛选'}),'RUNNING')
     validationPhase('refreshing with pending task read')
     await page.reload()
     release()
-    await expect(page.getByRole('combobox',{name:'任务状态筛选'})).toHaveValue('RUNNING')
+    await expect(page.getByRole('combobox',{name:'任务状态筛选'})).toHaveAttribute('data-value','RUNNING')
     await expect(page.getByRole('button',{name:'7 项后台任务',exact:true})).toBeVisible()
     await expectPendingSummaryCancelled(page)
     expect(writes).toEqual([])

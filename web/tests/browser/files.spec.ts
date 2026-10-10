@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {createHash} from 'node:crypto'
 
 async function openFiles(page:Page){
@@ -32,7 +33,7 @@ test('virtual directory follows reduced node pages and restores scrolling across
   await page.getByRole('button',{name:'图标',exact:true}).click();await expect(page.getByRole('grid',{name:'节点文件图标视图'})).toBeVisible();await expect(page.locator('.file-icon-card')).toHaveCount(100)
   await page.getByRole('button',{name:'下一页',exact:true}).click();await expect(page.getByRole('gridcell',{name:/file-00100\.txt/})).toBeVisible();await page.reload();await expect(page.getByRole('gridcell',{name:/file-00100\.txt/})).toBeVisible();await page.getByRole('button',{name:'列表',exact:true}).click()
   await page.getByRole('textbox',{name:'搜索目录文件'}).fill('9876');await expect(viewport).toHaveAttribute('aria-rowcount','1');await expect(page.getByRole('button',{name:'file-09876.txt',exact:true})).toBeVisible()
-  await page.getByRole('combobox',{name:'文件排序'}).selectOption('modified');await page.getByRole('combobox',{name:'排序方向'}).selectOption('desc');await expect.poll(()=>requests.at(-1)).toMatchObject({offset:0,search:'9876',sort:'modified',order:'desc'});expect(errors).toEqual([])
+  await selectStyledOption(page,page.getByRole('combobox',{name:'文件排序'}),'modified');await selectStyledOption(page,page.getByRole('combobox',{name:'排序方向'}),'desc');await expect.poll(()=>requests.at(-1)).toMatchObject({offset:0,search:'9876',sort:'modified',order:'desc'});expect(errors).toEqual([])
 })
 
 test('directory tree loads expanded branches on demand and restores the selected path',async({page})=>{

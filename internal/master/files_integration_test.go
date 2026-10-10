@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -221,6 +222,60 @@ func assertDisk(t *testing.T, root, p, expected string) {
 	b, e := os.ReadFile(filepath.Join(root, p))
 	if e != nil || string(b) != expected {
 		t.Fatalf("%s bytes=%d err=%v", p, len(b), e)
+	}
+}
+
+func TestNodeScopedFileManagerUsesWholeDaemonFilesystem(t *testing.T) {
+	f := newFileFixture(t)
+	nodeID := f.instances[0].NodeID
+	ref := model.ResourceRef{Kind: "node", ID: nodeID, NodeID: nodeID}
+	visiblePath := filepath.Join(f.roots[0], "node-visible.txt")
+	if err := os.WriteFile(visiblePath, []byte("whole-node"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.VolumeName(visiblePath) + string(os.PathSeparator)
+	relative, err := filepath.Rel(root, visiblePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.ToSlash(relative)
+
+	f.reader.request("GET", "/nodes/"+nodeID+"/files/stat?path="+url.QueryEscape(path), nil, "", 403)
+	f.admin.request("POST", "/grants", model.Grant{UserID: f.readerUser.ID, Resource: ref, Action: "file.read"}, model.ID(), 200)
+	nodesReply := f.reader.request("GET", "/nodes/files", nil, "", 200)
+	var nodes []model.Node
+	if b, _ := json.Marshal(nodesReply["items"]); json.Unmarshal(b, &nodes) != nil || len(nodes) != 1 || nodes[0].ID != nodeID {
+		t.Fatalf("node selector did not return the authorized daemon: %v", nodesReply["items"])
+	}
+	content := f.reader.request("GET", "/nodes/"+nodeID+"/files/content?path="+url.QueryEscape(path), nil, "", 200)
+	var text string
+	if err := json.Unmarshal(content["text"], &text); err != nil || text != "whole-node" {
+		t.Fatalf("node file API did not read a host path: %q, %v", text, err)
+	}
+	access := f.reader.request("GET", "/nodes/"+nodeID+"/files/access", nil, "", 200)
+	var canWrite bool
+	if json.Unmarshal(access["canWrite"], &canWrite) != nil || canWrite {
+		t.Fatalf("read grant unexpectedly enabled writes: %v", access["canWrite"])
+	}
+
+	f.admin.request("POST", "/grants", model.Grant{UserID: f.readerUser.ID, Resource: ref, Action: "file.write"}, model.ID(), 200)
+	base, err := filepath.Rel(root, f.roots[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.ToSlash(filepath.Join(base, "node-manager-created"))
+	result := f.reader.request("POST", "/nodes/"+nodeID+"/files/actions", map[string]string{"action": "mkdir", "path": target}, model.ID(), 202)
+	task := parseFileTask(t, result)
+	if task.Resource.Kind != "node" || task.Resource.ID != nodeID {
+		t.Fatalf("file task was incorrectly bound to an instance: %+v", task.Resource)
+	}
+	visibleTask := f.reader.request("GET", "/tasks/"+task.ID, nil, "", 200)
+	if parseFileTask(t, visibleTask).Resource.Kind != "node" {
+		t.Fatal("node-scoped file task was not visible to its authorized actor")
+	}
+	f.awaitFile(t, task, model.Succeeded)
+	if info, err := os.Stat(filepath.Join(f.roots[0], "node-manager-created")); err != nil || !info.IsDir() {
+		t.Fatalf("node file task did not write to the whole-node filesystem: %v", err)
 	}
 }
 

@@ -1,4 +1,5 @@
 import {test, expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 
 test.setTimeout(90_000)
 
@@ -17,7 +18,7 @@ for (const [platform, backend] of [['windows', 'netsh'], ['darwin', 'pf'], ['lin
     await page.goto('/')
     await page.locator('.launcher-button').click()
     await page.locator('.launcher').getByRole('button', {name: '系统管理'}).click()
-    await page.locator('select[aria-label="系统节点"]').selectOption('read-only-node')
+    await selectStyledOption(page,page.getByRole('combobox',{name:'系统节点'}),'read-only-node')
     await expect(page.getByText(`${backend} · enabled`, {exact: true})).toBeVisible()
     await page.getByRole('textbox', {name: '目标防火墙规则'}).fill('443/tcp')
     await expect(page.getByRole('button', {name: '计算差异'})).toBeDisabled()
@@ -51,7 +52,7 @@ test('system management submits authorized task and firewall confirmations', asy
   await page.goto('/')
   await page.locator('.launcher-button').click()
   await page.locator('.launcher').getByRole('button', {name: '系统管理'}).click()
-  await page.locator('select[aria-label="系统节点"]').selectOption('node-1')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'系统节点'}),'node-1')
   await expect(page.getByText('demo.timer')).toBeVisible()
   await page.getByRole('button',{name:'下一批计划任务'}).click()
   await expect(page.getByText('last.timer',{exact:true})).toBeVisible({timeout: 15000})
@@ -75,10 +76,10 @@ test('system management submits authorized task and firewall confirmations', asy
   await page.getByRole('button', {name: '确认并应用'}).click()
   await expect(page.getByText('排队中',{exact:false})).toBeVisible()
   await expect(page.getByRole('button', {name: '确认保留'})).toBeDisabled()
-  await page.locator('select[aria-label="系统节点"]').selectOption('node-2')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'系统节点'}),'node-2')
   phase='awaiting_confirmation';state='RUNNING'
   await page.reload()
-  await expect(page.locator('select[aria-label="系统节点"]')).toHaveValue('node-2',{timeout: 15000})
+  await expect(page.getByRole('combobox',{name:'系统节点'})).toHaveAttribute('data-value','node-2',{timeout: 15000})
   await page.getByRole('button', {name: '确认保留'}).click()
   await expect.poll(() => requests.map(x => x.path)).toEqual(expect.arrayContaining([
     '/api/v1/nodes/node-1/system/tasks/actions',
@@ -104,7 +105,7 @@ test('system management disables controls when node capabilities are unavailable
   await page.goto('/')
   await page.locator('.launcher-button').click()
   await page.locator('.launcher').getByRole('button', {name: '系统管理'}).click()
-  await page.locator('select[aria-label="系统节点"]').selectOption('node-1')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'系统节点'}),'node-1')
   await expect(page.getByText('unavailable', {exact: true}).first()).toBeVisible()
   await expect(page.getByRole('button', {name: '计算差异'})).toBeDisabled()
   await expect(page.getByRole('button', {name: '启动'})).toHaveCount(0)

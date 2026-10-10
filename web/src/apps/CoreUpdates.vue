@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StyledSelect from '../app-host/StyledSelect.vue'
 import { randomUUID } from '../services/uuid'
 import {computed,onBeforeUnmount,ref,watch} from 'vue'
 import {api,session} from '../services/api'
@@ -68,7 +69,7 @@ async function apply(){
     <dl v-if="status" class="details-grid"><dt>当前版本</dt><dd>{{status.version||'开发版本'}} · {{status.revision?.slice(0,12)||'提交未知'}}</dd><dt>平台</dt><dd>{{status.platform}}</dd></dl>
     <form @submit.prevent="saveSource">
       <label>发行仓库<input v-model="repository" aria-label="发行仓库" type="url" required placeholder="https://github.com/BloretCrew/BloraPanel" :disabled="busy||active" @input="sourceDirty=true"></label>
-      <label>更新频道<select v-model="channel" aria-label="更新频道" :disabled="busy||active" @change="sourceDirty=true"><option value="beta">包含测试发行版</option><option value="stable">仅正式发行版</option></select></label>
+      <label>更新频道<StyledSelect v-model="channel" aria-label="更新频道" :disabled="busy||active" @change="sourceDirty=true"><option value="beta">包含测试发行版</option><option value="stable">仅正式发行版</option></StyledSelect></label>
       <label>发行 API 镜像<input v-model="apiUrl" aria-label="发行 API 镜像" type="url" placeholder="留空使用 GitHub 官方源" :disabled="busy||active" @input="sourceDirty=true"></label>
       <small class="muted">镜像需提供兼容的发行列表与下载地址。仅使用你信任的发行仓库或镜像。</small>
       <div class="action-row"><button :disabled="busy||active||!sourceDirty||!repository.trim()">保存更新源</button><button type="button" :disabled="busy||active||sourceDirty||!status" @click="check">{{busy?'正在处理…':'检查更新'}}</button></div>

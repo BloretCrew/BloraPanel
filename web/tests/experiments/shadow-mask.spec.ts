@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {installShadowMasks} from '../helpers/shadow-mask'
 
 for(const scale of [1,1.25])test.describe(`native optical alpha masks at DPR ${scale}`,()=>{
@@ -34,7 +35,7 @@ for(const scale of [1,1.25])test.describe(`native optical alpha masks at DPR ${s
   await compare('overlap')
   const frame=page.locator('.app-window.focused'),box=(await frame.locator('.window-titlebar').boundingBox())!
   await page.mouse.move(box.x+220,box.y+15);await page.mouse.down();await page.mouse.move(box.x+245,box.y+28);await compare('held');await page.mouse.up()
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark')
   await expect(page.locator('html')).toHaveAttribute('data-material-cache','ready');await expect(page.locator('[data-native-shadow-mask="ready"]')).toHaveCount(2)
   await compare('dark')
   await page.evaluate(()=>{(window as any).__nativeShadowMaskDiagnostic.dispose()})

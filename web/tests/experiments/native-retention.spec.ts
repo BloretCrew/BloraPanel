@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {installNativeRetention,type NativeRetention} from '../helpers/native-retention'
 import {nativeDeviceScale} from '../../playwright-browser'
 
@@ -26,7 +27,7 @@ for(const scale of [1,1.25])test.describe(`native ${mode} paint retention at DPR
   }
   await compare('eight-window-stack')
   const frame=page.locator('.app-window.focused'),title=(await frame.locator('.window-titlebar').boundingBox())!;await page.mouse.move(title.x+180,title.y+15);await page.mouse.down();await page.mouse.move(title.x+380,title.y+35);await compare('held-reveal');await page.mouse.up()
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
   await page.getByRole('switch',{name:'通透模式'}).uncheck();await compare('solid');await page.getByRole('switch',{name:'通透模式'}).check()
   await frame.evaluate(async element=>{const {useDesktop}=await import('/src/desktop/store.ts' as string),d=useDesktop();d.geometry((element as HTMLElement).dataset.windowId,{x:360,y:150,width:661,height:611})});await compare('odd-resize')
   await page.evaluate(()=>(window as any).__nativeRetention.dispose());expect(errors).toEqual([])

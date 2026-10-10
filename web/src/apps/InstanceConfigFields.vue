@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StyledSelect from '../app-host/StyledSelect.vue'
 import {computed} from 'vue'
 const props=defineProps<{config:Record<string,unknown>;disabled?:boolean}>(),emit=defineEmits<{change:[value:Record<string,unknown>]}>()
 const command=computed(()=>Array.isArray(props.config.command)?props.config.command as string[]:[]),environment=computed(()=>Object.entries(props.config.environment as Record<string,string>||{}))
@@ -9,7 +10,7 @@ function mode(value:string){emit('change',{...props.config,mode:value,...value==
 </script>
 <template>
   <fieldset class="instance-config-fields" :disabled="disabled"><legend>运行配置</legend>
-    <label>运行模式<select :value="config.mode" @change="mode(($event.target as HTMLSelectElement).value)"><option value="native">可信原生程序（需要主机权限）</option><option value="container">隔离容器</option></select></label>
+    <label>运行模式<StyledSelect :value="String(config.mode||'')" @change="mode(($event.target as HTMLSelectElement).value)"><option value="native">可信原生程序（需要主机权限）</option><option value="container">隔离容器</option></StyledSelect></label>
     <label>工作目录<input :value="config.directory||''" :readonly="config.mode==='container'" @input="field('directory',($event.target as HTMLInputElement).value)"></label>
     <label v-if="config.mode==='container'">容器镜像<input :value="config.image||''" required @input="field('image',($event.target as HTMLInputElement).value)"></label>
     <div v-for="(arg,index) in command" :key="index" class="config-argument"><label>{{index===0?'可执行程序':`参数 ${index}`}}<textarea :value="arg" :aria-label="index===0?'可执行程序':`启动参数 ${index}`" rows="2" :required="index===0" @input="argument(index,($event.target as HTMLTextAreaElement).value)"></textarea></label><button v-if="index>0" type="button" @click="field('command',command.filter((_,i)=>i!==index))">删除参数 {{index}}</button></div>

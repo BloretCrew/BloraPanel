@@ -2,6 +2,7 @@ import {realLogin} from './login'
 import {readFileSync} from 'node:fs'
 import {randomUUID} from 'node:crypto'
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 const fixture=JSON.parse(readFileSync(process.env.BLORA_E2E_CREDENTIALS!,'utf8')) as {url:string;admin:{name:string;password:string};instanceIds:string[]}
 async function login(page:Page,name:string,password:string){await realLogin(page,{name,password})}
 async function openApp(page:Page,name:string){await page.locator('.launcher-button').click();await page.locator('.launcher').getByRole('button',{name,exact:true}).click()}
@@ -17,7 +18,7 @@ test('real user creation, versioned role grants, revocation, password change and
     await login(member,username,password);expect((await(await member.request.get('/api/v1/instances')).json()).items).toHaveLength(0)
     await page.locator('.role-card').filter({has:page.getByText('只读成员',{exact:true})}).getByRole('button',{name:'复制为自定义模板',exact:true}).click();await page.getByRole('textbox',{name:'模板名称'}).fill(roleName);await page.getByRole('checkbox',{name:'修改文件',exact:true}).check();await page.getByRole('button',{name:'保存模板',exact:true}).click();await expect(page.locator('.role-card').filter({hasText:roleName})).toHaveCount(1)
     const roles=(await(await page.request.get('/api/v1/roles')).json()).items,role=roles.find((role:{name:string})=>role.name===roleName);expect(role.revision).toBe(1)
-    await page.getByRole('combobox',{name:'授权目标资源'}).selectOption(fixture.instanceIds[0]!);await page.getByRole('combobox',{name:'授权角色模板'}).selectOption(role.roleId);await page.getByRole('button',{name:'预览模板授权',exact:true}).click();await page.reload();await expect(page.getByRole('dialog',{name:'确认资源授权'})).toContainText(username);await page.getByRole('button',{name:'确认授权',exact:true}).click();await expect(page.locator('.grant-row')).toHaveCount(4)
+    await selectStyledOption(page,page.getByRole('combobox',{name:'授权目标资源'}),fixture.instanceIds[0]!);await selectStyledOption(page,page.getByRole('combobox',{name:'授权角色模板'}),role.roleId);await page.getByRole('button',{name:'预览模板授权',exact:true}).click();await page.reload();await expect(page.getByRole('dialog',{name:'确认资源授权'})).toContainText(username);await page.getByRole('button',{name:'确认授权',exact:true}).click();await expect(page.locator('.grant-row')).toHaveCount(4)
     const visible=(await(await member.request.get('/api/v1/instances')).json()).items;expect(visible.map((instance:{instanceId:string})=>instance.instanceId)).toEqual([fixture.instanceIds[0]])
     const base=`/api/v1/instances/${fixture.instanceIds[0]}/files`,filename=`role-check-${randomUUID()}.txt`,write=await member.request.put(`${base}/content`,{headers:await requestHeaders(member),data:{path:filename,text:'成员按显式授权写入',version:'missing'}});expect(write.status()).toBe(202);const taskId=(await write.json()).task.taskId;await expect.poll(async()=>(await(await member.request.get(`/api/v1/tasks/${taskId}`)).json()).task.state,{timeout:30000}).toBe('SUCCEEDED')
     const forbidden=await member.request.post(`/api/v1/instances/${fixture.instanceIds[0]}/actions`,{headers:await requestHeaders(member),data:{action:'start'}});expect(forbidden.status()).toBe(403)

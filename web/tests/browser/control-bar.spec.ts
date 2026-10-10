@@ -1,4 +1,5 @@
 import {expect, test} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 
 test('system and workspace reduced motion both keep the launcher stationary on entry',async({page})=>{
   await page.route('**/api/v1/**',route=>route.fulfill({json:new URL(route.request().url()).pathname.endsWith('/session')?{user:{userId:'motion-test',name:'动态效果测试',admin:true},csrfToken:'test-only'}:{items:[]}}))
@@ -75,11 +76,11 @@ test('workspace preferences persist and layout reset keeps a backup workspace',a
   await page.goto('/')
   await page.locator('.launcher-button').click()
   await page.locator('.launcher').getByRole('button',{name:'设置',exact:true}).click()
-  await page.locator('.settings-panel label').filter({hasText:/^主题(?!配色)/}).locator('select').selectOption('dark')
-  await page.getByLabel('字号').selectOption('1.1')
-  await page.getByLabel('界面密度').selectOption('compact')
-  await page.getByLabel('应用启动器快捷键').selectOption('off')
-  await page.getByLabel('窗口切换快捷键').selectOption('off')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark')
+  await selectStyledOption(page,page.getByLabel('字号'),'1.1')
+  await selectStyledOption(page,page.getByLabel('界面密度'),'compact')
+  await selectStyledOption(page,page.getByLabel('应用启动器快捷键'),'off')
+  await selectStyledOption(page,page.getByLabel('窗口切换快捷键'),'off')
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark')
   await expect(page.locator('html')).toHaveAttribute('data-density','compact')
   // Firefox quantizes layout values to fractions of a CSS pixel (14.2969px).
@@ -93,7 +94,7 @@ test('workspace preferences persist and layout reset keeps a backup workspace',a
   await expect(page.locator('html')).toHaveAttribute('data-density','compact')
   await page.locator('.launcher-button').click()
   await page.locator('.launcher').getByRole('button',{name:'设置',exact:true}).click()
-  await expect(page.getByLabel('字号')).toHaveValue('1.1')
-  await expect(page.getByLabel('应用启动器快捷键')).toHaveValue('off')
-  await expect(page.getByLabel('窗口切换快捷键')).toHaveValue('off')
+  await expect(page.getByLabel('字号')).toHaveAttribute('data-value','1.1')
+  await expect(page.getByLabel('应用启动器快捷键')).toHaveAttribute('data-value','off')
+  await expect(page.getByLabel('窗口切换快捷键')).toHaveAttribute('data-value','off')
 })

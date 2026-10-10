@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StyledSelect from '../app-host/StyledSelect.vue'
 import { randomUUID } from '../services/uuid'
 import {computed,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {useDesktop} from '../desktop/store'
@@ -166,7 +167,7 @@ onBeforeUnmount(()=>{notifyPaintHost();disposed=true;if(taskTimer)clearTimeout(t
   <div class="terminal-app">
     <div class="editor-toolbar"><strong>{{status}}</strong><button @click="load">刷新会话</button><button class="primary" :disabled="!view.resourceRef || busy || !!pendingTask" @click="create">新建会话</button><button v-if="sessionId" @click="attach(sessionId)">重新挂载</button><button v-if="connected && !writable" @click="takeover">申请接管</button><button @click="zoom(-1)" aria-label="缩小终端字号">A−</button><button @click="zoom(1)" aria-label="放大终端字号">A＋</button><button @click="copySelection">复制选区</button></div>
     <p v-if="error" class="error notice" role="alert">{{error}}</p>
-    <div v-if="sessionId" class="terminal-sessionbar"><select :value="sessionId" aria-label="选择终端会话" @change="attach(($event.target as HTMLSelectElement).value)"><option v-for="s in sessions" :key="s.sessionId" :value="s.sessionId">{{s.sessionId}} · {{s.state}}</option></select><button @click="anotherView">同会话新窗口</button><button :disabled="!!endRequest?.taskId&&!['SUCCEEDED','FAILED','CANCELLED','INTERRUPTED'].includes(endRequest.state||'')||selected?.state==='closed'" @click="askEnd">结束会话…</button><span v-if="endRequest?.taskId">结束任务：{{endRequest.state}}</span></div>
+    <div v-if="sessionId" class="terminal-sessionbar"><StyledSelect :value="sessionId" aria-label="选择终端会话" @change="attach(($event.target as HTMLSelectElement).value)"><option v-for="s in sessions" :key="s.sessionId" :value="s.sessionId">{{s.sessionId}} · {{s.state}}</option></StyledSelect><button @click="anotherView">同会话新窗口</button><button :disabled="!!endRequest?.taskId&&!['SUCCEEDED','FAILED','CANCELLED','INTERRUPTED'].includes(endRequest.state||'')||selected?.state==='closed'" @click="askEnd">结束会话…</button><span v-if="endRequest?.taskId">结束任务：{{endRequest.state}}</span></div>
     <div v-if="!sessionId" class="terminal-sessions"><p class="muted">刷新与移窗只恢复原会话，不重发历史输入。创建会话通过后台任务执行。</p><button v-for="s in sessions" :key="s.sessionId" @click="attach(s.sessionId)">{{s.sessionId}} · {{s.state}} · {{s.backend}}</button></div>
     <div class="terminal-paint-region"><div class="terminal-paint-viewport"><div ref="container" class="terminal-container" :data-session-id="sessionId" :data-terminal-writable="writable"></div></div></div>
     <footer class="editor-status"><span>{{view.resourceRef?.nodeId}} · {{sessionId || '未选择会话'}}</span><span v-if="selected">{{selected.backend}} · 会话上限 {{selected.maxSessions}} · 归档 {{Math.round(selected.archive.maxBytes/1024/1024)}} MiB</span></footer>

@@ -112,6 +112,7 @@ func New(opts Options) *Server {
 	s.mux.HandleFunc("GET /api/v1/nodes", s.auth(s.nodes))
 	s.mux.HandleFunc("GET /api/v1/nodes/creatable", s.auth(s.nodes))
 	s.mux.HandleFunc("GET /api/v1/nodes/managed", s.auth(s.nodes))
+	s.mux.HandleFunc("GET /api/v1/nodes/files", s.auth(s.nodes))
 	s.mux.HandleFunc("POST /api/v1/nodes/enrollments", s.auth(s.newEnrollment))
 	s.mux.HandleFunc("POST /api/v1/nodes/{id}/revoke", s.auth(s.revokeNode))
 	s.mux.HandleFunc("GET /api/v1/instances", s.auth(s.instances))
@@ -414,6 +415,9 @@ func (s *Server) nodes(w http.ResponseWriter, r *http.Request, u model.User) {
 	create := strings.HasSuffix(r.URL.Path, "/creatable")
 	for _, n := range items {
 		action := "node.read"
+		if strings.HasSuffix(r.URL.Path, "/files") {
+			action = "file.read"
+		}
 		if create {
 			action = "instance.create"
 		}
@@ -707,7 +711,11 @@ func (s *Server) canTask(ctx context.Context, u model.User, t model.Task) bool {
 		return (u.Admin || t.ActorID == u.ID) && s.store.Allowed(ctx, u, model.ResourceRef{Kind: "extension", ID: p.ExtensionID}, "app.use") && s.store.Allowed(ctx, u, t.Resource, "node.read")
 	}
 	if t.Resource.Kind == "node" {
-		return (u.Admin || t.ActorID == u.ID) && s.store.Allowed(ctx, u, t.Resource, "host.manage")
+		action := "host.manage"
+		if strings.HasPrefix(t.Action, "file.") {
+			action = "file.read"
+		}
+		return (u.Admin || t.ActorID == u.ID) && s.store.Allowed(ctx, u, t.Resource, action)
 	}
 	return (u.Admin || t.ActorID == u.ID) && s.store.Allowed(ctx, u, t.Resource, "instance.read")
 }

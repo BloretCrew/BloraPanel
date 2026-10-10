@@ -125,14 +125,14 @@
   border-color: color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
-:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), .styled-select-trigger, textarea) {
   border-color: var(--dark-control-edge);
   background-color: var(--surface-high);
   color: var(--on-surface);
 }
 
 :root[data-theme="dark"] :is(.in-window-dialog, .workspace-menu, .shortcut-rename-dialog)
-  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  :is(input:not([type="checkbox"]):not([type="radio"]), .styled-select-trigger, textarea) {
   background-color: var(--surface-highest);
 }
 
@@ -141,15 +141,15 @@
   opacity: .78;
 }
 
-:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):hover:not(:disabled) {
+:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), .styled-select-trigger, textarea):hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--on-surface) 22%, transparent);
 }
 
-:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+:root[data-theme="dark"] :is(input:not([type="checkbox"]):not([type="radio"]), .styled-select-trigger, textarea):focus {
   border-color: var(--primary);
 }
 
-:root[data-theme="dark"] select option {
+:root[data-theme="dark"] .styled-select-option {
   background: var(--surface-container);
   color: var(--on-surface);
 }
@@ -158,7 +158,7 @@
   opacity: .62;
 }
 
-:root[data-theme="dark"] :is(input,select,textarea):disabled {
+:root[data-theme="dark"] :is(input,.styled-select-trigger,textarea):disabled {
   opacity: .6;
 }
 

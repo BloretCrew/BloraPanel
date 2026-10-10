@@ -132,62 +132,81 @@ type fileHandle struct {
 }
 
 func (d *Daemon) filesFor(r bridge.Request) (*filesystem.Service, func(), error) {
-	if r.Resource.Kind != "instance" || r.Resource.NodeID != d.identity.NodeID || r.Resource.ID == "" || strings.ContainsAny(r.Resource.ID, "/\\.") {
+	if r.Resource.NodeID != d.identity.NodeID || r.Resource.ID == "" {
 		return nil, nil, filesystem.ErrPath
 	}
-	if r.Config == nil {
-		return nil, nil, errors.New("authoritative instance configuration required")
-	}
-	root := filepath.Join(d.config.StateDir, "instances", r.Resource.ID)
-	if r.Config.Mode == "native" && r.Config.Directory != "" {
-		root = r.Config.Directory
+	var root, cacheID, state string
+	if r.Resource.Kind == "node" {
+		if r.Resource.ID != d.identity.NodeID {
+			return nil, nil, filesystem.ErrPath
+		}
+		root = string(os.PathSeparator)
+		if volume := filepath.VolumeName(d.config.StateDir); volume != "" {
+			root = volume + string(os.PathSeparator)
+		}
+		cacheID = "node:" + r.Resource.ID
+		state = filepath.Join(d.config.StateDir, ".blora-files", "node-files", storage.Hash([]byte(cacheID)))
+	} else if r.Resource.Kind == "instance" {
+		if strings.ContainsAny(r.Resource.ID, "/\\.") || r.Config == nil {
+			return nil, nil, filesystem.ErrPath
+		}
+		root = filepath.Join(d.config.StateDir, "instances", r.Resource.ID)
+		if r.Config.Mode == "native" && r.Config.Directory != "" {
+			root = r.Config.Directory
+		}
+		cacheID = r.Resource.ID
+	} else {
+		return nil, nil, filesystem.ErrPath
 	}
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return nil, nil, err
+	}
+	if cacheID == r.Resource.ID {
+		if err := os.MkdirAll(root, 0700); err != nil {
+			return nil, nil, err
+		}
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.closing {
 		return nil, nil, protocol.ErrClosed
 	}
-	if old := d.files[r.Resource.ID]; old != nil && old.root != root {
+	if old := d.files[cacheID]; old != nil && old.root != root {
 		if old.users != 0 {
 			return nil, nil, filesystem.ErrConflict
 		}
 		if err := old.service.Close(); err != nil {
 			return nil, nil, err
 		}
-		delete(d.files, r.Resource.ID)
+		delete(d.files, cacheID)
 	}
-	if d.files[r.Resource.ID] == nil {
-		if err := os.MkdirAll(root, 0700); err != nil {
-			return nil, nil, err
+	if d.files[cacheID] == nil {
+		if r.Resource.Kind == "instance" {
+			// Preserve durable trash and upload records for configured instance roots.
+			var binding struct {
+				Root string `json:"root"`
+			}
+			_, err := d.store.Record(context.Background(), "file_root", r.Resource.ID, &binding)
+			if errors.Is(err, sql.ErrNoRows) {
+				binding.Root = root
+				_, err = d.store.PutRecord(context.Background(), "file_root", r.Resource.ID, 0, binding)
+			}
+			if err != nil {
+				return nil, nil, err
+			}
+			state = filepath.Join(d.config.StateDir, "file-state", r.Resource.ID)
+			if binding.Root != root {
+				state = filepath.Join(d.config.StateDir, "file-state-roots", r.Resource.ID, storage.Hash([]byte(root)))
+			}
 		}
-		// Preserve the initial root's legacy upload/trash records. Later roots
-		// have separate durable records, including after daemon restart.
-		var binding struct {
-			Root string `json:"root"`
-		}
-		_, err := d.store.Record(context.Background(), "file_root", r.Resource.ID, &binding)
-		if errors.Is(err, sql.ErrNoRows) {
-			binding.Root = root
-			_, err = d.store.PutRecord(context.Background(), "file_root", r.Resource.ID, 0, binding)
-		}
+		service, err := filesystem.New(root, filesystem.Options{StateDir: state, MaxTextBytes: 4 << 20, ChunkBytes: 64 << 10, SkipRootPrivate: r.Resource.Kind == "node"})
 		if err != nil {
 			return nil, nil, err
 		}
-		state := filepath.Join(d.config.StateDir, "file-state", r.Resource.ID)
-		if binding.Root != root {
-			state = filepath.Join(d.config.StateDir, "file-state-roots", r.Resource.ID, storage.Hash([]byte(root)))
-		}
-		service, err := filesystem.New(root, filesystem.Options{StateDir: state, MaxTextBytes: 4 << 20, ChunkBytes: 64 << 10})
-		if err != nil {
-			return nil, nil, err
-		}
-		d.files[r.Resource.ID] = &fileHandle{service: service, root: root}
+		d.files[cacheID] = &fileHandle{service: service, root: root}
 	}
-	h := d.files[r.Resource.ID]
+	h := d.files[cacheID]
 	h.users++
 	return h.service, func() { d.mu.Lock(); h.users--; d.mu.Unlock() }, nil
 }

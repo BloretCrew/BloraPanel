@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {nativeCssShadow,nativeCssPlaneShadow} from '../helpers/native-css-shadow'
 
 for(const scale of [1,1.25])test.describe(`original CSS elevation at DPR ${scale}`,()=>{
@@ -27,7 +28,7 @@ for(const scale of [1,1.25])test.describe(`original CSS elevation at DPR ${scale
   await compare('overlap')
   const frame=page.locator('.app-window.focused'),title=(await frame.locator('.window-titlebar').boundingBox())!
   await page.mouse.move(title.x+220,title.y+15);await page.mouse.down();await page.mouse.move(title.x+270,title.y+30);await compare('held');await page.mouse.up()
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark')
   await expect(page.locator('html')).toHaveAttribute('data-material-cache','ready');for(const plane of await page.locator('.window-shadow-plane').all())await expect(plane).toHaveAttribute('data-shadow-cache',/.+/)
   await compare('dark')
  })

@@ -27,7 +27,7 @@
 .filterbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;min-width:0}
 
 .filterbar input{flex:1;min-width:60px}
-.filterbar select{max-width:220px}
+.filterbar .styled-select{max-width:220px}
 .filterbar button{flex-shrink:0}
 
 .filterbar label{flex:1;min-width:0}
@@ -116,7 +116,7 @@
 .resource-main{flex:1;min-width:0;overflow:auto;padding:20px 22px 0;display:flex;flex-direction:column;border-radius:var(--shape-xl);background:var(--surface)}
 .resource-main>.app-heading{margin-bottom:15px}
 
-.instance-extra-filters select{flex:1;width:0;max-width:none;height:28px;min-height:28px;padding-block:4px;font-size:11px}
+.instance-extra-filters .styled-select{flex:1;width:0;max-width:none;height:28px;min-height:28px}.instance-extra-filters .styled-select-trigger{height:28px;min-height:28px;padding-block:4px;font-size:11px}
 .instance-view-switch{display:flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:var(--shape-sm);background:var(--surface-container)}
 .instance-view-switch button{padding:3px 8px;border:0;border-radius:var(--shape-xs);background:transparent;box-shadow:none;color:var(--muted);font-size:10px}
 .instance-view-switch button.selected{background:var(--primary-container);color:var(--on-primary-container)}
@@ -244,8 +244,8 @@
 .file-actions button{padding:4px 6px;font-size:10px;border:0;background:transparent;box-shadow:none;color:var(--muted)}
 .file-actions button:hover:not(:disabled){background:var(--surface-container)}
 .file-actions button:disabled{color:var(--muted)}
-.files-content>.filterbar:not(.file-pathbar) input,.files-content>.filterbar:not(.file-pathbar) select{font-size:11px;padding:4px 7px}
-.files-content>.filterbar:not(.file-pathbar) select{max-width:90px;padding-inline-end:28px}
+.files-content>.filterbar:not(.file-pathbar) input,.files-content>.filterbar:not(.file-pathbar) .styled-select-trigger{font-size:11px;padding:4px 7px}
+.files-content>.filterbar:not(.file-pathbar) .styled-select{max-width:90px}.files-content>.filterbar:not(.file-pathbar) .styled-select-trigger{padding-inline-end:7px}
 .file-view-switch{display:flex;gap:2px;margin-left:auto;padding:2px;border:1px solid var(--line);border-radius:var(--shape-sm);background:var(--surface-container)}
 .file-view-switch button{padding:3px 8px;border:0;border-radius:var(--shape-xs);background:transparent;box-shadow:none;color:var(--muted);font-size:10px}
 .file-view-switch button.selected{background:var(--primary-container);color:var(--on-primary-container)}
@@ -329,7 +329,7 @@
 .editor-conflict textarea{display:block;width:100%;min-height:100px;margin:8px 0;font-family:ui-monospace,monospace}
 .editor-conflict p{font-size:10px;color:var(--muted)}
 .terminal-sessionbar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--surface-low);font-size:10px}
-.terminal-sessionbar select{max-width:290px;font-size:10px;padding:4px 28px 4px 6px}
+.terminal-sessionbar .styled-select{max-width:290px}.terminal-sessionbar .styled-select-trigger{font-size:10px;padding:4px 8px 4px 6px}
 .terminal-sessionbar button{white-space:nowrap;font-size:10px}
 .terminal-sessionbar span{color:var(--muted)}
 .terminal-sessions{padding:20px;background:var(--surface)}
@@ -338,7 +338,7 @@
 
 .instance-console{display:flex;flex-direction:column;gap:10px;padding-top:6px}
 .console-toolbar{display:flex;flex-wrap:wrap;gap:5px;font-size:11px;align-items:center}
-.console-toolbar select{max-width:260px;padding:5px 28px 5px 7px;font-size:11px}
+.console-toolbar .styled-select{max-width:260px}.console-toolbar .styled-select-trigger{padding:5px 8px 5px 7px;font-size:11px}
 .console-toolbar button{font-size:11px}
 .instance-console .filterbar{margin:0}
 .instance-console .filterbar small{max-width:240px;color:var(--muted);font-size:10px}
@@ -368,7 +368,7 @@
 .grant-row button{font-size:10px}
 .grant-editor{display:flex;flex-direction:column;gap:10px;margin-top:20px;padding:16px;background:var(--surface-low);border:1px solid var(--line);border-radius:var(--shape-md)}
 .grant-editor label{font-size:11px}
-.grant-editor select{font-size:11px}
+.grant-editor .styled-select-trigger{font-size:11px}
 .role-templates{display:flex;flex-wrap:wrap;gap:12px;margin-top:25px}
 .role-templates>.action-row{flex-basis:100%;margin-bottom:0}
 .role-card{padding:14px;min-width:190px;flex:1;border:1px solid var(--line);border-radius:var(--shape-md)}
@@ -499,7 +499,7 @@
 .resource-statusbar span{display:none}
 .filterbar{flex-wrap:wrap;gap:5px}
 .instance-extra-filters{flex-wrap:nowrap}
-.instance-primary-filters select{flex:1 1 120px;min-width:120px}
+.instance-primary-filters .styled-select{flex:1 1 120px;min-width:120px}
 .files-browser .resource-sidebar{display:none}
 .files-content{padding:10px 12px 0}
 .file-list-head,.file-row{grid-template-columns:minmax(120px,1fr) 55px 110px}
@@ -517,7 +517,7 @@
 .editor-toolbar button{font-size:9px;padding:3px 5px}
 .editor-status{font-size:8px}
 .terminal-sessionbar{flex-wrap:wrap}
-.terminal-sessionbar select{max-width:100%}
+.terminal-sessionbar .styled-select{max-width:100%}
 .details-grid{grid-template-columns:95px 1fr;gap:0 10px}
 .market-grid{grid-template-columns:1fr}
 .audit-row{min-width:700px}

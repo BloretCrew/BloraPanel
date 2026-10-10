@@ -16,7 +16,7 @@ async function verifyDownloadAfterEditorRejects(page:Page,filename:string,status
   await page.goto('/');await page.locator('[data-app="blora.instances"]').click();await page.getByRole('button',{name:'文件边界实例',exact:true}).click();await page.getByRole('button',{name:'文件',exact:true}).click();await page.getByRole('button',{name:'在文件管理器打开',exact:true}).click();await page.getByRole('button',{name:filename,exact:true}).click()
   await expect(page.locator('.error.notice')).toContainText(message)
   const link=page.getByRole('link',{name:'下载原文件',exact:true})
-  await expect(link).toHaveAttribute('href',`/api/v1/instances/boundary-instance/files/download?path=${encodeURIComponent(filename)}`)
+  await expect(link).toHaveAttribute('href',`/api/v1/nodes/boundary-node/files/download?path=${encodeURIComponent(filename)}`)
   await expect(link).toHaveAttribute('download',filename)
 }
 

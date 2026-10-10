@@ -641,3 +641,44 @@ func TestCheckpointRetentionKeepsActiveTransfersAndUserFiles(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestNodeRootCanOpenWithoutCreatingRootPrivateDirectory(t *testing.T) {
+	root := t.TempDir()
+	state := filepath.Join(root, "var", "lib", "blora", ".blora-files", "node-files")
+	service, err := New(root, Options{StateDir: state, SkipRootPrivate: true})
+	if err != nil {
+		t.Fatalf("node root should open without root-level write permission: %v", err)
+	}
+	defer service.Close()
+	if _, err := os.Lstat(filepath.Join(root, privateDir)); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("node root created a private directory at the served root: %v", err)
+	}
+	if _, err := service.List(context.Background(), ".", ListOptions{Limit: 20}); err != nil {
+		t.Fatalf("read-only root listing failed: %v", err)
+	}
+	if err := service.validate("var/lib/blora/.blora-files/node-files", false); !errors.Is(err, ErrPath) {
+		t.Fatalf("private state unexpectedly became user-visible: %v", err)
+	}
+}
+
+func TestNewAllowsStateOnlyInsideReservedPrivateDirectory(t *testing.T) {
+	root := t.TempDir()
+	state := filepath.Join(root, ".blora-files", "state", "host")
+	service, err := New(root, Options{StateDir: state})
+	if err != nil {
+		t.Fatalf("reserved private state should be allowed under a whole-filesystem root: %v", err)
+	}
+	if _, err := service.List(context.Background(), ".", ListOptions{Limit: 100}); err != nil {
+		t.Fatalf("list root: %v", err)
+	}
+	nestedPrivate := filepath.Join(root, "var", "lib", "blora", ".blora-files", "node-files")
+	nested, err := New(root, Options{StateDir: nestedPrivate})
+	if err != nil {
+		t.Fatalf("nested hidden state directory should be allowed: %v", err)
+	}
+	_ = nested.Close()
+	if _, err := New(root, Options{StateDir: filepath.Join(root, "visible-state")}); err == nil {
+		t.Fatal("state directory inside visible filesystem must remain forbidden")
+	}
+	_ = service.Close()
+}

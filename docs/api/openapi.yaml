@@ -558,6 +558,149 @@ paths:
         '202': {$ref: '#/components/responses/Task'}
         '400': {$ref: '#/components/responses/Error'}
         '409': {$ref: '#/components/responses/Error'}
+  /nodes/files:
+    get:
+      tags: [nodes]
+      summary: List daemon nodes accessible with file.read for the node file manager
+      operationId: listFileManagerNodes
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files:
+    get:
+      tags: [files]
+      summary: List a bounded page of a daemon node filesystem root
+      operationId: listNodeFiles
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Path'}, {$ref: '#/components/parameters/Offset'}, {$ref: '#/components/parameters/Limit'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/access:
+    get:
+      tags: [files]
+      summary: Return the current user's file read/write capability and node identity
+      operationId: nodeFileAccess
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/stat:
+    get:
+      tags: [files]
+      summary: Stat an authorized path
+      operationId: statFileOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Path'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '404': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/trash:
+    get:
+      tags: [files]
+      summary: List recoverable entries in the daemon node trash
+      operationId: listTrashOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Offset'}, {$ref: '#/components/parameters/Limit'}]
+      responses:
+        '200': {$ref: '#/components/responses/Items'}
+  /nodes/{id}/files/preview:
+    get:
+      tags: [files]
+      summary: Read one bounded UTF-8 preview segment without loading the whole file
+      operationId: previewFileOnNode
+      parameters:
+        - {$ref: '#/components/parameters/Id'}
+        - {$ref: '#/components/parameters/Path'}
+        - {name: version, in: query, schema: {type: string}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, maximum: 9007199254740991, default: 0}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 61440, default: 49152}}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '415': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/content:
+    get:
+      tags: [files]
+      summary: Read UTF-8 text content and its immutable version
+      operationId: readFileOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Path'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '413': {$ref: '#/components/responses/Error'}
+    put:
+      tags: [files]
+      summary: Save text content through an idempotent task and version check
+      operationId: saveFileOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '409': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/download:
+    get:
+      tags: [files]
+      summary: Download an authorized file
+      operationId: downloadFileOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/Path'}, {$ref: '#/components/parameters/Version'}]
+      responses:
+        '200': {description: File bytes, content: {application/octet-stream: {schema: {type: string, format: binary}}}}
+        '404': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/actions:
+    post:
+      tags: [files]
+      summary: Submit a bounded file operation
+      operationId: fileActionOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '403': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/uploads:
+    post:
+      tags: [files]
+      summary: Begin a resumable browser upload
+      operationId: beginUploadOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '400': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/uploads/{taskId}:
+    get:
+      tags: [files]
+      summary: Read upload checkpoint and task state
+      operationId: uploadStatusOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TaskId'}]
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+    delete:
+      tags: [files]
+      summary: Request cancellation of an upload
+      operationId: cancelUploadOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TaskId'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+  /nodes/{id}/files/uploads/{taskId}/chunks:
+    put:
+      tags: [files]
+      summary: Commit one upload chunk at an exact offset
+      operationId: uploadChunkOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TaskId'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/Json'}
+      responses:
+        '200': {$ref: '#/components/responses/Json'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+  /nodes/{id}/files/uploads/{taskId}/complete:
+    post:
+      tags: [files]
+      summary: Complete and verify an upload
+      operationId: completeUploadOnNode
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/TaskId'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '202': {$ref: '#/components/responses/Task'}
+        '400': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
   /instances/{id}/terminals:
     get:
       tags: [terminals]

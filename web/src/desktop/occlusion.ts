@@ -84,7 +84,11 @@ export function installWindowOcclusion(desktop:HTMLElement){
  let animation=0,disposed=false
  const rect=(value:DOMRect):PaintRect=>({x:value.x,y:value.y,width:value.width,height:value.height})
  const translation=(value:string)=>{const match=/^translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)$/.exec(value);return match?{x:Number(match[1]),y:Number(match[2])}:undefined}
- const className=(frame:HTMLElement)=>[...frame.classList].filter(name=>name!=='moving').join(' ')
+ // Window enter/leave classes animate only child chrome and the shadow plane;
+ // they never change the frame/body geometry or its opaque paint. Ignore those
+ // presentation-only mutations so they do not trigger an unnecessary layout
+ // read while the desktop compositor is measuring a held translation.
+ const className=(frame:HTMLElement)=>[...frame.classList].filter(name=>name!=='moving'&&!/^window-(?:enter|leave)-(?:from|to|active)$/.test(name)).join(' ')
  const authoredStyle=(frame:HTMLElement)=>{
   const position=translation(frame.style.transform),offsets=position&&frame.dataset.windowPosition==='offset'&&parseFloat(frame.style.getPropertyValue('--window-x'))===position.x&&parseFloat(frame.style.getPropertyValue('--window-y'))===position.y
   return [...frame.style].filter(name=>name!=='transform'&&!name.startsWith('--material-')&&!(offsets&&(name==='--window-x'||name==='--window-y'))).map(name=>`${name}:${frame.style.getPropertyValue(name)}!${frame.style.getPropertyPriority(name)}`).join(';')

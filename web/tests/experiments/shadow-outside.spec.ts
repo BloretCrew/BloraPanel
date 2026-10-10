@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {installOutsideShadows} from '../helpers/shadow-outside'
 
 // Unadopted structural prototype. Preserve its exact native comparison and
@@ -34,7 +35,7 @@ test('outside shadow composition preserves full-screen pixels through motion and
   const frame=page.locator('.app-window.focused'),box=(await frame.locator('.window-titlebar').boundingBox())!
   await page.mouse.move(box.x+220,box.y+15);await page.mouse.down();await page.mouse.move(box.x+245,box.y+28)
   expect(await compare()).toEqual({max:0,changed:0});await page.mouse.up()
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark')
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark')
   await expect(page.locator('html')).toHaveAttribute('data-material-cache','ready')
   await expect.poll(()=>page.locator('.app-window>.window-shadow-plane[data-shadow-cache]').evaluateAll(elements=>elements.every(element=>{

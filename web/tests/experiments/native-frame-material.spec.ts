@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {installNativeFrameMaterial} from '../helpers/native-frame-material'
 import {installNativeFrameRegions} from '../helpers/native-frame-regions'
 import {nativeDeviceScale} from '../../playwright-browser'
@@ -43,7 +44,7 @@ for(const scale of [1,1.25])test.describe(`one native frame material DPR ${scale
   const title=(await page.locator('.app-window.focused .window-titlebar').boundingBox())!;await page.mouse.move(title.x+180,title.y+15);await page.mouse.down();await page.mouse.move(title.x+275,title.y+35);await compare('held-reveal');await page.mouse.up()
   await page.locator('[data-native-frame-text]').evaluate(element=>element.scrollTop=342);await compare('scroll')
   await page.evaluate(async()=>{const {useDesktop}=await import('/src/desktop/store.ts' as string),d=useDesktop();d.geometry(d.state.activeWindowId,{x:400,y:210,width:661,height:611})});await compare('odd-resize')
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
   await page.getByRole('switch',{name:'通透模式'}).uncheck();await compare('solid');await page.getByRole('switch',{name:'通透模式'}).check()
   await page.evaluate(async()=>{const {useDesktop}=await import('/src/desktop/store.ts' as string),d=useDesktop();for(let i=0;i<6;i++)d.open({appId:'blora.instances',disposition:'new-window'});d.state.order.forEach((id:string,i:number)=>d.geometry(id,{x:132+(i%7)*26,y:100+(i%7)*26,width:960,height:620}))});await expect(page.locator('.app-window')).toHaveCount(8);await compare('eight-window-stack')
   const stack=(await page.locator('.app-window.focused .window-titlebar').boundingBox())!;await page.mouse.move(stack.x+180,stack.y+15);await page.mouse.down();await page.mouse.move(stack.x+225,stack.y+35);await compare('stack-held');await page.mouse.up()

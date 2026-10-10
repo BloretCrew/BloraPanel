@@ -15,11 +15,11 @@ const key=(recovery:RecoveryService,uploadId:string)=>`${recovery.key}:${uploadI
 watch(()=>session.user?.userId,()=>{for(const abort of active.values())abort.abort();for(const timer of polling.values())clearTimeout(timer);polling.clear()})
 export function uploadIsActive(recovery:RecoveryService,uploadId:string){return active.has(key(recovery,uploadId))}
 function patch(recovery:RecoveryService,uploadId:string,values:Partial<BrowserUpload>){if(session.user?.userId!==recovery.userId)return;const record=recovery.state.uploads[uploadId];if(record)recovery.commit([{kind:'set',path:['uploads',uploadId],value:json({...record,...values})}])}
-export function createUpload(recovery:RecoveryService,instanceId:string,nodeId:string|undefined,path:string,file:File,version='missing'){
+export function createUpload(recovery:RecoveryService,instanceId:string,nodeId:string|undefined,path:string,file:File,version='missing',resourceKind:'instance'|'node'='instance'){
   if(active.size>=2)throw new Error('同时上传上限为2个，请等待或暂停当前上传')
   if(file.size>1024*1024*1024)throw new Error('当前上传上限为1 GiB')
   const uploadId=id('upload')
-  const record:BrowserUpload={uploadId,requestId:randomUUID(),instanceId,nodeId,path,sourceName:file.name,sourceModified:file.lastModified,total:file.size,hash:'',version,offset:0,hashOffset:0,stage:'waiting_client'}
+  const record:BrowserUpload={uploadId,requestId:randomUUID(),instanceId,resourceKind,nodeId,path,sourceName:file.name,sourceModified:file.lastModified,total:file.size,hash:'',version,offset:0,hashOffset:0,stage:'waiting_client'}
   recovery.commit([{kind:'set',path:['uploads',uploadId],value:json(record)}]);void resumeUpload(recovery,uploadId,file);return uploadId
 }
 function hashFile(file:File,signal:AbortSignal,progress:(offset:number)=>void){return new Promise<string>((resolve,reject)=>{
@@ -27,17 +27,17 @@ function hashFile(file:File,signal:AbortSignal,progress:(offset:number)=>void){r
   signal.addEventListener('abort',abort,{once:true});worker.onerror=event=>{close();reject(new Error(event.message))};worker.onmessage=(event:MessageEvent<{offset?:number;hash?:string;error?:string}>)=>{if(event.data.error){close();reject(new Error(event.data.error))}else if(event.data.hash){close();resolve(event.data.hash)}else if(event.data.offset!==undefined)progress(event.data.offset)};worker.postMessage({file})
 })}
 function verify(record:BrowserUpload,upload:NodeUpload){if(upload.spec.path!==record.path||upload.spec.total!==record.total||upload.spec.hash!==record.hash||upload.spec.sourceName!==record.sourceName||upload.spec.sourceModified!==record.sourceModified||upload.spec.sourceFingerprint!==record.hash||!Number.isSafeInteger(upload.offset)||upload.offset<0||upload.offset>record.total)throw new Error('节点上传检查点与原文件身份不匹配')}
-function base(record:BrowserUpload){return `/instances/${encodeURIComponent(record.instanceId)}/files/uploads`}
+function base(record:BrowserUpload){return `/${record.resourceKind==='node'?'nodes':'instances'}/${encodeURIComponent(record.instanceId)}/files/uploads`}
 export async function restoreUploadFromTask(recovery:RecoveryService,task:Task){
-  if(task.action!=='file.upload'||task.resource.kind!=='instance'||task.actorId!==recovery.userId||session.user?.userId!==recovery.userId)throw new Error('只能恢复当前账号自己的本机上传')
-  const result=await api<UploadReply>(`/instances/${encodeURIComponent(task.resource.id)}/files/uploads/${encodeURIComponent(task.taskId)}`)
-  if(session.user?.userId!==recovery.userId||result.task.actorId!==recovery.userId||result.task.taskId!==task.taskId||result.task.action!=='file.upload'||!result.task.requestId||result.task.requestId!==task.requestId||result.task.resource.kind!=='instance'||result.task.resource.id!==task.resource.id||result.task.resource.nodeId!==task.resource.nodeId)throw new Error('上传账号或资源身份已改变')
+  if(task.action!=='file.upload'||!['instance','node'].includes(task.resource.kind)||task.actorId!==recovery.userId||session.user?.userId!==recovery.userId)throw new Error('只能恢复当前账号自己的本机上传')
+  const fileScope=task.resource.kind==='node'?'nodes':'instances';const result=await api<UploadReply>(`/${fileScope}/${encodeURIComponent(task.resource.id)}/files/uploads/${encodeURIComponent(task.taskId)}`)
+  if(session.user?.userId!==recovery.userId||result.task.actorId!==recovery.userId||result.task.taskId!==task.taskId||result.task.action!=='file.upload'||!result.task.requestId||result.task.requestId!==task.requestId||result.task.resource.kind!==task.resource.kind||result.task.resource.id!==task.resource.id||result.task.resource.nodeId!==task.resource.nodeId)throw new Error('上传账号或资源身份已改变')
   if(result.task.state!=='WAITING_CLIENT'||result.task.cancellationRequested||!result.upload)throw new Error('该任务已不再等待本机文件，请刷新任务状态')
   const spec=result.upload.spec
   if(spec.ownerId!==recovery.userId||!spec.sourceName||spec.sourceName.length>512||!Number.isSafeInteger(spec.total)||spec.total<0||spec.total>1024*1024*1024||!Number.isSafeInteger(spec.sourceModified)||!/^sha256:[a-f0-9]{64}$/.test(spec.hash)||spec.sourceFingerprint!==spec.hash||!spec.path||!spec.expectedVersion)throw new Error('上传检查点缺少可核对的原文件身份')
   const existing=Object.values(recovery.state.uploads).find(record=>record.taskId===task.taskId)
   if(existing){verify(existing,result.upload);return existing}
-  const record:BrowserUpload={uploadId:id('upload'),requestId:result.task.requestId,taskId:task.taskId,submitted:true,instanceId:task.resource.id,nodeId:task.resource.nodeId,path:spec.path,sourceName:spec.sourceName,sourceModified:spec.sourceModified,total:spec.total,hash:spec.hash,version:spec.expectedVersion,offset:result.upload.offset,hashOffset:spec.total,stage:'waiting_client'}
+  const record:BrowserUpload={uploadId:id('upload'),requestId:result.task.requestId,taskId:task.taskId,submitted:true,instanceId:task.resource.id,resourceKind:task.resource.kind as 'instance'|'node',nodeId:task.resource.nodeId,path:spec.path,sourceName:spec.sourceName,sourceModified:spec.sourceModified,total:spec.total,hash:spec.hash,version:spec.expectedVersion,offset:result.upload.offset,hashOffset:spec.total,stage:'waiting_client'}
   verify(record,result.upload)
   recovery.commit([{kind:'set',path:['uploads',record.uploadId],value:json(record)}])
   return record

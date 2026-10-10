@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {installShadowTail} from '../helpers/shadow-tail'
 
 async function stableScreenshot(page:Page){
@@ -40,6 +41,6 @@ for(const scale of [1,1.25])test.describe(`native shadow alpha tail at DPR ${sca
   await compare('overlap')
   const frame=page.locator('.app-window.focused'),title=(await frame.locator('.window-titlebar').boundingBox())!
   await page.mouse.move(title.x+220,title.y+15);await page.mouse.down();await page.mouse.move(title.x+245,title.y+28);await compare('held');await page.mouse.up()
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
  })
 })

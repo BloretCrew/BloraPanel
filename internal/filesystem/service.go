@@ -35,8 +35,8 @@ var (
 )
 
 type Options struct {
-	// StateDir is a private directory owned by the daemon, outside the served
-	// root and its workload mounts. It stores no whole-file upload copies.
+	// StateDir is a private daemon-owned directory outside the served root or
+	// below an excluded .blora-files directory. It stores no whole-file copies.
 	StateDir       string
 	MaxFileBytes   int64
 	MaxTextBytes   int64
@@ -47,6 +47,10 @@ type Options struct {
 	ChunkBytes     int
 	TrashBytes     int64
 	TrashRetention time.Duration
+	// SkipRootPrivate avoids creating .blora-files at the served root. It is
+	// used for node-wide views so read access does not require root write
+	// permission; destructive operations then use hidden source siblings.
+	SkipRootPrivate bool
 }
 
 type Entry struct {
@@ -164,8 +168,18 @@ func New(root string, options Options) (*Service, error) {
 		return nil, err
 	}
 	rel, err := filepath.Rel(absRoot, absState)
-	if err != nil || rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))) {
-		return nil, errors.New("filesystem: StateDir must be outside the served root")
+	insideRoot := err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	privateState := false
+	if insideRoot {
+		for _, part := range strings.Split(filepath.ToSlash(rel), "/") {
+			if strings.EqualFold(part, privateDir) {
+				privateState = true
+				break
+			}
+		}
+	}
+	if err != nil || rel == "." || (insideRoot && !privateState) {
+		return nil, errors.New("filesystem: StateDir must be outside the served root or inside a hidden .blora-files directory")
 	}
 	r, err := os.OpenRoot(absRoot)
 	if err != nil {
@@ -177,14 +191,26 @@ func New(root string, options Options) (*Service, error) {
 		return nil, err
 	}
 	s := &Service{root: r, state: st, opts: options, sem: make(chan struct{}, options.MaxConcurrent), claims: make(map[*claim]struct{}), changed: make(chan struct{})}
-	for _, p := range []string{privateDir, privateDir + "/work", privateDir + "/uploads", privateDir + "/trash"} {
-		if info, e := r.Lstat(p); e == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
-			s.Close()
-			return nil, ErrPath
-		}
-		if e := r.MkdirAll(p, 0700); e != nil {
-			s.Close()
-			return nil, e
+	if !options.SkipRootPrivate {
+		// The root-level private area is an optimization for same-filesystem trash
+		// moves and extraction staging. A whole-host, read-only view must still
+		// initialize for an unprivileged daemon that cannot create a directory at
+		// the filesystem root; operations fall back to hidden siblings where safe.
+		for _, p := range []string{privateDir, privateDir + "/work", privateDir + "/uploads", privateDir + "/trash"} {
+			if info, e := r.Lstat(p); e == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
+				s.Close()
+				return nil, ErrPath
+			} else if e != nil && !errors.Is(e, fs.ErrNotExist) && !errors.Is(e, fs.ErrPermission) {
+				s.Close()
+				return nil, e
+			}
+			if e := r.MkdirAll(p, 0700); e != nil {
+				if errors.Is(e, fs.ErrPermission) {
+					break
+				}
+				s.Close()
+				return nil, e
+			}
 		}
 	}
 	for _, p := range []string{"uploads", "trash"} {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StyledSelect from '../app-host/StyledSelect.vue'
 import { randomUUID } from '../services/uuid'
 import {computed,ref} from 'vue'
 import {useNow} from '@vueuse/core'
@@ -69,7 +70,7 @@ async function resumeFile(task:Task){
   try{
     const record=await restoreUploadFromTask(desktop.recovery!,task)
     const slash=record.path.lastIndexOf('/')
-    desktop.open({appId:'blora.files',resourceRef:{kind:'instance',id:record.instanceId,nodeId:record.nodeId},title:'上传 · '+record.sourceName,disposition:'dedicated',state:{path:slash<0?'':record.path.slice(0,slash)}})
+    desktop.open({appId:'blora.files',title:'上传 · '+record.sourceName,disposition:'dedicated',state:{nodeId:record.resourceKind==='node'?record.instanceId:(record.nodeId||''),path:slash<0?'':record.path.slice(0,slash)}})
   }catch(e){error.value=String(e)}finally{resuming.value=undefined}
 }
 function formatResult(value:unknown){try{return JSON.stringify(value,null,2)}catch{return String(value)}}
@@ -84,7 +85,7 @@ const labels:Record<string,string>={QUEUED:'排队中',RUNNING:'执行中',WAITI
 <template>
   <div class="application">
     <header class="app-heading"><div><span class="eyebrow">ACTIVITY</span><h2>任务中心</h2><p>接受、执行与结果分别记录，关闭视图不取消任务。</p></div></header>
-    <div class="filterbar"><select v-model="filter" aria-label="任务状态筛选"><option value="">全部状态</option><option v-for="(label,state) in labels" :key="state" :value="state">{{label}}</option></select><button @click="tasks.refetch()">↻ 刷新</button><button @click="notifications()">启用系统通知</button><button v-if="desktop.state?.preferences.systemNotifications" @click="disableNotifications">关闭系统通知</button></div>
+    <div class="filterbar"><StyledSelect v-model="filter" aria-label="任务状态筛选"><option value="">全部状态</option><option v-for="(label,state) in labels" :key="state" :value="state">{{label}}</option></StyledSelect><button @click="tasks.refetch()">↻ 刷新</button><button @click="notifications()">启用系统通知</button><button v-if="desktop.state?.preferences.systemNotifications" @click="disableNotifications">关闭系统通知</button></div>
     <p v-if="notificationStatus" role="status">{{notificationStatus}}</p>
     <nav v-if="!view.resourceRef" class="action-row" aria-label="任务历史分页"><button :disabled="!before||tasks.isFetching.value" @click="navigateHistory('first')">最新任务</button><button :disabled="!history.length||tasks.isFetching.value" @click="navigateHistory('previous')">较新一页</button><button :disabled="!canReadEarlier" @click="navigateHistory('next')">更早任务</button></nav>
     <p v-if="tasks.error.value || error" class="error">{{tasks.error.value?.message || error}}</p>

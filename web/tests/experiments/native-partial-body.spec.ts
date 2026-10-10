@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {installNativePartialBody} from '../helpers/native-partial-body'
 import {nativeDeviceScale} from '../../playwright-browser'
 
@@ -34,7 +35,7 @@ for(const scale of [1,1.25])test.describe(`native partially covered body paint a
   const title=(await page.locator('.app-window.focused .window-titlebar').boundingBox())!;await page.mouse.move(title.x+180,title.y+15);await page.mouse.down();await page.mouse.move(title.x+275,title.y+35);await compare('held-reveal');await page.mouse.up()
   await page.locator('[data-native-clip-content]').evaluate(element=>{element.scrollTop=342});await compare('native-scroll')
   await page.evaluate(async()=>{const {useDesktop}=await import('/src/desktop/store.ts' as string),d=useDesktop();d.geometry(d.state.activeWindowId,{x:400,y:210,width:661,height:611})});await compare('odd-resize')
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await compare('dark')
   await page.getByRole('switch',{name:'通透模式'}).uncheck();await compare('solid')
   await page.getByRole('switch',{name:'通透模式'}).check()
   await page.evaluate(async()=>{const {useDesktop}=await import('/src/desktop/store.ts' as string),d=useDesktop();d.geometry(d.state.activeWindowId,{x:90,y:90,width:1100,height:770})});await compare('covered')

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StyledSelect from '../app-host/StyledSelect.vue'
 import { randomUUID } from '../services/uuid'
 import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
@@ -16,7 +17,7 @@ function editableText(text:string){return text.startsWith('\ufeff')?text.slice(1
 function documentBody(text:string,encoding:string|undefined){return encoding==='UTF-8 BOM'&&!text.startsWith('\ufeff')?'\ufeff'+text:text}
 // Closing removes the view record before Vue disposes query/watch effects.
 // Keep that final local view readable during teardown; writes still check identity.
-const view=computed(()=>recovery.state.views[props.viewTabId]||originalView),draftId=computed(()=>String(view.value.state.draftId||'')),draft=computed(()=>recovery.state.drafts[draftId.value]),dirty=computed(()=>draft.value?.text!==draft.value?.savedText),resourceInstanceId=computed(()=>String(view.value.state.instanceId||view.value.resourceRef?.id.split(':')[0]||''))
+const view=computed(()=>recovery.state.views[props.viewTabId]||originalView),draftId=computed(()=>String(view.value.state.draftId||'')),draft=computed(()=>recovery.state.drafts[draftId.value]),dirty=computed(()=>draft.value?.text!==draft.value?.savedText),resourceInstanceId=computed(()=>String(view.value.state.instanceId||view.value.state.nodeId||view.value.resourceRef?.nodeId||view.value.resourceRef?.id.split(':')[0]||'')),fileBase=computed(()=>view.value.state.fileScope==='node'?`/nodes/${encodeURIComponent(String(view.value.state.nodeId||resourceInstanceId.value))}/files`:`/instances/${encodeURIComponent(resourceInstanceId.value)}/files`)
 function patchView(key:string,value:unknown){if(recovery.state.views[props.viewTabId])recovery.commit([{kind:'set',path:['views',props.viewTabId,'state',key],value:json(value)}])}
 const splitEnabled=computed({get:()=>!!view.value.state.editorSplit,set:value=>patchView('editorSplit',value)})
 const findOpen=computed({get:()=>!!view.value.state.findOpen,set:value=>patchView('findOpen',value)})
@@ -29,7 +30,7 @@ interface SaveAsForm {instanceId:string;path:string;overwrite:boolean;requestId:
 const saveAsForm=computed<SaveAsForm|undefined>({get:()=>view.value.state.saveAsForm as unknown as SaveAsForm|undefined,set:value=>patchView('saveAsForm',value||null)})
 const reloadForm=computed<(DocumentContent&{path:string})|undefined>({get:()=>view.value.state.reloadForm as (DocumentContent&{path:string})|undefined,set:value=>patchView('reloadForm',value||null)})
 const destinations=useQuery({queryKey:['instances'],enabled:computed(()=>!!saveAsForm.value),queryFn:()=>api<{items:Instance[]}>('/instances')})
-const fileAccess=useQuery({queryKey:computed(()=>['file-access',resourceInstanceId.value]),enabled:computed(()=>!!view.value.resourceRef&&!!resourceInstanceId.value),queryFn:()=>api<FileAccess>(`/instances/${encodeURIComponent(resourceInstanceId.value)}/files/access`),refetchInterval:30000})
+const fileAccess=useQuery({queryKey:computed(()=>['file-access',resourceInstanceId.value]),enabled:computed(()=>!!view.value.resourceRef&&!!resourceInstanceId.value),queryFn:()=>api<FileAccess>(`${fileBase.value}/access`),refetchInterval:30000})
 const readonly=computed({get:()=>!!view.value.state.editorReadOnly,set:value=>patchView('editorReadOnly',value)})
 const effectiveReadonly=computed(()=>readonly.value||(!!draft.value?.resourceRef&&(fileAccess.data.value?.canWrite===false||fileAccess.isError.value)))
 const conflict=computed<DocumentContent|undefined>({get:()=>view.value.state.comparedServer as DocumentContent|undefined,set:value=>patchView('comparedServer',value||null)}),saveState=computed(()=>draft.value?.pendingSave?.state||''),savePending=computed(()=>!!draft.value?.pendingSave && !['FAILED','CANCELLED','INTERRUPTED'].includes(saveState.value))
@@ -40,7 +41,7 @@ function formatBytes(bytes:number){return bytes>=1048576?`${(bytes/1048576).toFi
 const historyStatus=computed(()=>{const bytes=draft.value?.historyBytes||0,budget=editorHistoryBudgetBytes(draft.value);return `撤销历史 ${formatBytes(bytes)} / ${formatBytes(budget)}${draft.value?.historyTrimmed?' · 较旧记录已按预算清理':''}`})
 const canUndo=computed(()=>!!draft.value&&(draft.value.cursor||0)>0&&!effectiveReadonly.value),canRedo=computed(()=>!!draft.value&&draft.value.cursor<draft.value.history.length&&!effectiveReadonly.value)
 const sourcePath=computed(()=>String(view.value.state.path||'')),sourceName=computed(()=>sourcePath.value.split('/').pop()||'原文件')
-const sourceDownloadHref=computed(()=>downloadSourceAfterOpenError.value&&view.value.resourceRef&&sourcePath.value?`/api/v1/instances/${encodeURIComponent(resourceInstanceId.value)}/files/download?path=${encodeURIComponent(sourcePath.value)}`:'')
+const sourceDownloadHref=computed(()=>downloadSourceAfterOpenError.value&&view.value.resourceRef&&sourcePath.value?`/api/v1${fileBase.value}/download?path=${encodeURIComponent(sourcePath.value)}`:'')
 const preview=ref<PreviewContent>(),previewMode=ref(false),previewLoading=ref(false),previewError=ref(''),previewOffsets=ref<number[]>([0]),previewCursor=ref(0)
 const previewRange=computed(()=>preview.value?`${formatBytes(preview.value.offset)}–${formatBytes(preview.value.nextOffset)} / ${formatBytes(preview.value.total)}`:'')
 async function loadPreview(offset=0,remember=true):Promise<boolean>{
@@ -50,7 +51,7 @@ async function loadPreview(offset=0,remember=true):Promise<boolean>{
     const version=preview.value?.version
     const params=new URLSearchParams({path:sourcePath.value,offset:String(offset),limit:String(48<<10)})
     if(version)params.set('version',version)
-    const page=await api<PreviewContent>(`/instances/${encodeURIComponent(resourceInstanceId.value)}/files/preview?${params.toString()}`)
+    const page=await api<PreviewContent>(`${fileBase.value}/preview?${params.toString()}`)
     preview.value=page
     if(remember){
       const history=previewOffsets.value.slice(0,previewCursor.value+1),pageOffset=Number(page.offset)
@@ -109,7 +110,7 @@ async function initialize(){
       let existing=Object.values(recovery.state.drafts).find(d=>view.value.resourceRef && d.resourceRef?.kind===view.value.resourceRef.kind && d.resourceRef?.id===view.value.resourceRef.id && d.resourceRef?.nodeId===view.value.resourceRef.nodeId)
       if(!existing && view.value.resourceRef){
         const resource=view.value.resourceRef,path=String(view.value.state.path||resource.id)
-        const file=view.value.state.newFile?{text:'',version:'missing',encoding:'UTF-8',newline:'LF'}:await api<DocumentContent>(`/instances/${encodeURIComponent(resourceInstanceId.value||resource.id)}/files/content?path=${encodeURIComponent(path)}`)
+        const file=view.value.state.newFile?{text:'',version:'missing',encoding:'UTF-8',newline:'LF'}:await api<DocumentContent>(`${fileBase.value}/content?path=${encodeURIComponent(path)}`)
         const hasBOM=file.text.startsWith('\ufeff'),format={encoding:file.encoding||(hasBOM?'UTF-8 BOM':'UTF-8'),newline:file.newline||(file.text.includes('\r\n')?'CRLF':'LF'),maxBytes:file.maxBytes}
         patchView('draftId',createDraft(recovery,editableText(file.text),resource,path,file.version,format))
       }else patchView('draftId',existing?.draftId||createDraft(recovery))
@@ -152,7 +153,7 @@ async function save(){
   const captured:PendingSave=savePending.value?draft.value.pendingSave!:{requestId:randomUUID(),text:documentBody(draft.value.text,draft.value.encoding),editorText:draft.value.text,version:draft.value.baseVersion||'missing',path:draft.value.path!,instanceId:resourceInstanceId.value,state:'SUBMITTING'}
   recovery.commit([{kind:'set',path:['drafts',currentId,'pendingSave'],value:json(captured)}])
   try{
-    const {task}=await api<{task:Task}>(`/instances/${encodeURIComponent(captured.instanceId)}/files/content`,{method:'PUT',headers:{'Idempotency-Key':captured.requestId},body:JSON.stringify({path:captured.path,text:captured.text,version:captured.version})})
+    const {task}=await api<{task:Task}>(`${fileBase.value}/content`,{method:'PUT',headers:{'Idempotency-Key':captured.requestId},body:JSON.stringify({path:captured.path,text:captured.text,version:captured.version})})
     if(session.user?.userId!==recovery.userId)return
     recovery.commit([{kind:'set',path:['drafts',currentId,'pendingSave'],value:json({...captured,taskId:task.taskId,state:task.state})}])
     if(!disposed)await reconcileSave()
@@ -176,11 +177,11 @@ async function reconcileSave(){
 }
 async function compareServer(){
   if(!draft.value?.resourceRef)return
-  try{const file=await api<DocumentContent>(`/instances/${encodeURIComponent(resourceInstanceId.value)}/files/content?path=${encodeURIComponent(draft.value.path!)}`);conflict.value=file}catch(e){error.value=String(e)}
+  try{const file=await api<DocumentContent>(`${fileBase.value}/content?path=${encodeURIComponent(draft.value.path!)}`);conflict.value=file}catch(e){error.value=String(e)}
 }
 async function prepareReload(){
   if(!draft.value?.resourceRef||savePending.value)return;error.value=''
-  try{const file=await api<DocumentContent>(`/instances/${encodeURIComponent(resourceInstanceId.value)}/files/content?path=${encodeURIComponent(draft.value.path!)}`);reloadForm.value={...file,path:draft.value.path!}}catch(e){error.value=String(e)}
+  try{const file=await api<DocumentContent>(`${fileBase.value}/content?path=${encodeURIComponent(draft.value.path!)}`);reloadForm.value={...file,path:draft.value.path!}}catch(e){error.value=String(e)}
 }
 function updateFormat(targetDraftId:string,file:DocumentContent){
   const changes=[
@@ -250,7 +251,7 @@ function selectMatches(){const target=activeEditor||editor,found=matches();if(!f
       <div v-else class="empty-state"><strong>暂时无法读取分段</strong><p>文件仍保持只读状态，可下载原文件后使用专用工具打开。</p></div>
     </section>
     <div v-else class="editor-panes" :class="{split:splitEnabled}"><div ref="primaryContainer" class="monaco-container"></div><div v-if="splitEnabled" ref="splitContainer" class="monaco-container"></div></div>
-    <form v-if="saveAsForm" class="in-window-dialog" role="dialog" aria-label="另存正文副本" @submit.prevent="saveAs"><h3>另存正文副本</h3><label>目标实例<select :value="saveAsForm.instanceId" aria-label="另存目标实例" required @change="saveAsField('instanceId',($event.target as HTMLSelectElement).value)"><option value="">选择目标实例</option><option v-for="instance in destinations.data.value?.items" :key="instance.instanceId" :value="instance.instanceId">{{instance.nodeName||instance.nodeId}} / {{instance.name}}</option></select></label><label>目标路径<input :value="saveAsForm.path" aria-label="另存目标路径" required @input="saveAsField('path',($event.target as HTMLInputElement).value)"></label><label class="check-row"><input type="checkbox" :checked="saveAsForm.overwrite" @change="saveAsField('overwrite',($event.target as HTMLInputElement).checked)">允许覆盖目标当前版本</label><p>当前正文和撤销历史复制到新文件视图；来源草稿保留。提交按目标版本校验，等待节点任务确认。</p><p v-if="destinations.error.value" class="error">{{destinations.error.value.message}}</p><div class="action-row"><button type="button" :disabled="busy" @click="saveAsForm=undefined">返回</button><button class="primary" :disabled="busy">确认另存正文</button></div></form>
+    <form v-if="saveAsForm" class="in-window-dialog" role="dialog" aria-label="另存正文副本" @submit.prevent="saveAs"><h3>另存正文副本</h3><label>目标实例<StyledSelect :value="saveAsForm.instanceId" aria-label="另存目标实例" required @change="saveAsField('instanceId',($event.target as HTMLSelectElement).value)"><option value="">选择目标实例</option><option v-for="instance in destinations.data.value?.items" :key="instance.instanceId" :value="instance.instanceId">{{instance.nodeName||instance.nodeId}} / {{instance.name}}</option></StyledSelect></label><label>目标路径<input :value="saveAsForm.path" aria-label="另存目标路径" required @input="saveAsField('path',($event.target as HTMLInputElement).value)"></label><label class="check-row"><input type="checkbox" :checked="saveAsForm.overwrite" @change="saveAsField('overwrite',($event.target as HTMLInputElement).checked)">允许覆盖目标当前版本</label><p>当前正文和撤销历史复制到新文件视图；来源草稿保留。提交按目标版本校验，等待节点任务确认。</p><p v-if="destinations.error.value" class="error">{{destinations.error.value.message}}</p><div class="action-row"><button type="button" :disabled="busy" @click="saveAsForm=undefined">返回</button><button class="primary" :disabled="busy">确认另存正文</button></div></form>
     <div v-if="reloadForm" class="in-window-dialog" role="dialog" aria-label="重新读取服务器正文"><h3>重新读取服务器正文</h3><p>{{reloadForm.path}} · {{reloadForm.text.length}} 字符</p><p>将用刚读取的服务器版本替换当前共享草稿正文，所有打开此草稿的视图都会更新。原本地正文保留在撤销历史中，可撤销恢复；不会提交服务器写入。</p><div class="action-row"><button @click="reloadForm=undefined">返回</button><button class="primary" :disabled="savePending||readonly" @click="applyReload">采用服务器正文（可撤销）</button></div></div>
     <footer class="editor-status"><span :class="{'error':!recovery.status.protected}">{{recovery.status.message}}</span><span v-if="previewMode">只读分段预览 · {{previewRange}}{{preview?.encoding?' · '+preview.encoding:''}}</span><span v-else>{{draft?.text.length || 0}} 字符 · {{documentEncoding}} · {{documentNewline}}{{textLimit?' · 上限 '+textLimit:''}} · {{historyStatus}} · {{savePending?'保存任务 '+saveState:dirty?'服务器尚未保存':'基线未更改'}}</span></footer>
   </div>

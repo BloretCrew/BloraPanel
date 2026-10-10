@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test'
+import {selectStyledOption} from '../helpers/styled-select'
 import {installShadowSiblings} from '../helpers/shadow-sibling'
 
 // Unadopted structural prototype. Preserve its exact native comparison and
@@ -32,7 +33,7 @@ for(const scale of [1,1.25])test.describe(`independent native optical shadow at 
   const frame=page.locator('.app-window.focused'),box=(await frame.locator('.window-titlebar').boundingBox())!
   await page.mouse.move(box.x+220,box.y+15);await page.mouse.down();await page.mouse.move(box.x+245,box.y+28)
   expect(await compare()).toEqual({max:0,changed:0});await page.mouse.up()
-  await page.getByRole('combobox',{name:'主题',exact:true}).selectOption('dark')
+  await selectStyledOption(page,page.getByRole('combobox',{name:'主题',exact:true}),'dark')
   await expect(page.locator('html')).toHaveAttribute('data-material-cache','ready')
   expect(await compare()).toEqual({max:0,changed:0})
   await page.evaluate(()=>{(window as any).__nativeShadowSiblingDiagnostic.dispose()})
