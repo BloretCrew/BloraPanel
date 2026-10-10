@@ -366,7 +366,7 @@ Linux真实空间不足验收可显式运行 `BLORA_TEST_ENOSPC=1 go test -race 
 
 **Blora Panel 正在持续开发。** 实现状态与验证状态分别记录在[验收矩阵](docs/acceptance/ACCEPTANCE_MATRIX.md)中。
 
-当前预构建预发布版本为 **[v0.1.0-beta.4](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.4)**，包含零参数启动、核心 Release 更新、直接远程 HTTP，以及非安全 HTTP 页面登录所需的浏览器 UUID 回退。自动化及代理执行的验证不能代替项目负责人的亲自体验，不宣称达到正式稳定版标准。
+当前预构建预发布版本为 **[v0.1.0-beta.5](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.5)**，包含零参数启动、核心 Release 更新、直接远程 HTTP、浏览器 UUID 回退、自绘下拉框、桌面/窗口/标签页动效，以及按 Daemon 节点管理文件。自动化及代理执行的验证不能代替项目负责人的亲自体验，不宣称达到正式稳定版标准。
 
 [非发行源码收尾](docs/acceptance/reports/non-release-closeout-2026-10-08.md)包含后端竞态、构建、123 项前端单测、完整运行与后续单项复验合并覆盖的 51 个真实功能场景、恢复修复和严格原生绘制校验。原失败与合并证据的限制仍保留；beta 包制作与验证已随后完成，正式稳定版等待本人实际体验。
 
