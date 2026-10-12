@@ -388,7 +388,7 @@ Each archive also contains a per-file `MANIFEST.json`. Fixed timestamps, orderin
 
 **Blora Panel is in active development.** Implementation and verification are tracked separately in the [acceptance matrix](docs/acceptance/ACCEPTANCE_MATRIX.md).
 
-The current prebuilt prerelease is **[v0.1.0-beta.6](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.6)**. It includes zero-argument startup, prebuilt core updates, direct remote HTTP, browser UUID fallback, custom dropdown controls, desktop/window/tab transitions, daemon-node-scoped file management, and built-in file-operation context menus. Automated and agent-run validation do not replace the owner's hands-on evaluation; stable-release readiness is not claimed.
+The current prebuilt prerelease is **[v0.1.0-beta.7](https://github.com/BloretCrew/BloraPanel/releases/tag/v0.1.0-beta.7)**. It includes zero-argument startup, prebuilt core updates, direct remote HTTP, browser UUID fallback, custom dropdown controls, desktop/window/tab transitions, daemon-node-scoped file management, and built-in file-operation context menus. Automated and agent-run validation do not replace the owner's hands-on evaluation; stable-release readiness is not claimed.
 
 [Non-release source closeout](docs/acceptance/reports/non-release-closeout-2026-10-08.md) covers backend race checks, builds, 123 frontend units, all 51 real functional scenarios across a complete run and independent follow-ups, recovery repairs and strict native rendering checks. Earlier failures and the limits of combined evidence remain visible. Beta package validation followed that source closeout; the stable release awaits hands-on evaluation.
 
