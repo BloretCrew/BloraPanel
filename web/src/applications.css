@@ -244,6 +244,10 @@
 .file-actions button{padding:4px 6px;font-size:10px;border:0;background:transparent;box-shadow:none;color:var(--muted)}
 .file-actions button:hover:not(:disabled){background:var(--surface-container)}
 .file-actions button:disabled{color:var(--muted)}
+.file-context-menu{position:fixed;z-index:4000;width:230px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.file-context-menu button{min-height:30px}
+.file-context-menu button:disabled{opacity:.46;cursor:not-allowed}
+.file-context-separator{height:1px;margin:5px 8px;background:var(--line)}
 .files-content>.filterbar:not(.file-pathbar) input,.files-content>.filterbar:not(.file-pathbar) .styled-select-trigger{font-size:11px;padding:4px 7px}
 .files-content>.filterbar:not(.file-pathbar) .styled-select{max-width:90px}.files-content>.filterbar:not(.file-pathbar) .styled-select-trigger{padding-inline-end:7px}
 .file-view-switch{display:flex;gap:2px;margin-left:auto;padding:2px;border:1px solid var(--line);border-radius:var(--shape-sm);background:var(--surface-container)}

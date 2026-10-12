@@ -3,6 +3,7 @@ import { randomUUID } from '../services/uuid'
 import UIIcon from '../app-host/UIIcon.vue'
 import StyledSelect from '../app-host/StyledSelect.vue'
 import {computed,nextTick,onBeforeUnmount,onMounted,ref,watch} from 'vue'
+import {useEventListener} from '@vueuse/core'
 import {useQuery} from '@tanstack/vue-query'
 import {useDesktop} from '../desktop/store'
 import {api,APIError,type Task} from '../services/api'
@@ -18,6 +19,7 @@ interface TreeRow {path:string;name:string;depth:number;expanded:boolean;hasChil
 interface Marquee {startX:number;startY:number;currentX:number;currentY:number;add:boolean;scrollTop:number}
 const props=defineProps<{viewTabId:string;windowId:string}>(),desktop=useDesktop(),recovery=desktop.recovery!,error=ref(''),busy=ref(false),viewport=ref<HTMLElement>(),pickedFile=ref<File>(),resumeId=ref<string>(),fileInput=ref<HTMLInputElement>()
 const marquee=ref<Marquee>()
+const contextMenu=ref<{x:number;y:number;item?:FileEntry}>(),contextMenuElement=ref<HTMLElement>()
 const view=computed(()=>recovery.state.views[props.viewTabId]!)
 function patch(key:string,value:unknown){if(recovery.state.views[props.viewTabId])recovery.commit([{kind:'set',path:['views',props.viewTabId,'state',key],value:json(value)}])}
 const path=computed(()=>String(view.value.state.path||'.')),pathInput=computed({get:()=>String(view.value.state.pathInput??path.value),set:value=>patch('pathInput',value)})
@@ -158,6 +160,34 @@ async function submit(){
   }catch(e){error.value=String(e)}finally{busy.value=false}
 }
 function download(){for(const filePath of selected.value){const a=document.createElement('a');a.href=`/api/v1${endpoint.value}/download?path=${encodeURIComponent(filePath)}`;a.download=filePath.split('/').pop()!;a.click()}}
+function openContextMenu(event:MouseEvent){
+  event.preventDefault()
+  const target=event.target instanceof Element?event.target:undefined
+  if(target?.closest('input,textarea,select,[contenteditable="true"]')){contextMenu.value=undefined;return}
+  const row=target?.closest<HTMLElement>('[data-file-path]'),itemPath=row?.dataset.filePath
+  const item=itemPath?files.data.value?.items.find(file=>file.path===itemPath):undefined
+  if(item&&!selected.value.includes(item.path)){patch('selected',[item.path]);patch('selectionAnchor',item.path)}
+  contextMenu.value={x:event.clientX,y:event.clientY,item}
+  void nextTick(()=>{
+    const menu=contextMenu.value,element=contextMenuElement.value
+    if(!menu||!element)return
+    const rect=element.getBoundingClientRect(),margin=8
+    contextMenu.value={...menu,x:Math.max(margin,Math.min(menu.x,innerWidth-rect.width-margin)),y:Math.max(margin,Math.min(menu.y,innerHeight-rect.height-margin))}
+    void nextTick(()=>element.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus())
+  })
+}
+function invokeContextAction(action:()=>unknown){contextMenu.value=undefined;void action()}
+function contextMenuKeydown(event:KeyboardEvent){
+  const element=contextMenuElement.value
+  if(!element)return
+  if(event.key==='Escape'){event.preventDefault();contextMenu.value=undefined;return}
+  if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return
+  const items=[...element.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')],index=items.indexOf(document.activeElement as HTMLButtonElement)
+  event.preventDefault()
+  items[event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowDown'?1:-1)+items.length)%items.length]?.focus()
+}
+useEventListener(window,'pointerdown',(event:PointerEvent)=>{if(contextMenu.value&&!contextMenuElement.value?.contains(event.target as Node))contextMenu.value=undefined})
+useEventListener(window,'resize',()=>{contextMenu.value=undefined})
 async function chooseFile(event:Event){const input=event.target as HTMLInputElement,file=input.files?.[0];input.value='';if(!file)return;if(resumeId.value){void resumeUpload(recovery,resumeId.value,file);resumeId.value=undefined;return}pickedFile.value=file;await prepare('upload')}
 function selectUpload(uploadId?:string){resumeId.value=uploadId;fileInput.value?.click()}
 const dragType='application/x-blora-files'
@@ -172,7 +202,7 @@ function keyboard(event:KeyboardEvent){if((event.target as HTMLElement).closest(
 onMounted(()=>{ensureTreePath(path.value);for(const upload of uploads.value)if(!uploadIsActive(recovery,upload.uploadId)&&!['succeeded','cancelled'].includes(upload.stage))void reconcileUpload(recovery,upload.uploadId)})
 </script>
 <template>
-  <div class="application files-app" tabindex="0" @keydown="keyboard" @dragover.prevent @drop="drop">
+  <div class="application files-app" tabindex="0" @keydown="keyboard" @contextmenu.prevent="openContextMenu" @dragover.prevent @drop="drop">
     <header class="app-heading"><div><span class="eyebrow">FILES</span><h2>文件管理器</h2><p>按 daemon 节点浏览整台主机的文件系统。</p></div><StyledSelect v-model="selectedNodeId" aria-label="选择文件管理节点"><option value="">选择获准节点</option><option v-for="node in nodes.data.value?.items" :key="node.nodeId" :value="node.nodeId">{{node.name}} · {{node.state}}</option></StyledSelect></header>
     <div v-if="resourceInstanceId" class="files-browser">
       <aside class="resource-sidebar" aria-label="文件导航"><div class="sidebar-group-label">位置</div><button class="sidebar-item" :class="{selected:path==='.'&&!trashOpen}" @click="navigate('.');trashOpen=false"><UIIcon name="folder"/><span>磁盘根目录</span></button><div class="file-tree" role="tree" aria-label="目录树"><div v-for="row in treeRows" :key="row.path" class="file-tree-row" role="treeitem" :aria-level="row.depth+1" :aria-expanded="row.hasChildren?row.expanded:undefined" :aria-selected="path===row.path&&!trashOpen" :style="{paddingLeft:6+row.depth*14+'px'}"><button type="button" class="file-tree-toggle" :aria-label="row.expanded?'收起目录 '+row.name:'展开目录 '+row.name" :disabled="!row.hasChildren" @click.stop="toggleTree(row.path)">{{row.hasChildren?(row.expanded?'⌄':'›'):''}}</button><button type="button" class="file-tree-label" :class="{selected:path===row.path&&!trashOpen}" @click="treeNavigate(row.path)"><UIIcon name="folder"/><span>{{row.name}}</span></button></div><small v-if="tree.isPending.value" class="file-tree-status">正在读取目录树…</small><small v-else-if="tree.error.value" class="file-tree-status error">目录树读取失败</small></div><button class="sidebar-item" :class="{selected:trashOpen}" @click="trashOpen=!trashOpen"><UIIcon name="trash"/><span>回收区</span></button><div class="sidebar-group-label">当前 daemon 节点</div><span class="sidebar-resource-name">{{resourceInstanceId}}</span><div class="sidebar-footnote">文件操作由节点确认<br>支持拖放与快捷键</div></aside>
@@ -186,14 +216,14 @@ onMounted(()=>{ensureTreePath(path.value);for(const upload of uploads.value)if(!
         <div class="file-list-head"><span>名称</span><span>大小</span><span>修改时间</span></div>
         <div ref="viewport" class="file-viewport" role="grid" aria-label="节点文件列表" :aria-rowcount="total" @pointerdown="beginMarquee" @scroll="patch('scroll',($event.target as HTMLElement).scrollTop)">
           <div class="file-spacer" :style="{height:Math.max(total*36,120)+'px'}">
-            <div v-for="(file,index) in files.data.value?.items" :key="file.path" class="file-row" :class="{selected:selected.includes(file.path),cut:clipboard?.mode==='move'&&clipboard.instanceId===resourceInstanceId&&clipboard.sources.some(source=>source.path===file.path)}" draggable="true" @pointerdown.stop @dragstart="dragStart($event,file)" role="row" tabindex="0" :aria-selected="selected.includes(file.path)" :style="{top:(offset+index)*36+'px'}" @click="select($event,file)" @dblclick="open(file)" @keydown.enter="open(file)"><span><button @click.stop="open(file)"><UIIcon v-if="file.isDir||file.kind==='directory'" class="file-entry-icon folder" name="folder"/><UIIcon v-else class="file-entry-icon document" name="file"/>{{file.name}}</button></span><span>{{file.isDir||file.kind==='directory'?'—':file.size+' B'}}</span><span>{{file.modified?new Date(file.modified).toLocaleString():'—'}}</span></div>
+            <div v-for="(file,index) in files.data.value?.items" :key="file.path" class="file-row" :data-file-path="file.path" :class="{selected:selected.includes(file.path),cut:clipboard?.mode==='move'&&clipboard.instanceId===resourceInstanceId&&clipboard.sources.some(source=>source.path===file.path)}" draggable="true" @pointerdown.stop @dragstart="dragStart($event,file)" role="row" tabindex="0" :aria-selected="selected.includes(file.path)" :style="{top:(offset+index)*36+'px'}" @click="select($event,file)" @dblclick="open(file)" @keydown.enter="open(file)"><span><button @click.stop="open(file)"><UIIcon v-if="file.isDir||file.kind==='directory'" class="file-entry-icon folder" name="folder"/><UIIcon v-else class="file-entry-icon document" name="file"/>{{file.name}}</button></span><span>{{file.isDir||file.kind==='directory'?'—':file.size+' B'}}</span><span>{{file.modified?new Date(file.modified).toLocaleString():'—'}}</span></div>
           </div>
           <div v-if="marquee" class="file-marquee" :style="marqueeStyle()" aria-hidden="true"></div>
         </div>
       </template>
       <template v-else>
         <div class="file-icon-grid" role="grid" aria-label="节点文件图标视图" :aria-rowcount="total">
-          <article v-for="file in files.data.value?.items" :key="file.path" class="file-icon-card" :class="{selected:selected.includes(file.path),cut:clipboard?.mode==='move'&&clipboard.instanceId===resourceInstanceId&&clipboard.sources.some(source=>source.path===file.path)}" draggable="true" role="gridcell" tabindex="0" :aria-selected="selected.includes(file.path)" @dragstart="dragStart($event,file)" @click="select($event,file)" @dblclick="open(file)" @keydown.enter="open(file)">
+          <article v-for="file in files.data.value?.items" :key="file.path" class="file-icon-card" :data-file-path="file.path" :class="{selected:selected.includes(file.path),cut:clipboard?.mode==='move'&&clipboard.instanceId===resourceInstanceId&&clipboard.sources.some(source=>source.path===file.path)}" draggable="true" role="gridcell" tabindex="0" :aria-selected="selected.includes(file.path)" @dragstart="dragStart($event,file)" @click="select($event,file)" @dblclick="open(file)" @keydown.enter="open(file)">
             <button class="file-icon-preview" type="button" @click.stop="open(file)"><UIIcon v-if="file.isDir||file.kind==='directory'" class="file-entry-icon folder" name="folder"/><UIIcon v-else class="file-entry-icon document" name="file"/></button>
             <strong>{{file.name}}</strong><small>{{file.isDir||file.kind==='directory'?'目录':file.size+' B'}}</small>
           </article>
@@ -209,5 +239,29 @@ onMounted(()=>{ensureTreePath(path.value);for(const upload of uploads.value)if(!
     </div>
     <div v-else class="empty-state"><h3>{{nodes.isPending.value?'正在读取可管理节点…':'请选择一个 daemon 节点'}}</h3><p v-if="nodes.error.value" class="error">{{nodes.error.value.message}}</p><p v-else-if="!nodes.isPending.value&&!nodes.data.value?.items.length">当前账号没有节点文件读取授权。</p></div>
     <form v-if="dialog" class="in-window-dialog" role="dialog" aria-label="确认文件操作" @submit.prevent="submit"><h3>{{({mkdir:'新建目录',newfile:'新建文本',copy:'复制',move:'移动',rename:'重命名',delete:'移入回收区',compress:'压缩',extract:'解压',restore:'恢复',upload:'上传'} as Record<string,string>)[dialog.action]}}</h3><p>目标节点：{{dialog.targetNodeId||resourceInstanceId}}</p><p v-if="dialog.sourceInstanceId">来源节点：{{dialog.sourceNodeId}}</p><p v-for="source in dialog.sources" :key="source.path" class="selectable">{{source.path}}</p><label v-if="dialog.action!=='delete'">{{dialog.sources.length>1?'目标目录':'目标路径'}}<input :value="dialog.target" :disabled="!!dialog.submissions" required aria-label="文件操作目标" @input="dialogField('target',($event.target as HTMLInputElement).value)"></label><label v-if="dialog.action!=='delete'&&dialog.action!=='mkdir'&&dialog.action!=='newfile'" class="check-row"><input type="checkbox" :disabled="!!dialog.submissions" :checked="dialog.overwrite" @change="dialogField('overwrite',($event.target as HTMLInputElement).checked)">允许覆盖目标当前版本</label><p class="muted">{{dialog.action==='delete'?'此操作将指定目标移入节点回收区。':'操作会固定绑定以上节点和路径，任务结果由节点确认。'}}</p><p v-if="dialog.sourceInstanceId&&dialog.sourceInstanceId!==dialog.instanceId" class="warning">{{dialog.action==='move'?'跨实例移动先复制、验证目标，再验证并删除源。部分结果可能已提交；取消不会回滚。目录重叠由节点在写入前校验。':'跨实例复制会校验来源与目标版本；部分结果可能已提交，取消不会回滚。'}}</p><p v-if="dialog.submissions" class="warning">已固定此次请求。刷新只恢复现场；再次确认使用原请求身份和原版本核对，已接受的任务不会重复创建。</p><div class="action-row"><button type="button" :disabled="busy" @click="dialog=undefined">返回</button><button class="primary" :disabled="busy">{{busy?'提交中…':'确认文件操作'}}</button></div></form>
+    <Teleport to="body">
+      <div v-if="contextMenu" ref="contextMenuElement" class="context-menu file-context-menu" role="menu" aria-label="文件操作菜单" :style="{left:contextMenu.x+'px',top:contextMenu.y+'px'}" @pointerdown.stop @contextmenu.prevent @keydown="contextMenuKeydown">
+        <button v-if="contextMenu.item" type="button" role="menuitem" @click="invokeContextAction(()=>open(contextMenu!.item!))">打开</button>
+        <div v-if="contextMenu.item" class="file-context-separator" role="separator"></div>
+        <button type="button" role="menuitem" @click="invokeContextAction(()=>prepare('newfile'))">新建文本</button>
+        <button type="button" role="menuitem" @click="invokeContextAction(()=>prepare('mkdir'))">新建目录</button>
+        <button type="button" role="menuitem" @click="invokeContextAction(()=>selectUpload())">上传文件</button>
+        <div class="file-context-separator" role="separator"></div>
+        <button type="button" role="menuitem" :disabled="!selected.length||busy" @click="invokeContextAction(()=>copySelection('move'))">剪切</button>
+        <button type="button" role="menuitem" :disabled="!selected.length||busy" @click="invokeContextAction(()=>copySelection('copy'))">复制</button>
+        <button type="button" role="menuitem" :disabled="!clipboard||clipboardPending||busy" @click="invokeContextAction(()=>paste())">粘贴</button>
+        <div class="file-context-separator" role="separator"></div>
+        <button type="button" role="menuitem" :disabled="selected.length!==1||busy" @click="invokeContextAction(()=>prepare('rename'))">重命名</button>
+        <button type="button" role="menuitem" :disabled="!selected.length||busy" @click="invokeContextAction(()=>prepare('delete'))">移入回收区</button>
+        <button type="button" role="menuitem" :disabled="!selected.length||busy" @click="invokeContextAction(()=>prepare('copy'))">复制到…</button>
+        <button type="button" role="menuitem" :disabled="!selected.length||busy" @click="invokeContextAction(()=>prepare('move'))">移动到…</button>
+        <div class="file-context-separator" role="separator"></div>
+        <button type="button" role="menuitem" :disabled="!selected.length||busy" @click="invokeContextAction(()=>download())">下载</button>
+        <button type="button" role="menuitem" :disabled="!selected.length||busy" @click="invokeContextAction(()=>prepare('compress'))">压缩</button>
+        <button type="button" role="menuitem" :disabled="selected.length!==1||busy" @click="invokeContextAction(()=>prepare('extract'))">解压</button>
+        <div class="file-context-separator" role="separator"></div>
+        <button type="button" role="menuitem" @click="invokeContextAction(()=>files.refetch())">刷新</button>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -36,6 +36,31 @@ test('virtual directory follows reduced node pages and restores scrolling across
   await selectStyledOption(page,page.getByRole('combobox',{name:'文件排序'}),'modified');await selectStyledOption(page,page.getByRole('combobox',{name:'排序方向'}),'desc');await expect.poll(()=>requests.at(-1)).toMatchObject({offset:0,search:'9876',sort:'modified',order:'desc'});expect(errors).toEqual([])
 })
 
+test('file manager right click opens the built-in file menu and reuses confirmed file actions',async({page})=>{
+  const errors:string[]=[]
+  page.on('pageerror',error=>errors.push(error.message))
+  await page.route('**/api/v1/**',route=>{
+    const url=new URL(route.request().url());let json:unknown={items:[]}
+    if(url.pathname.endsWith('/session'))json=identity
+    else if(url.pathname==='/api/v1/instances')json={items:[instance]}
+    else if(url.pathname==='/api/v1/nodes/files')json={items:[{nodeId:instance.nodeId,name:instance.nodeName,state:'ONLINE'}]}
+    else if(url.pathname.endsWith('/files/stat'))json={name:'root.txt',path:'root.txt',isDir:false,size:4,version:'root-file-version'}
+    else if(url.pathname==='/api/v1/nodes/file-node/files')json={items:[{name:'root.txt',path:'root.txt',isDir:false,size:4,version:'root-file-version'}],total:1,version:'root-directory-version',nextOffset:0}
+    return route.fulfill({json})
+  })
+  await openFiles(page)
+  const row=page.locator('.file-row[data-file-path="root.txt"]')
+  const prevented=await row.locator('svg').first().evaluate(element=>{const event=new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:120,clientY:140});element.dispatchEvent(event);return event.defaultPrevented})
+  expect(prevented).toBe(true)
+  await expect(row).toHaveAttribute('aria-selected','true')
+  const menu=page.getByRole('menu',{name:'文件操作菜单'})
+  await expect(menu).toBeVisible()
+  await expect(menu.getByRole('menuitem',{name:'重命名',exact:true})).toBeEnabled()
+  await menu.getByRole('menuitem',{name:'重命名',exact:true}).click()
+  await expect(page.getByRole('dialog',{name:'确认文件操作'})).toContainText('重命名')
+  expect(errors).toEqual([])
+})
+
 test('directory tree loads expanded branches on demand and restores the selected path',async({page})=>{
   const treeRequests:string[]=[];page.on('pageerror',error=>{throw error})
   await page.route('**/api/v1/**',route=>{
